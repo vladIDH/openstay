@@ -11,7 +11,7 @@ import Database from "better-sqlite3";
 
 export type Db = Database.Database;
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (
@@ -58,7 +58,56 @@ CREATE TABLE IF NOT EXISTS price_history (
   imported_at TEXT NOT NULL,
   PRIMARY KEY (listing, date)
 );
+
+-- Version 2 (Smoobu). Price of each Smoobu stay: the total of the stay, its
+-- nights and the average per night. It is an average per STAY, not the price of
+-- each night; the historical floor uses it only with --usa-storico-smoobu.
+CREATE TABLE IF NOT EXISTS smoobu_stays (
+  listing     TEXT NOT NULL,
+  uid         TEXT NOT NULL,
+  check_in    TEXT NOT NULL,
+  check_out   TEXT NOT NULL,
+  nights      INTEGER NOT NULL,
+  total       REAL NOT NULL,
+  per_night   REAL NOT NULL,
+  imported_at TEXT NOT NULL,
+  PRIMARY KEY (listing, uid)
+);
+
+-- Every write to Smoobu, for the record.
+CREATE TABLE IF NOT EXISTS smoobu_pushes (
+  id           INTEGER PRIMARY KEY,
+  listing      TEXT NOT NULL,
+  apartment_id INTEGER NOT NULL,
+  at           TEXT NOT NULL,
+  nights       INTEGER NOT NULL,
+  operations   INTEGER NOT NULL,
+  mismatches   INTEGER NOT NULL,
+  error        TEXT
+);
 `;
+
+/** Columns added after version 1, for databases created before them. */
+function upgrade(db: Database.Database): void {
+  const columns = (db.prepare("PRAGMA table_info(calendar_events)").all() as { name: string }[]).map((c) => c.name);
+  // The day the booking was made, when the source knows it (Smoobu's created-at).
+  if (!columns.includes("booked_at")) db.exec("ALTER TABLE calendar_events ADD COLUMN booked_at TEXT");
+  db.prepare("UPDATE meta SET value = ? WHERE key = 'schema_version' AND CAST(value AS INTEGER) < ?").run(String(SCHEMA_VERSION), SCHEMA_VERSION);
+}
+
+/** Does this (possibly older, read-only) database have the column? */
+export function hasColumn(db: Database.Database, table: string, column: string): boolean {
+  return (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).some((c) => c.name === column);
+}
+
+export function getMeta(db: Database.Database, key: string): string | null {
+  const row = db.prepare("SELECT value FROM meta WHERE key = ?").get(key) as { value: string } | undefined;
+  return row?.value ?? null;
+}
+
+export function setMeta(db: Database.Database, key: string, value: string): void {
+  db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value").run(key, value);
+}
 
 /**
  * Open an existing database for reading only: SQLite itself refuses any write.
@@ -73,5 +122,6 @@ export function openDb(file: string): Db {
   const db = new Database(file);
   db.exec(SCHEMA);
   db.prepare("INSERT OR IGNORE INTO meta (key, value) VALUES ('schema_version', ?)").run(String(SCHEMA_VERSION));
+  upgrade(db);
   return db;
 }

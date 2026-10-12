@@ -5,7 +5,7 @@ import { formatAmount, priceListing } from "fairnight";
 import type { ListingCalendar, NightQuote, PastPrice, PricingResult, Stay } from "fairnight";
 import { localToday } from "./io.js";
 import { feedKeys, type HostListing } from "./config.js";
-import type { Db } from "./db.js";
+import { hasColumn, type Db } from "./db.js";
 
 /** Live (not removed) stays and blocks of a listing, from the calendars still in its config. */
 export function loadStays(db: Db, listing: HostListing): Stay[] {
@@ -40,19 +40,53 @@ export function loadPriceHistory(db: Db, listing: string): PastPrice[] {
 export function lastBookingReceived(db: Db, listing: HostListing): string | null {
   const feeds = feedKeys(listing);
   if (feeds.length === 0) return null;
-  const row = db
+  // Smoobu tells the real booking day (booked_at); for iCal stays it is the day
+  // the sync first saw them. Older databases have no booked_at column yet.
+  const when = hasColumn(db, "calendar_events", "booked_at") ? "COALESCE(booked_at, first_seen_at)" : "first_seen_at";
+  const rows = db
     .prepare(
-      `SELECT MAX(first_seen_at) AS at FROM calendar_events
+      `SELECT ${when} AS at FROM calendar_events
        WHERE listing = ? AND kind = 'reservation' AND feed IN (${feeds.map(() => "?").join(", ")})`,
     )
-    .get(listing.name, ...feeds) as { at: string | null };
-  return row.at === null ? null : localToday(new Date(row.at));
+    .all(listing.name, ...feeds) as { at: string }[];
+  let latest: string | null = null;
+  for (const r of rows) {
+    // booked_at is already a day (YYYY-MM-DD); first_seen_at is a UTC timestamp.
+    const day = r.at.length === 10 ? r.at : localToday(new Date(r.at));
+    if (latest === null || day > latest) latest = day;
+  }
+  return latest;
 }
 
-export function priceOne(db: Db, listing: HostListing, today: string, days: number): PricingResult {
+/**
+ * Average price per night of each Smoobu stay, spread over its nights. It is
+ * the average of a whole STAY (total / nights), not what each night sold for.
+ */
+export function loadSmoobuHistory(db: Db, listing: string): PastPrice[] {
+  const rows = db.prepare("SELECT check_in, nights, per_night FROM smoobu_stays WHERE listing = ? ORDER BY check_in").all(listing) as {
+    check_in: string;
+    nights: number;
+    per_night: number;
+  }[];
+  const out: PastPrice[] = [];
+  for (const r of rows) {
+    const first = Date.parse(`${r.check_in}T00:00:00Z`);
+    for (let i = 0; i < r.nights; i++) out.push({ date: new Date(first + i * 86_400_000).toISOString().slice(0, 10), price: r.per_night });
+  }
+  return out;
+}
+
+export interface PriceOptions {
+  /** Add Smoobu stay averages to the history used by the historical floor (CSV prices win on the same night). */
+  useSmoobuHistory?: boolean;
+}
+
+export function priceOne(db: Db, listing: HostListing, today: string, days: number, options: PriceOptions = {}): PricingResult {
+  const csv = loadPriceHistory(db, listing.name);
   const calendar: ListingCalendar = {
     stays: loadStays(db, listing),
-    priceHistory: loadPriceHistory(db, listing.name),
+    // Later entries win for the same night: Smoobu averages first, then the CSV prices.
+    priceHistory: options.useSmoobuHistory ? [...loadSmoobuHistory(db, listing.name), ...csv] : csv,
   };
   const last = lastBookingReceived(db, listing);
   if (last !== null) calendar.lastBookingReceived = last;

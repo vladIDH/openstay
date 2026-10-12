@@ -62,8 +62,29 @@ Every command works in the current folder. Add `--dir <folder>` to use another o
 | `fairnight price [--listing <name>]` | Prices every night: `--days 365` (default), `--today YYYY-MM-DD`, `--explain` for the full reasoning, `--json` for the data. |
 | `fairnight export [--listing <name>] [--format csv]` | Writes `exports/<listing>-<date>.csv` with `date,price,min_stay` for every night for sale, to upload by hand to a channel or channel manager. `--out <file>` chooses the file, `--days` the horizon. |
 | `fairnight serve [--port 4321] [--lan]` | The calendar page: one cell per night with price and minimum stay, reserved and blocked nights marked, a click opens the full explanation. *Recalculate* reads the calendars again. With `--lan` you can open it from a phone on the same Wi-Fi. |
+| `fairnight smoobu collega` | Asks for your Smoobu API key and secret (nothing typed is shown), checks them on Smoobu and saves them in `smoobu-credentials.json`, readable only by you. |
+| `fairnight smoobu importa` | Each Smoobu apartment not linked yet becomes a listing (source `smoobu`, starting prices from Smoobu, to review). Its bookings and blocked dates come in. |
+| `fairnight smoobu spingi [--applica] [--da DATE] [--a DATE] [--alloggio ID]` | Compares Smoobu's prices and minimum stays with Fairnight's (default: the next 90 days) and shows the differences. **Writes only with `--applica`**, then reads back from Smoobu to check. |
 
-**About Smoobu:** Smoobu does not publish a CSV format for importing rates (its *Import prices* tool reads from a connected channel), so there is no `--format smoobu`. A Smoobu connector through its API is planned for phase 2.
+**About Smoobu:** Smoobu does not publish a CSV format for importing rates, so there is no `--format smoobu`: use the `fairnight smoobu` commands below.
+
+## Smoobu (0.2.0, in development)
+
+The connector uses only Smoobu's **HMAC request signing**: create the key **with its secret** in Smoobu (*Settings → Advanced → API Keys → Create API Key*, then *Generate Secret*). The secret is shown only once. The old key-only login stops working on 31 October 2026 and is not used.
+
+```
+fairnight smoobu collega                 # once: key and secret, asked without echo
+fairnight smoobu importa                 # apartments become listings, bookings come in
+fairnight smoobu spingi                  # dry run: the table of differences, nothing written
+fairnight smoobu spingi --applica        # writes, then reads back from Smoobu
+```
+
+- **Credentials.** `SMOOBU_API_KEY` and `SMOOBU_API_SECRET` win over the saved file. Neither value is ever printed. Never commit `smoobu-credentials.json`.
+- **Reading.** `fairnight sync` (and *Recalculate*) also reads the bookings of listings linked to Smoobu. Blocked dates are unavailable nights, never bookings.
+- **Booking day.** For Smoobu listings the stale-calendar discount uses the real day each booking was made.
+- **Past prices.** Smoobu gives the total of each stay. Fairnight stores it with its average per night, and uses that average in the historical floor only with `fairnight price --usa-storico-smoobu`, because it is an average per stay, not the price of each night.
+- **Writing.** Price and minimum stay always go together. Smoobu does not document whether the end of a date range is included, so Fairnight writes one night per operation until the first real `--applica` has checked it once. After that it uses ranges of up to 7 equal nights.
+- **Limits.** At most 300 requests per minute (Smoobu allows 700). It waits when Smoobu says so (429), retries outages, and stops with an explanation on anything else.
 
 ## Real output (invented calendars)
 

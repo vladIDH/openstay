@@ -49,6 +49,7 @@
   ],
   "dependencies": {
     "fairnight": "0.1.0",
+    "fairnight-smoobu": "0.2.0",
     "better-sqlite3": "12.11.1"
   },
   "devDependencies": {

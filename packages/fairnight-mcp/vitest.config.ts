@@ -9,6 +9,7 @@ export default defineConfig({
     alias: [
       { find: /^fairnight-cli$/, replacement: src("../fairnight-cli/src/index.ts") },
       { find: /^fairnight$/, replacement: src("../fairnight/src/engine/index.ts") },
+      { find: /^fairnight-smoobu$/, replacement: src("../fairnight-smoobu/src/index.ts") },
     ],
   },
   test: {

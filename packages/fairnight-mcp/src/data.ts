@@ -7,6 +7,7 @@ import { existsSync } from "node:fs";
 import { formatAmount, type NightQuote } from "fairnight";
 import {
   dbPath,
+  feedKeys,
   lastSync,
   loadHostConfig,
   loadStays,
@@ -238,3 +239,36 @@ export function nextGaps(folder: Folder, args: { listing: string; days?: number;
 }
 
 export { formatAmount };
+
+interface RunRow {
+  at: string;
+  ok: number;
+  error: string | null;
+}
+
+/** Where the data of each listing comes from (iCal calendars, Smoobu) and when it was last read. */
+export function syncStatus(folder: Folder) {
+  return withFolder(folder, (db, listings) => ({
+    listings: listings.map((l) => {
+      const keys = feedKeys(l);
+      const sources = l.calendars.map((c, i) => {
+        const feed = keys[i] as string;
+        const last = db.prepare("SELECT at, ok, error FROM sync_runs WHERE listing = ? AND feed = ? ORDER BY at DESC, id DESC LIMIT 1").get(l.name, feed) as
+          | RunRow
+          | undefined;
+        const ok = db.prepare("SELECT MAX(at) AS at FROM sync_runs WHERE listing = ? AND feed = ? AND ok = 1").get(l.name, feed) as { at: string | null };
+        return {
+          feed,
+          kind: c.source === "smoobu" ? ("smoobu" as const) : ("ical" as const),
+          channel: c.source,
+          ...(c.source === "smoobu" ? { apartmentId: c.apartmentId } : {}), // never the iCal links: they work like passwords
+          lastSuccess: ok.at,
+          lastAttempt: last?.at ?? null,
+          lastError: last && last.ok === 0 ? last.error : null,
+        };
+      });
+      const kinds = [...new Set(sources.map((s) => s.kind))].sort();
+      return { listing: l.name, dataFrom: kinds.length === 0 ? "none" : kinds.join("+"), sources };
+    }),
+  }));
+}

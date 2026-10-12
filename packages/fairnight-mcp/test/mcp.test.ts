@@ -5,6 +5,7 @@ import path from "node:path";
 import { Client } from "@modelcontextprotocol/client";
 import { InMemoryTransport } from "@modelcontextprotocol/server";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { openDb } from "../../fairnight-cli/src/db.js";
 import { main } from "../../fairnight-cli/src/main.js";
 import { buildServer, TOOLS } from "../src/server.js";
 
@@ -70,13 +71,13 @@ async function call(name: string, args: Record<string, unknown> = {}) {
 }
 
 describe("fairnight MCP server", () => {
-  it("offers the five tools, all read-only", async () => {
+  it("offers six tools, all read-only", async () => {
     const { tools } = await client.listTools();
-    expect(tools.map((t) => t.name)).toEqual(["list_listings", "get_prices", "explain_night", "occupancy", "next_gaps"]);
+    expect(tools.map((t) => t.name)).toEqual(["list_listings", "get_prices", "explain_night", "occupancy", "next_gaps", "get_sync_status"]);
     for (const t of tools) {
       expect(t.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false });
     }
-    expect(TOOLS).toHaveLength(5);
+    expect(TOOLS).toHaveLength(6);
   });
 
   it("lists the listings without ever showing the calendar links", async () => {
@@ -147,14 +148,57 @@ describe("fairnight MCP server", () => {
     expect((await call("next_gaps", { listing: "seaview-loft", maxNights: 20 })).text).toBe("maxNights must be a whole number from 1 to 14");
   });
 
+  it("tells where the data comes from and when it was read, never the links", async () => {
+    const r = await call("get_sync_status");
+    expect(r.text.split("\n")).toEqual([
+      expect.stringMatching(/^- seaview-loft \(data from ical\): airbnb iCal: last read 2026-11-01T\S+; booking iCal: last read 2026-11-01T\S+$/),
+      expect.stringMatching(/^- garden-studio \(data from ical\): vrbo iCal: last read 2026-11-01T\S+$/),
+    ]);
+    expect(JSON.stringify(r.data)).not.toContain("example.org");
+  });
+
   it("never writes: the database is byte for byte the same after every tool", async () => {
     const before = dbHash();
+    await call("get_sync_status");
     await call("list_listings");
     await call("get_prices", { listing: "seaview-loft", from: "2026-11-01", to: "2027-10-31" });
     await call("explain_night", { listing: "garden-studio", date: "2026-11-20" });
     await call("occupancy", { listing: "garden-studio", month: "2026-11" });
     await call("next_gaps", { listing: "garden-studio" });
     expect(dbHash()).toBe(before);
+  });
+});
+
+describe("sync status with Smoobu", () => {
+  it("names the Smoobu apartment and the latest error", async () => {
+    const folder = mkdtempSync(path.join(os.tmpdir(), "fairnight-mcp-smoobu-"));
+    await main(["init"], io(folder));
+    const file = path.join(folder, "fairnight.config.json");
+    const config = JSON.parse(readFileSync(file, "utf8"));
+    config.listings = [
+      { name: "loft", calendars: [{ source: "smoobu", apartmentId: 398 }], pricing: config.listings[0].pricing },
+      { name: "studio", calendars: [], pricing: config.listings[1].pricing },
+    ];
+    writeFileSync(file, JSON.stringify(config));
+    const db = openDb(path.join(folder, "data", "fairnight.db"));
+    const run = db.prepare("INSERT INTO sync_runs (listing, feed, at, ok, error) VALUES (?, ?, ?, ?, ?)");
+    run.run("loft", "smoobu", "2026-10-31T08:00:00.000Z", 1, null);
+    run.run("loft", "smoobu", "2026-11-01T08:00:00.000Z", 0, "Smoobu refused the request (401).");
+    db.close();
+    const [c, s] = InMemoryTransport.createLinkedPair();
+    await buildServer({ dir: folder, now }).connect(s);
+    const other = new Client({ name: "test", version: "1.0.0" });
+    await other.connect(c);
+    const r = (await other.callTool({ name: "get_sync_status", arguments: {} })) as { content: { text: string }[]; structuredContent: { listings: { dataFrom: string }[] } };
+    expect(r.content[0]?.text).toBe(
+      [
+        "- loft (data from smoobu): Smoobu apartment 398: last read 2026-10-31T08:00:00.000Z (latest attempt failed: Smoobu refused the request (401).)",
+        "- studio (data from none): no sources",
+      ].join("\n"),
+    );
+    expect(r.structuredContent.listings.map((l) => l.dataFrom)).toEqual(["smoobu", "none"]);
+    await other.close();
+    rmSync(folder, { recursive: true, force: true });
   });
 });
 

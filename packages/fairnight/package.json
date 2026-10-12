@@ -1,0 +1,53 @@
+{
+  "name": "fairnight",
+  "version": "0.1.0",
+  "license": "AGPL-3.0-only",
+  "author": {
+    "name": "Vlad Humenny",
+    "email": "hello@khlumen.com"
+  },
+  "homepage": "https://github.com/vladIDH/openstay#readme",
+  "bugs": {
+    "url": "https://github.com/vladIDH/openstay/issues"
+  },
+  "description": "Open-source dynamic pricing engine for short-term rentals: a price, a minimum stay and an explanation for every night. Pure library, no network.",
+  "keywords": [
+    "dynamic-pricing",
+    "short-term-rental",
+    "vacation-rental",
+    "airbnb",
+    "booking",
+    "revenue-management",
+    "pricing-engine"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vladIDH/openstay.git",
+    "directory": "packages/fairnight"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/engine/index.js",
+  "types": "./dist/engine/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/engine/index.d.ts",
+      "default": "./dist/engine/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "regen:expected": "vitest run --update test/regression.test.ts",
+    "prepack": "npm run build"
+  }
+}

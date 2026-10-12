@@ -1,0 +1,2922 @@
+[
+ {
+  "date": "2026-11-01",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Sun 2026-11-01: not for sale (reserved)."
+ },
+ {
+  "date": "2026-11-02",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Mon 2026-11-02: not for sale (reserved)."
+ },
+ {
+  "date": "2026-11-03",
+  "status": "available",
+  "price": 96,
+  "minStay": 1,
+  "minStaySource": "lastMinute",
+  "explanation": "Tue 2026-11-03 · 96 EUR: base 100 → last minute (≤3 days) -15% = 85 (2 days ahead; gap discount 12% not added) → no new bookings -8% = 78.20 (22 days since the last new booking) → historical floor = 96.19 (75% of the 2025-11 average of 128.25 over 12 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 96. Min stay 1 (last minute)."
+ },
+ {
+  "date": "2026-11-04",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Wed 2026-11-04: not for sale (reserved)."
+ },
+ {
+  "date": "2026-11-05",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Thu 2026-11-05: not for sale (reserved)."
+ },
+ {
+  "date": "2026-11-06",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Fri 2026-11-06: not for sale (reserved)."
+ },
+ {
+  "date": "2026-11-07",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Sat 2026-11-07: not for sale (reserved)."
+ },
+ {
+  "date": "2026-11-08",
+  "status": "available",
+  "price": 96,
+  "minStay": 2,
+  "minStaySource": "lastMinute",
+  "explanation": "Sun 2026-11-08 · 96 EUR: base 100 → sun -5% = 95 → gap of 2 nights -12% = 83.60 (last-minute discount 8% not added) → no new bookings -8% = 76.91 (22 days since the last new booking) → historical floor = 96.19 (75% of the 2025-11 average of 128.25 over 12 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 96. Min stay 2 (last minute)."
+ },
+ {
+  "date": "2026-11-09",
+  "status": "available",
+  "price": 96,
+  "minStay": 2,
+  "minStaySource": "gap",
+  "explanation": "Mon 2026-11-09 · 96 EUR: base 100 → gap of 2 nights -12% = 88 (last-minute discount 4% not added) → no new bookings -8% = 80.96 (22 days since the last new booking) → historical floor = 96.19 (75% of the 2025-11 average of 128.25 over 12 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 96. Min stay 2 (lowered to fill the gap)."
+ },
+ {
+  "date": "2026-11-10",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Tue 2026-11-10: not for sale (reserved)."
+ },
+ {
+  "date": "2026-11-11",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Wed 2026-11-11: not for sale (reserved)."
+ },
+ {
+  "date": "2026-11-12",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Thu 2026-11-12: not for sale (reserved)."
+ },
+ {
+  "date": "2026-11-13",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Fri 2026-11-13: not for sale (reserved)."
+ },
+ {
+  "date": "2026-11-14",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Sat 2026-11-14: not for sale (reserved)."
+ },
+ {
+  "date": "2026-11-15",
+  "status": "available",
+  "price": 96,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2026-11-15 · 96 EUR: base 100 → sun -5% = 95 → last minute (≤14 days) -4% = 91.20 (14 days ahead) → no new bookings -8% = 83.90 (22 days since the last new booking) → historical floor = 96.19 (75% of the 2025-11 average of 128.25 over 12 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 96. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-11-16",
+  "status": "available",
+  "price": 96,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2026-11-16 · 96 EUR: base 100 → no new bookings -8% = 92 (22 days since the last new booking) → historical floor = 96.19 (75% of the 2025-11 average of 128.25 over 12 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 96. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-11-17",
+  "status": "available",
+  "price": 96,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2026-11-17 · 96 EUR: base 100 → no new bookings -8% = 92 (22 days since the last new booking) → historical floor = 96.19 (75% of the 2025-11 average of 128.25 over 12 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 96. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-11-18",
+  "status": "available",
+  "price": 96,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2026-11-18 · 96 EUR: base 100 → no new bookings -8% = 92 (22 days since the last new booking) → historical floor = 96.19 (75% of the 2025-11 average of 128.25 over 12 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 96. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-11-19",
+  "status": "available",
+  "price": 103,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2026-11-19 · 103 EUR: base 100 → no new bookings -8% = 92 (22 days since the last new booking) → event \"Town festival\" (impact 3) +12% = 103.04 → within floor 60 and ceiling 260 → rounded to 1 = 103. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-11-20",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Fri 2026-11-20: not for sale (reserved)."
+ },
+ {
+  "date": "2026-11-21",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Sat 2026-11-21: not for sale (reserved)."
+ },
+ {
+  "date": "2026-11-22",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Sun 2026-11-22: not for sale (reserved)."
+ },
+ {
+  "date": "2026-11-23",
+  "status": "available",
+  "price": 96,
+  "minStay": 2,
+  "minStaySource": "gap",
+  "explanation": "Mon 2026-11-23 · 96 EUR: base 100 → gap of 2 nights -12% = 88 → historical floor = 96.19 (75% of the 2025-11 average of 128.25 over 12 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 96. Min stay 2 (lowered to fill the gap)."
+ },
+ {
+  "date": "2026-11-24",
+  "status": "available",
+  "price": 96,
+  "minStay": 2,
+  "minStaySource": "gap",
+  "explanation": "Tue 2026-11-24 · 96 EUR: base 100 → gap of 2 nights -12% = 88 → historical floor = 96.19 (75% of the 2025-11 average of 128.25 over 12 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 96. Min stay 2 (lowered to fill the gap)."
+ },
+ {
+  "date": "2026-11-25",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Wed 2026-11-25: not for sale (reserved)."
+ },
+ {
+  "date": "2026-11-26",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Thu 2026-11-26: not for sale (reserved)."
+ },
+ {
+  "date": "2026-11-27",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Fri 2026-11-27: not for sale (reserved)."
+ },
+ {
+  "date": "2026-11-28",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Sat 2026-11-28: not for sale (reserved)."
+ },
+ {
+  "date": "2026-11-29",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Sun 2026-11-29: not for sale (reserved)."
+ },
+ {
+  "date": "2026-11-30",
+  "status": "available",
+  "price": 96,
+  "minStay": 1,
+  "minStaySource": "gap",
+  "explanation": "Mon 2026-11-30 · 96 EUR: base 100 → gap of 1 night -12% = 88 → historical floor = 96.19 (75% of the 2025-11 average of 128.25 over 12 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 96. Min stay 1 (lowered to fill the gap)."
+ },
+ {
+  "date": "2026-12-01",
+  "status": "blocked",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Tue 2026-12-01: not for sale (blocked)."
+ },
+ {
+  "date": "2026-12-02",
+  "status": "blocked",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Wed 2026-12-02: not for sale (blocked)."
+ },
+ {
+  "date": "2026-12-03",
+  "status": "blocked",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Thu 2026-12-03: not for sale (blocked)."
+ },
+ {
+  "date": "2026-12-04",
+  "status": "blocked",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Fri 2026-12-04: not for sale (blocked)."
+ },
+ {
+  "date": "2026-12-05",
+  "status": "available",
+  "price": 137,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2026-12-05 · 137 EUR: base 100 → sat +15% = 115 → historical floor = 137.05 (75% of the 2025-12 average of 182.73 over 11 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 137. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-12-06",
+  "status": "available",
+  "price": 137,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2026-12-06 · 137 EUR: base 100 → sun -5% = 95 → historical floor = 137.05 (75% of the 2025-12 average of 182.73 over 11 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 137. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-12-07",
+  "status": "available",
+  "price": 137,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2026-12-07 · 137 EUR: base 100 → historical floor = 137.05 (75% of the 2025-12 average of 182.73 over 11 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 137. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-12-08",
+  "status": "available",
+  "price": 137,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2026-12-08 · 137 EUR: base 100 → historical floor = 137.05 (75% of the 2025-12 average of 182.73 over 11 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 137. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-12-09",
+  "status": "available",
+  "price": 137,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2026-12-09 · 137 EUR: base 100 → historical floor = 137.05 (75% of the 2025-12 average of 182.73 over 11 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 137. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-12-10",
+  "status": "available",
+  "price": 137,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2026-12-10 · 137 EUR: base 100 → historical floor = 137.05 (75% of the 2025-12 average of 182.73 over 11 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 137. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-12-11",
+  "status": "available",
+  "price": 137,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2026-12-11 · 137 EUR: base 100 → fri +10% = 110 → historical floor = 137.05 (75% of the 2025-12 average of 182.73 over 11 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 137. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-12-12",
+  "status": "available",
+  "price": 137,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2026-12-12 · 137 EUR: base 100 → sat +15% = 115 → historical floor = 137.05 (75% of the 2025-12 average of 182.73 over 11 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 137. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-12-13",
+  "status": "available",
+  "price": 137,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2026-12-13 · 137 EUR: base 100 → sun -5% = 95 → historical floor = 137.05 (75% of the 2025-12 average of 182.73 over 11 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 137. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-12-14",
+  "status": "available",
+  "price": 137,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2026-12-14 · 137 EUR: base 100 → historical floor = 137.05 (75% of the 2025-12 average of 182.73 over 11 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 137. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-12-15",
+  "status": "available",
+  "price": 137,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2026-12-15 · 137 EUR: base 100 → historical floor = 137.05 (75% of the 2025-12 average of 182.73 over 11 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 137. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-12-16",
+  "status": "available",
+  "price": 137,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2026-12-16 · 137 EUR: base 100 → historical floor = 137.05 (75% of the 2025-12 average of 182.73 over 11 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 137. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-12-17",
+  "status": "available",
+  "price": 137,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2026-12-17 · 137 EUR: base 100 → historical floor = 137.05 (75% of the 2025-12 average of 182.73 over 11 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 137. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-12-18",
+  "status": "available",
+  "price": 137,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2026-12-18 · 137 EUR: base 100 → fri +10% = 110 → historical floor = 137.05 (75% of the 2025-12 average of 182.73 over 11 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 137. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-12-19",
+  "status": "available",
+  "price": 137,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2026-12-19 · 137 EUR: base 100 → sat +15% = 115 → historical floor = 137.05 (75% of the 2025-12 average of 182.73 over 11 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 137. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-12-20",
+  "status": "available",
+  "price": 137,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2026-12-20 · 137 EUR: base 100 → season \"Year-end holidays\" +35% = 135 → sun -5% = 128.25 → historical floor = 137.05 (75% of the 2025-12 average of 182.73 over 11 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 137. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-12-21",
+  "status": "available",
+  "price": 137,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2026-12-21 · 137 EUR: base 100 → season \"Year-end holidays\" +35% = 135 → historical floor = 137.05 (75% of the 2025-12 average of 182.73 over 11 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 137. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-12-22",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Tue 2026-12-22: not for sale (reserved)."
+ },
+ {
+  "date": "2026-12-23",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Wed 2026-12-23: not for sale (reserved)."
+ },
+ {
+  "date": "2026-12-24",
+  "status": "available",
+  "price": 210,
+  "minStay": 1,
+  "minStaySource": "gap",
+  "explanation": "Thu 2026-12-24 · 210 EUR: base 100 → season \"Year-end holidays\" +35% = 135 → gap of 1 night -12% = 118.80 → historical floor = 137.05 (75% of the 2025-12 average of 182.73 over 11 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 137 → date override = 210 (Christmas Eve, set by hand). Min stay 1 (lowered to fill the gap)."
+ },
+ {
+  "date": "2026-12-25",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Fri 2026-12-25: not for sale (reserved)."
+ },
+ {
+  "date": "2026-12-26",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Sat 2026-12-26: not for sale (reserved)."
+ },
+ {
+  "date": "2026-12-27",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Sun 2026-12-27: not for sale (reserved)."
+ },
+ {
+  "date": "2026-12-28",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Mon 2026-12-28: not for sale (reserved)."
+ },
+ {
+  "date": "2026-12-29",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Tue 2026-12-29: not for sale (reserved)."
+ },
+ {
+  "date": "2026-12-30",
+  "status": "available",
+  "price": 137,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2026-12-30 · 137 EUR: base 100 → season \"Year-end holidays\" +35% = 135 → historical floor = 137.05 (75% of the 2025-12 average of 182.73 over 11 sold nights) → within floor 60 and ceiling 260 → rounded to 1 = 137. Min stay 3 (default)."
+ },
+ {
+  "date": "2026-12-31",
+  "status": "available",
+  "price": 189,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2026-12-31 · 189 EUR: base 100 → season \"Year-end holidays\" +35% = 135 → event \"New Year's Eve\" (impact 5) +40% = 189 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-01",
+  "status": "available",
+  "price": 149,
+  "minStay": 1,
+  "minStaySource": "override",
+  "explanation": "Fri 2027-01-01 · 149 EUR: base 100 → season \"Year-end holidays\" +35% = 135 → fri +10% = 148.50 → within floor 60 and ceiling 260 → rounded to 1 = 149. Min stay 1 (date override)."
+ },
+ {
+  "date": "2027-01-02",
+  "status": "available",
+  "price": 155,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-01-02 · 155 EUR: base 100 → season \"Year-end holidays\" +35% = 135 → sat +15% = 155.25 → within floor 60 and ceiling 260 → rounded to 1 = 155. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-03",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Sun 2027-01-03: not for sale (reserved)."
+ },
+ {
+  "date": "2027-01-04",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Mon 2027-01-04: not for sale (reserved)."
+ },
+ {
+  "date": "2027-01-05",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Tue 2027-01-05: not for sale (reserved)."
+ },
+ {
+  "date": "2027-01-06",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Wed 2027-01-06: not for sale (reserved)."
+ },
+ {
+  "date": "2027-01-07",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Thu 2027-01-07: not for sale (reserved)."
+ },
+ {
+  "date": "2027-01-08",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Fri 2027-01-08: not for sale (reserved)."
+ },
+ {
+  "date": "2027-01-09",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Sat 2027-01-09: not for sale (reserved)."
+ },
+ {
+  "date": "2027-01-10",
+  "status": "available",
+  "price": 109,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-01-10 · 109 EUR: base 100 → season \"Winter sun\" +15% = 115 → sun -5% = 109.25 → within floor 60 and ceiling 260 → rounded to 1 = 109. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-11",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-01-11 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-12",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-01-12 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-13",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-01-13 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-14",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-01-14 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-15",
+  "status": "available",
+  "price": 127,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-01-15 · 127 EUR: base 100 → season \"Winter sun\" +15% = 115 → fri +10% = 126.50 → within floor 60 and ceiling 260 → rounded to 1 = 127. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-16",
+  "status": "available",
+  "price": 132,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-01-16 · 132 EUR: base 100 → season \"Winter sun\" +15% = 115 → sat +15% = 132.25 → within floor 60 and ceiling 260 → rounded to 1 = 132. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-17",
+  "status": "available",
+  "price": 109,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-01-17 · 109 EUR: base 100 → season \"Winter sun\" +15% = 115 → sun -5% = 109.25 → within floor 60 and ceiling 260 → rounded to 1 = 109. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-18",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-01-18 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-19",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-01-19 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-20",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-01-20 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-21",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-01-21 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-22",
+  "status": "available",
+  "price": 127,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-01-22 · 127 EUR: base 100 → season \"Winter sun\" +15% = 115 → fri +10% = 126.50 → within floor 60 and ceiling 260 → rounded to 1 = 127. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-23",
+  "status": "available",
+  "price": 132,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-01-23 · 132 EUR: base 100 → season \"Winter sun\" +15% = 115 → sat +15% = 132.25 → within floor 60 and ceiling 260 → rounded to 1 = 132. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-24",
+  "status": "available",
+  "price": 109,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-01-24 · 109 EUR: base 100 → season \"Winter sun\" +15% = 115 → sun -5% = 109.25 → within floor 60 and ceiling 260 → rounded to 1 = 109. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-25",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-01-25 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-26",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-01-26 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-27",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-01-27 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-28",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-01-28 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-29",
+  "status": "available",
+  "price": 127,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-01-29 · 127 EUR: base 100 → season \"Winter sun\" +15% = 115 → fri +10% = 126.50 → within floor 60 and ceiling 260 → rounded to 1 = 127. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-30",
+  "status": "available",
+  "price": 132,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-01-30 · 132 EUR: base 100 → season \"Winter sun\" +15% = 115 → sat +15% = 132.25 → within floor 60 and ceiling 260 → rounded to 1 = 132. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-01-31",
+  "status": "available",
+  "price": 109,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-01-31 · 109 EUR: base 100 → season \"Winter sun\" +15% = 115 → sun -5% = 109.25 → within floor 60 and ceiling 260 → rounded to 1 = 109. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-01",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-02-01 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-02",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-02-02 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-03",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-02-03 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-04",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-02-04 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-05",
+  "status": "available",
+  "price": 127,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-02-05 · 127 EUR: base 100 → season \"Winter sun\" +15% = 115 → fri +10% = 126.50 → within floor 60 and ceiling 260 → rounded to 1 = 127. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-06",
+  "status": "available",
+  "price": 132,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-02-06 · 132 EUR: base 100 → season \"Winter sun\" +15% = 115 → sat +15% = 132.25 → within floor 60 and ceiling 260 → rounded to 1 = 132. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-07",
+  "status": "available",
+  "price": 109,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-02-07 · 109 EUR: base 100 → season \"Winter sun\" +15% = 115 → sun -5% = 109.25 → within floor 60 and ceiling 260 → rounded to 1 = 109. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-08",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-02-08 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-09",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-02-09 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-10",
+  "status": "available",
+  "price": 160,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-02-10 · 160 EUR: base 100 → season \"Carnival week\" = 160 (fixed price) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-11",
+  "status": "available",
+  "price": 160,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-02-11 · 160 EUR: base 100 → season \"Carnival week\" = 160 (fixed price) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-12",
+  "status": "available",
+  "price": 176,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-02-12 · 176 EUR: base 100 → season \"Carnival week\" = 160 (fixed price) → fri +10% = 176 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-13",
+  "status": "available",
+  "price": 230,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-02-13 · 230 EUR: base 100 → season \"Carnival week\" = 160 (fixed price) → sat +15% = 184 → event \"Jazz weekend\" (impact 4) +25% = 230 (highest impact counts; also \"Street market\" (impact 2)) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-14",
+  "status": "available",
+  "price": 152,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-02-14 · 152 EUR: base 100 → season \"Carnival week\" = 160 (fixed price) → sun -5% = 152 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-15",
+  "status": "available",
+  "price": 160,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-02-15 · 160 EUR: base 100 → season \"Carnival week\" = 160 (fixed price) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-16",
+  "status": "available",
+  "price": 160,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-02-16 · 160 EUR: base 100 → season \"Carnival week\" = 160 (fixed price) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-17",
+  "status": "available",
+  "price": 160,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-02-17 · 160 EUR: base 100 → season \"Carnival week\" = 160 (fixed price) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-18",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-02-18 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-19",
+  "status": "available",
+  "price": 127,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-02-19 · 127 EUR: base 100 → season \"Winter sun\" +15% = 115 → fri +10% = 126.50 → within floor 60 and ceiling 260 → rounded to 1 = 127. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-20",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Sat 2027-02-20: not for sale (reserved)."
+ },
+ {
+  "date": "2027-02-21",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Sun 2027-02-21: not for sale (reserved)."
+ },
+ {
+  "date": "2027-02-22",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Mon 2027-02-22: not for sale (reserved)."
+ },
+ {
+  "date": "2027-02-23",
+  "status": "reserved",
+  "price": null,
+  "minStay": null,
+  "minStaySource": null,
+  "explanation": "Tue 2027-02-23: not for sale (reserved)."
+ },
+ {
+  "date": "2027-02-24",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-02-24 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-25",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-02-25 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-26",
+  "status": "available",
+  "price": 127,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-02-26 · 127 EUR: base 100 → season \"Winter sun\" +15% = 115 → fri +10% = 126.50 → within floor 60 and ceiling 260 → rounded to 1 = 127. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-27",
+  "status": "available",
+  "price": 132,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-02-27 · 132 EUR: base 100 → season \"Winter sun\" +15% = 115 → sat +15% = 132.25 → within floor 60 and ceiling 260 → rounded to 1 = 132. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-02-28",
+  "status": "available",
+  "price": 109,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-02-28 · 109 EUR: base 100 → season \"Winter sun\" +15% = 115 → sun -5% = 109.25 → within floor 60 and ceiling 260 → rounded to 1 = 109. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-01",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-03-01 · 121 EUR: base 100 → season \"Winter sun\" +15% = 115 → far out (≥120 days) +5% = 120.75 (120 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-02",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-03-02 · 121 EUR: base 100 → season \"Winter sun\" +15% = 115 → far out (≥120 days) +5% = 120.75 (121 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-03",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-03-03 · 121 EUR: base 100 → season \"Winter sun\" +15% = 115 → far out (≥120 days) +5% = 120.75 (122 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-04",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-03-04 · 121 EUR: base 100 → season \"Winter sun\" +15% = 115 → far out (≥120 days) +5% = 120.75 (123 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-05",
+  "status": "available",
+  "price": 133,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-03-05 · 133 EUR: base 100 → season \"Winter sun\" +15% = 115 → fri +10% = 126.50 → far out (≥120 days) +5% = 132.83 (124 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 133. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-06",
+  "status": "available",
+  "price": 139,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-03-06 · 139 EUR: base 100 → season \"Winter sun\" +15% = 115 → sat +15% = 132.25 → far out (≥120 days) +5% = 138.86 (125 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 139. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-07",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-03-07 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → sun -5% = 109.25 → far out (≥120 days) +5% = 114.71 (126 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 115. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-08",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-03-08 · 121 EUR: base 100 → season \"Winter sun\" +15% = 115 → far out (≥120 days) +5% = 120.75 (127 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-09",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-03-09 · 121 EUR: base 100 → season \"Winter sun\" +15% = 115 → far out (≥120 days) +5% = 120.75 (128 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-10",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-03-10 · 121 EUR: base 100 → season \"Winter sun\" +15% = 115 → far out (≥120 days) +5% = 120.75 (129 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-11",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-03-11 · 121 EUR: base 100 → season \"Winter sun\" +15% = 115 → far out (≥120 days) +5% = 120.75 (130 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-12",
+  "status": "available",
+  "price": 133,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-03-12 · 133 EUR: base 100 → season \"Winter sun\" +15% = 115 → fri +10% = 126.50 → far out (≥120 days) +5% = 132.83 (131 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 133. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-13",
+  "status": "available",
+  "price": 139,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-03-13 · 139 EUR: base 100 → season \"Winter sun\" +15% = 115 → sat +15% = 132.25 → far out (≥120 days) +5% = 138.86 (132 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 139. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-14",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-03-14 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → sun -5% = 109.25 → far out (≥120 days) +5% = 114.71 (133 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 115. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-15",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-03-15 · 121 EUR: base 100 → season \"Winter sun\" +15% = 115 → far out (≥120 days) +5% = 120.75 (134 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-16",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-03-16 · 121 EUR: base 100 → season \"Winter sun\" +15% = 115 → far out (≥120 days) +5% = 120.75 (135 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-17",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-03-17 · 121 EUR: base 100 → season \"Winter sun\" +15% = 115 → far out (≥120 days) +5% = 120.75 (136 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-18",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-03-18 · 121 EUR: base 100 → season \"Winter sun\" +15% = 115 → far out (≥120 days) +5% = 120.75 (137 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-19",
+  "status": "available",
+  "price": 133,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-03-19 · 133 EUR: base 100 → season \"Winter sun\" +15% = 115 → fri +10% = 126.50 → far out (≥120 days) +5% = 132.83 (138 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 133. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-20",
+  "status": "available",
+  "price": 139,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-03-20 · 139 EUR: base 100 → season \"Winter sun\" +15% = 115 → sat +15% = 132.25 → far out (≥120 days) +5% = 138.86 (139 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 139. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-21",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-03-21 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → sun -5% = 109.25 → far out (≥120 days) +5% = 114.71 (140 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 115. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-22",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-03-22 · 121 EUR: base 100 → season \"Winter sun\" +15% = 115 → far out (≥120 days) +5% = 120.75 (141 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-23",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-03-23 · 121 EUR: base 100 → season \"Winter sun\" +15% = 115 → far out (≥120 days) +5% = 120.75 (142 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-24",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-03-24 · 121 EUR: base 100 → season \"Winter sun\" +15% = 115 → far out (≥120 days) +5% = 120.75 (143 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-25",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-03-25 · 121 EUR: base 100 → season \"Winter sun\" +15% = 115 → far out (≥120 days) +5% = 120.75 (144 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-26",
+  "status": "available",
+  "price": 133,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-03-26 · 133 EUR: base 100 → season \"Winter sun\" +15% = 115 → fri +10% = 126.50 → far out (≥120 days) +5% = 132.83 (145 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 133. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-27",
+  "status": "available",
+  "price": 139,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-03-27 · 139 EUR: base 100 → season \"Winter sun\" +15% = 115 → sat +15% = 132.25 → far out (≥120 days) +5% = 138.86 (146 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 139. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-28",
+  "status": "available",
+  "price": 115,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-03-28 · 115 EUR: base 100 → season \"Winter sun\" +15% = 115 → sun -5% = 109.25 → far out (≥120 days) +5% = 114.71 (147 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 115. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-29",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-03-29 · 121 EUR: base 100 → season \"Winter sun\" +15% = 115 → far out (≥120 days) +5% = 120.75 (148 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-30",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-03-30 · 121 EUR: base 100 → season \"Winter sun\" +15% = 115 → far out (≥120 days) +5% = 120.75 (149 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-03-31",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-03-31 · 121 EUR: base 100 → season \"Winter sun\" +15% = 115 → far out (≥120 days) +5% = 120.75 (150 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-01",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-04-01 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (151 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-02",
+  "status": "available",
+  "price": 116,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-04-02 · 116 EUR: base 100 → fri +10% = 110 → far out (≥120 days) +5% = 115.50 (152 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 116. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-03",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-04-03 · 121 EUR: base 100 → sat +15% = 115 → far out (≥120 days) +5% = 120.75 (153 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-04",
+  "status": "available",
+  "price": 100,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-04-04 · 100 EUR: base 100 → sun -5% = 95 → far out (≥120 days) +5% = 99.75 (154 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 100. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-05",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-04-05 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (155 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-06",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-04-06 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (156 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-07",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-04-07 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (157 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-08",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-04-08 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (158 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-09",
+  "status": "available",
+  "price": 116,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-04-09 · 116 EUR: base 100 → fri +10% = 110 → far out (≥120 days) +5% = 115.50 (159 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 116. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-10",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-04-10 · 121 EUR: base 100 → sat +15% = 115 → far out (≥120 days) +5% = 120.75 (160 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-11",
+  "status": "available",
+  "price": 100,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-04-11 · 100 EUR: base 100 → sun -5% = 95 → far out (≥120 days) +5% = 99.75 (161 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 100. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-12",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-04-12 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (162 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-13",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-04-13 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (163 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-14",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-04-14 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (164 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-15",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-04-15 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (165 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-16",
+  "status": "available",
+  "price": 116,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-04-16 · 116 EUR: base 100 → fri +10% = 110 → far out (≥120 days) +5% = 115.50 (166 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 116. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-17",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-04-17 · 121 EUR: base 100 → sat +15% = 115 → far out (≥120 days) +5% = 120.75 (167 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-18",
+  "status": "available",
+  "price": 112,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-04-18 · 112 EUR: base 100 → sun -5% = 95 → far out (≥120 days) +5% = 99.75 (168 days ahead) → event \"City marathon\" (impact 3) +12% = 111.72 → within floor 60 and ceiling 260 → rounded to 1 = 112. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-19",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-04-19 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (169 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-20",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-04-20 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (170 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-21",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-04-21 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (171 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-22",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-04-22 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (172 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-23",
+  "status": "available",
+  "price": 116,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-04-23 · 116 EUR: base 100 → fri +10% = 110 → far out (≥120 days) +5% = 115.50 (173 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 116. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-24",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-04-24 · 121 EUR: base 100 → sat +15% = 115 → far out (≥120 days) +5% = 120.75 (174 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-25",
+  "status": "available",
+  "price": 100,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-04-25 · 100 EUR: base 100 → sun -5% = 95 → far out (≥120 days) +5% = 99.75 (175 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 100. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-26",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-04-26 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (176 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-27",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-04-27 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (177 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-28",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-04-28 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (178 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-29",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-04-29 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (179 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-04-30",
+  "status": "available",
+  "price": 116,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-04-30 · 116 EUR: base 100 → fri +10% = 110 → far out (≥120 days) +5% = 115.50 (180 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 116. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-01",
+  "status": "available",
+  "price": 109,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-05-01 · 109 EUR: base 100 → season \"Late spring lull\" -10% = 90 → sat +15% = 103.50 → far out (≥120 days) +5% = 108.68 (181 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 109. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-02",
+  "status": "available",
+  "price": 90,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-05-02 · 90 EUR: base 100 → season \"Late spring lull\" -10% = 90 → sun -5% = 85.50 → far out (≥120 days) +5% = 89.78 (182 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 90. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-03",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-05-03 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (183 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-04",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-05-04 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (184 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-05",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-05-05 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (185 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-06",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-05-06 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (186 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-07",
+  "status": "available",
+  "price": 104,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-05-07 · 104 EUR: base 100 → season \"Late spring lull\" -10% = 90 → fri +10% = 99 → far out (≥120 days) +5% = 103.95 (187 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 104. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-08",
+  "status": "available",
+  "price": 109,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-05-08 · 109 EUR: base 100 → season \"Late spring lull\" -10% = 90 → sat +15% = 103.50 → far out (≥120 days) +5% = 108.68 (188 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 109. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-09",
+  "status": "available",
+  "price": 90,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-05-09 · 90 EUR: base 100 → season \"Late spring lull\" -10% = 90 → sun -5% = 85.50 → far out (≥120 days) +5% = 89.78 (189 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 90. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-10",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-05-10 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (190 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-11",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-05-11 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (191 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-12",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-05-12 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (192 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-13",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-05-13 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (193 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-14",
+  "status": "available",
+  "price": 104,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-05-14 · 104 EUR: base 100 → season \"Late spring lull\" -10% = 90 → fri +10% = 99 → far out (≥120 days) +5% = 103.95 (194 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 104. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-15",
+  "status": "available",
+  "price": 109,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-05-15 · 109 EUR: base 100 → season \"Late spring lull\" -10% = 90 → sat +15% = 103.50 → far out (≥120 days) +5% = 108.68 (195 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 109. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-16",
+  "status": "available",
+  "price": 90,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-05-16 · 90 EUR: base 100 → season \"Late spring lull\" -10% = 90 → sun -5% = 85.50 → far out (≥120 days) +5% = 89.78 (196 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 90. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-17",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-05-17 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (197 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-18",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-05-18 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (198 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-19",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-05-19 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (199 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-20",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-05-20 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (200 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-21",
+  "status": "available",
+  "price": 104,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-05-21 · 104 EUR: base 100 → season \"Late spring lull\" -10% = 90 → fri +10% = 99 → far out (≥120 days) +5% = 103.95 (201 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 104. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-22",
+  "status": "available",
+  "price": 109,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-05-22 · 109 EUR: base 100 → season \"Late spring lull\" -10% = 90 → sat +15% = 103.50 → far out (≥120 days) +5% = 108.68 (202 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 109. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-23",
+  "status": "available",
+  "price": 90,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-05-23 · 90 EUR: base 100 → season \"Late spring lull\" -10% = 90 → sun -5% = 85.50 → far out (≥120 days) +5% = 89.78 (203 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 90. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-24",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-05-24 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (204 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-25",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-05-25 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (205 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-26",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-05-26 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (206 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-27",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-05-27 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (207 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-28",
+  "status": "available",
+  "price": 104,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-05-28 · 104 EUR: base 100 → season \"Late spring lull\" -10% = 90 → fri +10% = 99 → far out (≥120 days) +5% = 103.95 (208 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 104. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-29",
+  "status": "available",
+  "price": 109,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-05-29 · 109 EUR: base 100 → season \"Late spring lull\" -10% = 90 → sat +15% = 103.50 → far out (≥120 days) +5% = 108.68 (209 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 109. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-30",
+  "status": "available",
+  "price": 90,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-05-30 · 90 EUR: base 100 → season \"Late spring lull\" -10% = 90 → sun -5% = 85.50 → far out (≥120 days) +5% = 89.78 (210 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 90. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-05-31",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-05-31 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (211 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-01",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-06-01 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (212 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-02",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-06-02 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (213 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-03",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-06-03 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (214 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-04",
+  "status": "available",
+  "price": 104,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-06-04 · 104 EUR: base 100 → season \"Late spring lull\" -10% = 90 → fri +10% = 99 → far out (≥120 days) +5% = 103.95 (215 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 104. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-05",
+  "status": "available",
+  "price": 109,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-06-05 · 109 EUR: base 100 → season \"Late spring lull\" -10% = 90 → sat +15% = 103.50 → far out (≥120 days) +5% = 108.68 (216 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 109. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-06",
+  "status": "available",
+  "price": 90,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-06-06 · 90 EUR: base 100 → season \"Late spring lull\" -10% = 90 → sun -5% = 85.50 → far out (≥120 days) +5% = 89.78 (217 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 90. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-07",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-06-07 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (218 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-08",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-06-08 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (219 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-09",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-06-09 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (220 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-10",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-06-10 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (221 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-11",
+  "status": "available",
+  "price": 104,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-06-11 · 104 EUR: base 100 → season \"Late spring lull\" -10% = 90 → fri +10% = 99 → far out (≥120 days) +5% = 103.95 (222 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 104. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-12",
+  "status": "available",
+  "price": 109,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-06-12 · 109 EUR: base 100 → season \"Late spring lull\" -10% = 90 → sat +15% = 103.50 → far out (≥120 days) +5% = 108.68 (223 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 109. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-13",
+  "status": "available",
+  "price": 90,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-06-13 · 90 EUR: base 100 → season \"Late spring lull\" -10% = 90 → sun -5% = 85.50 → far out (≥120 days) +5% = 89.78 (224 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 90. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-14",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-06-14 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (225 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-15",
+  "status": "available",
+  "price": 95,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-06-15 · 95 EUR: base 100 → season \"Late spring lull\" -10% = 90 → far out (≥120 days) +5% = 94.50 (226 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 95. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-16",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-06-16 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (227 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-17",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-06-17 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (228 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-18",
+  "status": "available",
+  "price": 116,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-06-18 · 116 EUR: base 100 → fri +10% = 110 → far out (≥120 days) +5% = 115.50 (229 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 116. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-19",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-06-19 · 121 EUR: base 100 → sat +15% = 115 → far out (≥120 days) +5% = 120.75 (230 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-20",
+  "status": "available",
+  "price": 100,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-06-20 · 100 EUR: base 100 → sun -5% = 95 → far out (≥120 days) +5% = 99.75 (231 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 100. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-21",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-06-21 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (232 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-22",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Tue 2027-06-22 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (233 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-23",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Wed 2027-06-23 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (234 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-24",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Thu 2027-06-24 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (235 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-25",
+  "status": "available",
+  "price": 116,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Fri 2027-06-25 · 116 EUR: base 100 → fri +10% = 110 → far out (≥120 days) +5% = 115.50 (236 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 116. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-26",
+  "status": "available",
+  "price": 121,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sat 2027-06-26 · 121 EUR: base 100 → sat +15% = 115 → far out (≥120 days) +5% = 120.75 (237 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 121. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-27",
+  "status": "available",
+  "price": 100,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Sun 2027-06-27 · 100 EUR: base 100 → sun -5% = 95 → far out (≥120 days) +5% = 99.75 (238 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 100. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-28",
+  "status": "available",
+  "price": 105,
+  "minStay": 3,
+  "minStaySource": "default",
+  "explanation": "Mon 2027-06-28 · 105 EUR: base 100 → far out (≥120 days) +5% = 105 (239 days ahead) → within floor 60 and ceiling 260. Min stay 3 (default)."
+ },
+ {
+  "date": "2027-06-29",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Tue 2027-06-29 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (240 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-06-30",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Wed 2027-06-30 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (241 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-01",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Thu 2027-07-01 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (242 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-02",
+  "status": "available",
+  "price": 151,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Fri 2027-07-02 · 151 EUR: base 100 → season \"Summer\" +25% = 125 → fri +10% = 137.50 → far out (≥240 days) +10% = 151.25 (243 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 151. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-03",
+  "status": "available",
+  "price": 158,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sat 2027-07-03 · 158 EUR: base 100 → season \"Summer\" +25% = 125 → sat +15% = 143.75 → far out (≥240 days) +10% = 158.13 (244 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 158. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-04",
+  "status": "available",
+  "price": 131,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sun 2027-07-04 · 131 EUR: base 100 → season \"Summer\" +25% = 125 → sun -5% = 118.75 → far out (≥240 days) +10% = 130.63 (245 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 131. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-05",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Mon 2027-07-05 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (246 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-06",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Tue 2027-07-06 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (247 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-07",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Wed 2027-07-07 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (248 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-08",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Thu 2027-07-08 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (249 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-09",
+  "status": "available",
+  "price": 151,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Fri 2027-07-09 · 151 EUR: base 100 → season \"Summer\" +25% = 125 → fri +10% = 137.50 → far out (≥240 days) +10% = 151.25 (250 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 151. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-10",
+  "status": "available",
+  "price": 158,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sat 2027-07-10 · 158 EUR: base 100 → season \"Summer\" +25% = 125 → sat +15% = 143.75 → far out (≥240 days) +10% = 158.13 (251 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 158. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-11",
+  "status": "available",
+  "price": 131,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sun 2027-07-11 · 131 EUR: base 100 → season \"Summer\" +25% = 125 → sun -5% = 118.75 → far out (≥240 days) +10% = 130.63 (252 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 131. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-12",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Mon 2027-07-12 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (253 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-13",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Tue 2027-07-13 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (254 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-14",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Wed 2027-07-14 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (255 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-15",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Thu 2027-07-15 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (256 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-16",
+  "status": "available",
+  "price": 151,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Fri 2027-07-16 · 151 EUR: base 100 → season \"Summer\" +25% = 125 → fri +10% = 137.50 → far out (≥240 days) +10% = 151.25 (257 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 151. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-17",
+  "status": "available",
+  "price": 158,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sat 2027-07-17 · 158 EUR: base 100 → season \"Summer\" +25% = 125 → sat +15% = 143.75 → far out (≥240 days) +10% = 158.13 (258 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 158. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-18",
+  "status": "available",
+  "price": 131,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sun 2027-07-18 · 131 EUR: base 100 → season \"Summer\" +25% = 125 → sun -5% = 118.75 → far out (≥240 days) +10% = 130.63 (259 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 131. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-19",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Mon 2027-07-19 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (260 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-20",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Tue 2027-07-20 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (261 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-21",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Wed 2027-07-21 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (262 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-22",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Thu 2027-07-22 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (263 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-23",
+  "status": "available",
+  "price": 151,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Fri 2027-07-23 · 151 EUR: base 100 → season \"Summer\" +25% = 125 → fri +10% = 137.50 → far out (≥240 days) +10% = 151.25 (264 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 151. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-24",
+  "status": "available",
+  "price": 158,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sat 2027-07-24 · 158 EUR: base 100 → season \"Summer\" +25% = 125 → sat +15% = 143.75 → far out (≥240 days) +10% = 158.13 (265 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 158. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-25",
+  "status": "available",
+  "price": 131,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sun 2027-07-25 · 131 EUR: base 100 → season \"Summer\" +25% = 125 → sun -5% = 118.75 → far out (≥240 days) +10% = 130.63 (266 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 131. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-26",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Mon 2027-07-26 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (267 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-27",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Tue 2027-07-27 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (268 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-28",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Wed 2027-07-28 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (269 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-29",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Thu 2027-07-29 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (270 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-30",
+  "status": "available",
+  "price": 151,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Fri 2027-07-30 · 151 EUR: base 100 → season \"Summer\" +25% = 125 → fri +10% = 137.50 → far out (≥240 days) +10% = 151.25 (271 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 151. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-07-31",
+  "status": "available",
+  "price": 158,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sat 2027-07-31 · 158 EUR: base 100 → season \"Summer\" +25% = 125 → sat +15% = 143.75 → far out (≥240 days) +10% = 158.13 (272 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 158. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-01",
+  "status": "available",
+  "price": 131,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sun 2027-08-01 · 131 EUR: base 100 → season \"Summer\" +25% = 125 → sun -5% = 118.75 → far out (≥240 days) +10% = 130.63 (273 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 131. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-02",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Mon 2027-08-02 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (274 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-03",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Tue 2027-08-03 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (275 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-04",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Wed 2027-08-04 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (276 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-05",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Thu 2027-08-05 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (277 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-06",
+  "status": "available",
+  "price": 151,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Fri 2027-08-06 · 151 EUR: base 100 → season \"Summer\" +25% = 125 → fri +10% = 137.50 → far out (≥240 days) +10% = 151.25 (278 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 151. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-07",
+  "status": "available",
+  "price": 158,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sat 2027-08-07 · 158 EUR: base 100 → season \"Summer\" +25% = 125 → sat +15% = 143.75 → far out (≥240 days) +10% = 158.13 (279 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 158. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-08",
+  "status": "available",
+  "price": 131,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sun 2027-08-08 · 131 EUR: base 100 → season \"Summer\" +25% = 125 → sun -5% = 118.75 → far out (≥240 days) +10% = 130.63 (280 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 131. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-09",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Mon 2027-08-09 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (281 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-10",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Tue 2027-08-10 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (282 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-11",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Wed 2027-08-11 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (283 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-12",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Thu 2027-08-12 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (284 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-13",
+  "status": "available",
+  "price": 151,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Fri 2027-08-13 · 151 EUR: base 100 → season \"Summer\" +25% = 125 → fri +10% = 137.50 → far out (≥240 days) +10% = 151.25 (285 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 151. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-14",
+  "status": "available",
+  "price": 158,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sat 2027-08-14 · 158 EUR: base 100 → season \"Summer\" +25% = 125 → sat +15% = 143.75 → far out (≥240 days) +10% = 158.13 (286 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 158. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-15",
+  "status": "available",
+  "price": 131,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sun 2027-08-15 · 131 EUR: base 100 → season \"Summer\" +25% = 125 → sun -5% = 118.75 → far out (≥240 days) +10% = 130.63 (287 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 131. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-16",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Mon 2027-08-16 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (288 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-17",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Tue 2027-08-17 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (289 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-18",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Wed 2027-08-18 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (290 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-19",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Thu 2027-08-19 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (291 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-20",
+  "status": "available",
+  "price": 151,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Fri 2027-08-20 · 151 EUR: base 100 → season \"Summer\" +25% = 125 → fri +10% = 137.50 → far out (≥240 days) +10% = 151.25 (292 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 151. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-21",
+  "status": "available",
+  "price": 158,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sat 2027-08-21 · 158 EUR: base 100 → season \"Summer\" +25% = 125 → sat +15% = 143.75 → far out (≥240 days) +10% = 158.13 (293 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 158. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-22",
+  "status": "available",
+  "price": 131,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sun 2027-08-22 · 131 EUR: base 100 → season \"Summer\" +25% = 125 → sun -5% = 118.75 → far out (≥240 days) +10% = 130.63 (294 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 131. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-23",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Mon 2027-08-23 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (295 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-24",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Tue 2027-08-24 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (296 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-25",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Wed 2027-08-25 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (297 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-26",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Thu 2027-08-26 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (298 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-27",
+  "status": "available",
+  "price": 151,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Fri 2027-08-27 · 151 EUR: base 100 → season \"Summer\" +25% = 125 → fri +10% = 137.50 → far out (≥240 days) +10% = 151.25 (299 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 151. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-28",
+  "status": "available",
+  "price": 158,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sat 2027-08-28 · 158 EUR: base 100 → season \"Summer\" +25% = 125 → sat +15% = 143.75 → far out (≥240 days) +10% = 158.13 (300 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 158. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-29",
+  "status": "available",
+  "price": 131,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sun 2027-08-29 · 131 EUR: base 100 → season \"Summer\" +25% = 125 → sun -5% = 118.75 → far out (≥240 days) +10% = 130.63 (301 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 131. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-30",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Mon 2027-08-30 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (302 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-08-31",
+  "status": "available",
+  "price": 138,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Tue 2027-08-31 · 138 EUR: base 100 → season \"Summer\" +25% = 125 → far out (≥240 days) +10% = 137.50 (303 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 138. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-01",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Wed 2027-09-01 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (304 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-02",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Thu 2027-09-02 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (305 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-03",
+  "status": "available",
+  "price": 121,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Fri 2027-09-03 · 121 EUR: base 100 → fri +10% = 110 → far out (≥240 days) +10% = 121 (306 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-04",
+  "status": "available",
+  "price": 127,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sat 2027-09-04 · 127 EUR: base 100 → sat +15% = 115 → far out (≥240 days) +10% = 126.50 (307 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 127. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-05",
+  "status": "available",
+  "price": 105,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sun 2027-09-05 · 105 EUR: base 100 → sun -5% = 95 → far out (≥240 days) +10% = 104.50 (308 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 105. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-06",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Mon 2027-09-06 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (309 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-07",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Tue 2027-09-07 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (310 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-08",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Wed 2027-09-08 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (311 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-09",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Thu 2027-09-09 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (312 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-10",
+  "status": "available",
+  "price": 121,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Fri 2027-09-10 · 121 EUR: base 100 → fri +10% = 110 → far out (≥240 days) +10% = 121 (313 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-11",
+  "status": "available",
+  "price": 127,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sat 2027-09-11 · 127 EUR: base 100 → sat +15% = 115 → far out (≥240 days) +10% = 126.50 (314 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 127. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-12",
+  "status": "available",
+  "price": 105,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sun 2027-09-12 · 105 EUR: base 100 → sun -5% = 95 → far out (≥240 days) +10% = 104.50 (315 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 105. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-13",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Mon 2027-09-13 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (316 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-14",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Tue 2027-09-14 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (317 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-15",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Wed 2027-09-15 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (318 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-16",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Thu 2027-09-16 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (319 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-17",
+  "status": "available",
+  "price": 121,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Fri 2027-09-17 · 121 EUR: base 100 → fri +10% = 110 → far out (≥240 days) +10% = 121 (320 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-18",
+  "status": "available",
+  "price": 127,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sat 2027-09-18 · 127 EUR: base 100 → sat +15% = 115 → far out (≥240 days) +10% = 126.50 (321 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 127. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-19",
+  "status": "available",
+  "price": 105,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sun 2027-09-19 · 105 EUR: base 100 → sun -5% = 95 → far out (≥240 days) +10% = 104.50 (322 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 105. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-20",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Mon 2027-09-20 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (323 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-21",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Tue 2027-09-21 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (324 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-22",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Wed 2027-09-22 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (325 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-23",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Thu 2027-09-23 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (326 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-24",
+  "status": "available",
+  "price": 121,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Fri 2027-09-24 · 121 EUR: base 100 → fri +10% = 110 → far out (≥240 days) +10% = 121 (327 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-25",
+  "status": "available",
+  "price": 127,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sat 2027-09-25 · 127 EUR: base 100 → sat +15% = 115 → far out (≥240 days) +10% = 126.50 (328 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 127. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-26",
+  "status": "available",
+  "price": 105,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sun 2027-09-26 · 105 EUR: base 100 → sun -5% = 95 → far out (≥240 days) +10% = 104.50 (329 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 105. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-27",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Mon 2027-09-27 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (330 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-28",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Tue 2027-09-28 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (331 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-29",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Wed 2027-09-29 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (332 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-09-30",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Thu 2027-09-30 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (333 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-01",
+  "status": "available",
+  "price": 121,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Fri 2027-10-01 · 121 EUR: base 100 → fri +10% = 110 → far out (≥240 days) +10% = 121 (334 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-02",
+  "status": "available",
+  "price": 127,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sat 2027-10-02 · 127 EUR: base 100 → sat +15% = 115 → far out (≥240 days) +10% = 126.50 (335 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 127. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-03",
+  "status": "available",
+  "price": 105,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sun 2027-10-03 · 105 EUR: base 100 → sun -5% = 95 → far out (≥240 days) +10% = 104.50 (336 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 105. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-04",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Mon 2027-10-04 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (337 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-05",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Tue 2027-10-05 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (338 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-06",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Wed 2027-10-06 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (339 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-07",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Thu 2027-10-07 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (340 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-08",
+  "status": "available",
+  "price": 121,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Fri 2027-10-08 · 121 EUR: base 100 → fri +10% = 110 → far out (≥240 days) +10% = 121 (341 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-09",
+  "status": "available",
+  "price": 127,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sat 2027-10-09 · 127 EUR: base 100 → sat +15% = 115 → far out (≥240 days) +10% = 126.50 (342 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 127. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-10",
+  "status": "available",
+  "price": 105,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sun 2027-10-10 · 105 EUR: base 100 → sun -5% = 95 → far out (≥240 days) +10% = 104.50 (343 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 105. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-11",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Mon 2027-10-11 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (344 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-12",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Tue 2027-10-12 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (345 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-13",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Wed 2027-10-13 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (346 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-14",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Thu 2027-10-14 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (347 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-15",
+  "status": "available",
+  "price": 121,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Fri 2027-10-15 · 121 EUR: base 100 → fri +10% = 110 → far out (≥240 days) +10% = 121 (348 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-16",
+  "status": "available",
+  "price": 127,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sat 2027-10-16 · 127 EUR: base 100 → sat +15% = 115 → far out (≥240 days) +10% = 126.50 (349 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 127. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-17",
+  "status": "available",
+  "price": 105,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sun 2027-10-17 · 105 EUR: base 100 → sun -5% = 95 → far out (≥240 days) +10% = 104.50 (350 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 105. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-18",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Mon 2027-10-18 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (351 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-19",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Tue 2027-10-19 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (352 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-20",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Wed 2027-10-20 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (353 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-21",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Thu 2027-10-21 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (354 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-22",
+  "status": "available",
+  "price": 121,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Fri 2027-10-22 · 121 EUR: base 100 → fri +10% = 110 → far out (≥240 days) +10% = 121 (355 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-23",
+  "status": "available",
+  "price": 127,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sat 2027-10-23 · 127 EUR: base 100 → sat +15% = 115 → far out (≥240 days) +10% = 126.50 (356 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 127. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-24",
+  "status": "available",
+  "price": 105,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sun 2027-10-24 · 105 EUR: base 100 → sun -5% = 95 → far out (≥240 days) +10% = 104.50 (357 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 105. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-25",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Mon 2027-10-25 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (358 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-26",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Tue 2027-10-26 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (359 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-27",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Wed 2027-10-27 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (360 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-28",
+  "status": "available",
+  "price": 110,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Thu 2027-10-28 · 110 EUR: base 100 → far out (≥240 days) +10% = 110 (361 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-29",
+  "status": "available",
+  "price": 121,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Fri 2027-10-29 · 121 EUR: base 100 → fri +10% = 110 → far out (≥240 days) +10% = 121 (362 days ahead) → within floor 60 and ceiling 260. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-30",
+  "status": "available",
+  "price": 127,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sat 2027-10-30 · 127 EUR: base 100 → sat +15% = 115 → far out (≥240 days) +10% = 126.50 (363 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 127. Min stay 5 (far out)."
+ },
+ {
+  "date": "2027-10-31",
+  "status": "available",
+  "price": 105,
+  "minStay": 5,
+  "minStaySource": "farOut",
+  "explanation": "Sun 2027-10-31 · 105 EUR: base 100 → sun -5% = 95 → far out (≥240 days) +10% = 104.50 (364 days ahead) → within floor 60 and ceiling 260 → rounded to 1 = 105. Min stay 5 (far out)."
+ }
+]

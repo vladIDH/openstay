@@ -1,0 +1,63 @@
+{
+  "name": "fairnight-mcp",
+  "version": "0.1.0",
+  "license": "AGPL-3.0-only",
+  "author": {
+    "name": "Vlad Humenny",
+    "email": "hello@khlumen.com"
+  },
+  "homepage": "https://github.com/vladIDH/openstay#readme",
+  "bugs": {
+    "url": "https://github.com/vladIDH/openstay/issues"
+  },
+  "description": "Read-only MCP server for Fairnight: ask Claude or ChatGPT about your nightly prices, occupancy and gaps. Runs on your computer over stdio.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "dynamic-pricing",
+    "short-term-rental",
+    "vacation-rental"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vladIDH/openstay.git",
+    "directory": "packages/fairnight-mcp"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "fairnight-mcp": "./bin/fairnight-mcp.js"
+  },
+  "main": "./dist/server.js",
+  "types": "./dist/server.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/server.d.ts",
+      "default": "./dist/server.js"
+    }
+  },
+  "files": [
+    "bin",
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.2.0",
+    "fairnight": "0.1.0",
+    "fairnight-cli": "0.1.0"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.2.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "prepack": "npm run build"
+  }
+}

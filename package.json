@@ -1,0 +1,34 @@
+{
+  "name": "openstay",
+  "private": true,
+  "description": "Open-source toolkit for short-term rental hosts",
+  "license": "AGPL-3.0-only",
+  "author": {
+    "name": "Vlad Humenny",
+    "email": "hello@khlumen.com"
+  },
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "test": "npm run test --workspaces --if-present",
+    "coverage": "npm run coverage --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@types/node": "20.19.43",
+    "@vitest/coverage-v8": "4.1.11",
+    "eslint": "9.39.5",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.70.0",
+    "vitest": "4.1.11"
+  }
+}

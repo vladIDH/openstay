@@ -1,0 +1,115 @@
+# fairnight-cli
+
+The `fairnight` command:
+- reads your Airbnb, Booking and Vrbo calendars and keeps them on your computer;
+- gives every night a price and a minimum stay, with the reason behind each;
+- shows everything on a calendar page you open in your browser.
+
+The pricing itself is done by the [Fairnight engine](https://github.com/vladIDH/openstay/tree/main/packages/fairnight).
+
+## Five-minute setup
+
+You need [Node.js](https://nodejs.org) 20 or newer.
+
+1. **Install the command and create your folder** (any name, anywhere):
+   ```
+   npm install -g fairnight-cli
+   fairnight init my-rentals
+   cd my-rentals
+   ```
+   This creates three things and nothing else:
+   - `fairnight.config.json`: two invented listings to copy from;
+   - `data/fairnight.db`: an empty database;
+   - `README.txt`: a three-line reminder.
+
+2. **Put your listings in `fairnight.config.json`.** For each listing, give it a short `name`, the iCal links of its calendars, and its price rules (`pricing`).
+   - Airbnb: *Calendar → Availability → Connect calendars → Export calendar*.
+   - Booking.com: *Rates & availability → Sync calendars → Export calendar*.
+   - Vrbo: *Calendar → Import/Export*.
+
+   The price rules are described in the [engine README](https://github.com/vladIDH/openstay/tree/main/packages/fairnight#factors).
+   ```json
+   {
+     "listings": [
+       {
+         "name": "seaview-loft",
+         "calendars": [
+           { "source": "airbnb", "url": "https://www.airbnb.com/calendar/ical/….ics?s=…" },
+           { "source": "booking", "url": "https://ical.booking.com/v1/export?t=…" }
+         ],
+         "pricing": { "currency": "EUR", "basePrice": 100, "defaultMinStay": 3, "factors": { } }
+       }
+     ]
+   }
+   ```
+
+3. **Read the calendars and open the calendar page:**
+   ```
+   fairnight sync
+   fairnight serve
+   ```
+   Then open http://localhost:4321.
+
+## Commands
+
+Every command works in the current folder. Add `--dir <folder>` to use another one.
+
+| Command | What it does |
+|---|---|
+| `fairnight init [folder]` | Creates the folder with the example config, an empty database and a README. Never overwrites a file, so it is safe to run again. |
+| `fairnight sync [--listing <name>]` | Downloads the iCal links in the config and stores stays and blocked dates. Running it twice adds nothing. A stay that disappears is marked as removed, not deleted, and comes back if it reappears. If a calendar cannot be read, nothing changes for it. |
+| `fairnight import <file.csv> --listing <name> [--dry-run]` | Stores past nightly prices. Columns: date and price, from a Booking/Airbnb export or written by hand. Separators `,` `;` tab `\|`; dates like `2026-11-03` or `03/11/2026`; prices like `92.50`, `92,50` or `€ 1.234,56`. Used by the historical floor. |
+| `fairnight price [--listing <name>]` | Prices every night: `--days 365` (default), `--today YYYY-MM-DD`, `--explain` for the full reasoning, `--json` for the data. |
+| `fairnight export [--listing <name>] [--format csv]` | Writes `exports/<listing>-<date>.csv` with `date,price,min_stay` for every night for sale, to upload by hand to a channel or channel manager. `--out <file>` chooses the file, `--days` the horizon. |
+| `fairnight serve [--port 4321] [--lan]` | The calendar page: one cell per night with price and minimum stay, reserved and blocked nights marked, a click opens the full explanation. *Recalculate* reads the calendars again. With `--lan` you can open it from a phone on the same Wi-Fi. |
+
+**About Smoobu:** Smoobu does not publish a CSV format for importing rates (its *Import prices* tool reads from a connected channel), so there is no `--format smoobu`. A Smoobu connector through its API is planned for phase 2.
+
+## Real output (invented calendars)
+
+```
+$ fairnight sync
+seaview-loft · airbnb: 3 events · 3 new · 0 changed · 0 removed · 0 back
+seaview-loft · booking: 2 events · 2 new · 0 changed · 0 removed · 0 back
+garden-studio · vrbo: 3 events · 3 new · 0 changed · 0 removed · 0 back
+
+$ fairnight price --listing seaview-loft --days 10 --today 2026-11-01
+seaview-loft · 10 nights from 2026-11-01 · prices in EUR
+date        day    price  min  why
+2026-11-01  sun       81    1  sun -5%, last minute (≤3 days) -15%
+2026-11-02  mon       85    1  last minute (≤3 days) -15%
+2026-11-03  tue       85    1  last minute (≤3 days) -15%
+2026-11-04  wed        —    —  reserved
+…
+2026-11-08  sun       84    2  sun -5%, gap of 2 nights -12%
+2026-11-09  mon       88    2  gap of 2 nights -12%
+2026-11-10  tue        —    —  reserved
+5 for sale · 5 reserved · 0 blocked · average 84.60, from 81 to 88
+
+$ fairnight export --listing seaview-loft --today 2026-11-01
+seaview-loft: 344 nights for sale written to …/exports/seaview-loft-2026-11-01.csv
+```
+
+## How calendars are read
+
+- **Airbnb**: "Reserved" counts as a stay; "Airbnb (Not available)" counts as a blocked date.
+- **Booking.com**: the export does not tell stays from closed dates, so every event counts as a stay.
+- **Vrbo**: "Blocked" or "Unavailable" counts as a blocked date; everything else is a stay.
+- **Other**: "not available", "unavailable", "blocked" or "closed" counts as a blocked date.
+
+If a calendar is read the wrong way, set `"treatAs": "reservation"` or `"treatAs": "blocked"` on it.
+
+Calendars do not say when a booking was made. Fairnight counts a booking as new on the day `fairnight sync` first sees it, and the stale-calendar discount uses that date. Run `sync` often, for example every few hours with the Windows Task Scheduler or cron. Right after the first sync every stay looks new, so the discount waits.
+
+## Where your data lives
+
+Everything stays in your folder:
+- `fairnight.config.json` holds your rules and your iCal links. Treat those links like passwords: anyone who has one can read that calendar.
+- `data/fairnight.db` is a single SQLite file. It holds stay dates, blocked dates and imported prices. Guest names, phone numbers and descriptions are never stored.
+- `exports/` holds the CSV files you asked for.
+
+The only network requests go to the iCal links you wrote. The calendar page listens only on your computer unless you add `--lan`, and even then only devices on your own network can open it. No accounts, no telemetry. To back up, copy the folder. To start over, delete it.
+
+## License
+
+AGPL-3.0-only. See [LICENSE](LICENSE).

@@ -1,0 +1,64 @@
+{
+  "name": "fairnight-cli",
+  "version": "0.1.0",
+  "license": "AGPL-3.0-only",
+  "author": {
+    "name": "Vlad Humenny",
+    "email": "hello@khlumen.com"
+  },
+  "homepage": "https://github.com/vladIDH/openstay#readme",
+  "bugs": {
+    "url": "https://github.com/vladIDH/openstay/issues"
+  },
+  "description": "Fairnight on your computer: reads your Airbnb, Booking and Vrbo iCal calendars, prices every night, shows a calendar page. Data stays local.",
+  "keywords": [
+    "dynamic-pricing",
+    "short-term-rental",
+    "vacation-rental",
+    "ical",
+    "airbnb",
+    "booking",
+    "vrbo",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vladIDH/openstay.git",
+    "directory": "packages/fairnight-cli"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "fairnight": "./bin/fairnight.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "bin",
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "fairnight": "0.1.0",
+    "better-sqlite3": "12.11.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "7.6.13"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "prepack": "npm run build"
+  }
+}

@@ -1,0 +1,28 @@
+BEGIN:VCALENDAR
+PRODID:-//Example Airbnb-style export//Hosting Calendar//EN
+CALSCALE:GREGORIAN
+VERSION:2.0
+BEGIN:VEVENT
+DTEND;VALUE=DATE:20261108
+DTSTART;VALUE=DATE:20261104
+UID:0f5a2b1c9d3e-1111aaaa2222bbbb@airbnb.example
+DESCRIPTION:Reservation URL: https://host.example/reservations/details/HME
+ XAMPLE01
+Phone Number (Last 4 Digits): 0000
+SUMMARY:Reserved
+END:VEVENT
+BEGIN:VEVENT
+DTEND;VALUE=DATE:20261205
+DTSTART;VALUE=DATE:20261201
+UID:0f5a2b1c9d3e-3333cccc4444dddd@airbnb.example
+SUMMARY:Airbnb (Not available)
+END:VEVENT
+BEGIN:VEVENT
+DTEND;VALUE=DATE:20261230
+DTSTART;VALUE=DATE:20261225
+UID:0f5a2b1c9d3e-5555eeee6666ffff@airbnb.example
+DESCRIPTION:Reservation URL: https://host.example/reservations/details/HMEXAMPLE02
+Phone Number (Last 4 Digits): 0000
+SUMMARY:Reserved
+END:VEVENT
+END:VCALENDAR

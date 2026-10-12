@@ -1,0 +1,26 @@
+# dipendenze e build
+node_modules/
+dist/
+.next/
+*.tsbuildinfo
+
+# configurazione e segreti dell'host
+.env
+.env.*
+!.env.example
+fairnight.config.yaml
+!examples/**/fairnight.config.yaml
+
+# dati locali (calendari, prenotazioni, storico prezzi)
+data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+
+# log e sistema
+*.log
+.DS_Store
+Thumbs.db
+.vercel/
+coverage/

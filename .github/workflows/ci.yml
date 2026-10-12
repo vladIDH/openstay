@@ -36,3 +36,26 @@ jobs:
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Proves that the scan above would stop a Smoobu key committed by mistake:
+  # a throw-away repo with a freshly generated fake key must be caught.
+  secret-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install gitleaks 8.30.1
+        run: curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz | tar -xz -C "$RUNNER_TEMP" gitleaks
+      - name: A committed Smoobu key must be caught
+        run: |
+          fake() { head -c 64 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 24; }
+          mkdir "$RUNNER_TEMP/leak" && cd "$RUNNER_TEMP/leak"
+          git init -q && git config user.email ci@example.com && git config user.name ci
+          printf '{\n  "apiKey": "%s",\n  "apiSecret": "%s"\n}\n' "$(fake)" "$(fake)" > smoobu-credentials.json
+          printf 'SMOOBU_API_KEY=%s\nexport SMOOBU_API_SECRET=%s\n' "$(fake)" "$(fake)" > .env
+          git add -A && git commit -q -m "a mistake"
+          "$RUNNER_TEMP/gitleaks" git --no-banner --redact --exit-code 0 --config "$GITHUB_WORKSPACE/.gitleaks.toml" \
+            --report-format json --report-path "$RUNNER_TEMP/report.json" .
+          for rule in smoobu-credentials-file smoobu-api-credential-env; do
+            grep -q "\"RuleID\": \"$rule\"" "$RUNNER_TEMP/report.json" || { echo "gitleaks did NOT catch: $rule"; exit 1; }
+          done
+          echo "gitleaks caught the Smoobu credentials, as it should"

@@ -7,6 +7,7 @@ import { BEDS24_FEED, beds24Client, beds24Listings, creditsLine, importBookings 
 import { SetupError, type HostListing } from "./config.js";
 import type { Db } from "./db.js";
 import type { Io } from "./io.js";
+import { applyRetention, prefillFromCalendar } from "./guests/store.js";
 import { importBookings as importSmoobu, SMOOBU_FEED, smoobuClient, smoobuListings } from "./smoobu.js";
 import { syncListings, type FeedReport } from "./sync.js";
 
@@ -44,6 +45,13 @@ export async function syncEverything(db: Db, dir: string, listings: HostListing[
       reports.push(...notRead(beds24, BEDS24_FEED, e.message));
     }
   }
+
+  // Guest registration (only when Fairguest is set up): new bookings get a stay, old data goes.
+  const guests = prefillFromCalendar(db, listings, io.now());
+  if (guests.created > 0) notes.push(`Fairguest: ${guests.created} new stay${guests.created === 1 ? "" : "s"} to register ("fairnight ospiti" shows the deadlines).`);
+  if (guests.cancelled > 0) notes.push(`Fairguest: ${guests.cancelled} booking${guests.cancelled === 1 ? "" : "s"} cancelled.`);
+  const erased = applyRetention(db, { listings }, io.now()).erased;
+  if (erased.length > 0) notes.push(`Fairguest: personal data of ${erased.length} stay${erased.length === 1 ? "" : "s"} erased, as the retention rule says.`);
   return { reports, notes };
 }
 

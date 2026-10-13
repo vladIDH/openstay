@@ -18,6 +18,7 @@ import {
   type RangeEnd,
 } from "fairnight-smoobu";
 import { CONFIG_FILE, configPath, localToday, type Io } from "./io.js";
+import { noteChannelGuests } from "./guests/store.js";
 import { addDays, appendListings, daysBetween, diffTable, emptyReport, HISTORY_DAYS, recordRun, slugify, storeStays } from "./channel.js";
 import { isSmoobu, loadHostConfig, SetupError, smoobuApartment, type HostListing } from "./config.js";
 import { CREDENTIALS_FILE, loadCredentials, saveCredentials } from "./credentials.js";
@@ -123,6 +124,7 @@ export async function importBookings(db: Db, listings: HostListing[], client: Sm
     const stays = mapped.stays.filter((s) => s.apartmentId === apt);
     const r = { ...emptyReport(listing.name, SMOOBU_FEED), ok: true, seen: stays.length, skipped: mapped.skipped };
     storeStays(db, { listing: listing.name, feed: SMOOBU_FEED, priceTable: "smoobu_stays", stays, from, at, report: r });
+    noteChannelGuests(db, listing, SMOOBU_FEED, stays, now);
     record(r);
     reports.push(r);
   }

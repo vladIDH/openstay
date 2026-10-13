@@ -3,6 +3,7 @@
  * tests can run them with a fake network, a fixed clock and captured output.
  */
 import path from "node:path";
+import type { ScryptParams } from "fairguest";
 
 export type FetchLike = (url: string, init?: { signal?: AbortSignal; headers?: Record<string, string> }) => Promise<{
   ok: boolean;
@@ -31,6 +32,8 @@ export interface Io {
   beds24BaseUrl?: string;
   /** Waiting (rate limits, retries). Default: real time. */
   sleep?(ms: number): Promise<void>;
+  /** Only for tests: a cheaper scrypt for the Fairguest passphrase. */
+  scryptCost?: ScryptParams;
 }
 
 export type SmoobuFetchLike = (

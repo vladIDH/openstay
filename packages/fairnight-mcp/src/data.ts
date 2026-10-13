@@ -8,6 +8,8 @@ import { formatAmount, type NightQuote } from "fairnight";
 import {
   dbPath,
   feedKeys,
+  guestDeadlines,
+  guestsEnabled,
   lastSync,
   loadHostConfig,
   loadStays,
@@ -273,4 +275,56 @@ export function syncStatus(folder: Folder) {
       return { listing: l.name, dataFrom: kinds.length === 0 ? "none" : kinds.join("+"), sources };
     }),
   }));
+}
+
+/**
+ * Guest registration (Fairguest): the communications each stay needs, with
+ * their 24-hour deadline and whether they are done. Only dates and states: the
+ * guests' data is encrypted and this tool never asks for the passphrase.
+ */
+export type GuestDeadlines = {
+  now: string;
+  enabled: boolean;
+  late: number;
+  deadlines: {
+    stay: string;
+    listing: string;
+    authority: string;
+    communication: "reservation" | "checkin" | "cancellation";
+    due: string;
+    state: "done" | "late" | "open";
+    doneAt: string | null;
+    checkIn: string;
+    checkOut: string;
+    guestsRegistered: number;
+    hoursLeft: number;
+  }[];
+};
+
+export function guestDeadlinesOf(folder: Folder, args: { includeDone?: boolean }): GuestDeadlines {
+  return withFolder(folder, (db) => {
+    const now = folder.now();
+    const p = (n: number) => String(n).padStart(2, "0");
+    const at = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())} ${p(now.getHours())}:${p(now.getMinutes())}`;
+    const enabled = guestsEnabled(db);
+    const rows = enabled ? guestDeadlines(db, loadHostConfig(folder.dir), now) : [];
+    return {
+      now: at,
+      enabled,
+      late: rows.filter((r) => r.state === "late").length,
+      deadlines: (args.includeDone ? rows : rows.filter((r) => r.state !== "done")).map((r) => ({
+        stay: r.stay,
+        listing: r.listing,
+        authority: r.country === "ES-CT" ? "Mossos d'Esquadra" : "SES.HOSPEDAJES",
+        communication: r.kind,
+        due: r.due.replace("T", " "),
+        state: r.state,
+        doneAt: r.doneAt?.replace("T", " ") ?? null,
+        checkIn: r.checkIn,
+        checkOut: r.checkOut,
+        guestsRegistered: r.guestsRegistered,
+        hoursLeft: r.hoursLeft,
+      })),
+    };
+  });
 }

@@ -1,5 +1,6 @@
 /**
- * Fairnight MCP server: five read-only tools over a Fairnight folder.
+ * Fairnight MCP server: read-only tools over a Fairnight folder (prices, and
+ * the deadlines of guest registration).
  *
  * Built like mador-mcp: every tool is declared read-only (no confirmation
  * prompts in Claude or ChatGPT), errors come back as text the model can act
@@ -7,7 +8,7 @@
  */
 import { McpServer, fromJsonSchema, type JsonSchemaType } from "@modelcontextprotocol/server";
 import { ConfigError, formatAmount } from "fairnight";
-import { explainNight, getPrices, listListings, nextGaps, occupancy, syncStatus, ToolError, type Folder } from "./data.js";
+import { explainNight, getPrices, guestDeadlinesOf, listListings, nextGaps, occupancy, syncStatus, ToolError, type Folder } from "./data.js";
 
 export const VERSION = "0.1.0";
 
@@ -153,6 +154,29 @@ export const TOOLS: Tool[] = [
         return `- ${l.listing} (data from ${l.dataFrom}): ${parts.join("; ") || "no sources"}`;
       });
       return { text: lines.join("\n"), data };
+    },
+  },
+  {
+    name: "get_guest_deadlines",
+    title: "Guest communications due",
+    description:
+      "Guest registration (Fairguest, Spain): for each stay, the communications to the police that are due (reservation within 24 hours of the booking, guests within 24 hours of check-in, and a cancellation when a communicated booking is cancelled), with the deadline and whether it is late. Only dates and states: guests' names and documents are encrypted and never returned. Use it when the host asks what is left to send.",
+    inputSchema: {
+      type: "object",
+      properties: { includeDone: { type: "boolean", description: "Also list the communications already done. Default false." } },
+      additionalProperties: false,
+    },
+    handler: (folder, args) => {
+      const d = guestDeadlinesOf(folder, args);
+      if (!d.enabled) return { text: 'Guest registration (Fairguest) is not turned on in this folder ("fairnight ospiti attiva").', data: d };
+      const label: Record<string, string> = { reservation: "reservation", checkin: "guests at check-in", cancellation: "cancellation" };
+      const lines = d.deadlines.map(
+        (r) =>
+          `- ${r.state === "late" ? "LATE" : r.state}: ${label[r.communication]} for stay ${r.stay} (${r.listing}, ${r.checkIn} → ${r.checkOut}) to ${r.authority}, due ${r.due}` +
+          (r.state === "done" ? `, done ${r.doneAt}` : `, ${r.guestsRegistered} guest${r.guestsRegistered === 1 ? "" : "s"} registered`),
+      );
+      const head = `Now ${d.now}. ${d.late} late.`;
+      return { text: lines.length ? `${head}\n${lines.join("\n")}` : `${head} Nothing to communicate.`, data: d };
     },
   },
 ];

@@ -6,6 +6,7 @@
  * - GET  /           the page (HTML, CSS and JS inline, no external files)
  * - GET  /api/data   prices of every listing, computed on each request
  * - POST /api/refresh  reads the iCal calendars again (the only network access)
+ * - GET/POST /checkin/<code>  the guest check-in form (Fairguest), local network only
  * The page never writes anything except through "Recalculate", which runs the
  * same sync as `fairnight sync`.
  */
@@ -15,6 +16,8 @@ import os from "node:os";
 import { loadHostConfig, type HostConfig } from "./config.js";
 import { openDb } from "./db.js";
 import { dbPath, localToday, type Io } from "./io.js";
+import { handleCheckin, type CheckinContext } from "./guests/checkin.js";
+import { applyRetention, guestsEnabled, prefillFromCalendar } from "./guests/store.js";
 import { renderPage } from "./page.js";
 import { lastSync, priceOne } from "./price.js";
 import { syncEverything } from "./sync-all.js";
@@ -75,11 +78,13 @@ export function pricesPayload(dir: string, config: HostConfig, today: string, da
 /** The request handler, separate from the socket so tests can call it. */
 export function createHandler(opts: ServeOptions): (req: IncomingMessage, res: ServerResponse) => void {
   let refreshing: Promise<unknown> | null = null;
+  const checkin: CheckinContext = { dir: opts.dir, io: opts.io, secret: randomBytes(32), failures: new Map() };
 
   return (req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
     const today = opts.today ?? localToday(opts.io.now());
     const run = async () => {
+      if (await handleCheckin(req, res, url, checkin, randomBytes(16).toString("base64"))) return;
       if (req.method === "GET" && url.pathname === "/") {
         const nonce = randomBytes(16).toString("base64");
         send(res, 200, "text/html; charset=utf-8", renderPage(nonce), {
@@ -134,7 +139,16 @@ export function lanAddresses(): string[] {
 }
 
 export async function startServer(opts: ServeOptions & { port: number; lan: boolean }): Promise<Server> {
-  loadHostConfig(opts.dir); // fail early on a broken config
+  const config = loadHostConfig(opts.dir); // fail early on a broken config
+  const db = openDb(dbPath(opts.dir));
+  let guests = false;
+  try {
+    guests = guestsEnabled(db);
+    prefillFromCalendar(db, config.listings, opts.io.now());
+    for (const e of applyRetention(db, config, opts.io.now()).erased) opts.io.out(`Fairguest: erased the personal data of stay ${e.id} (${e.reason}).`);
+  } finally {
+    db.close();
+  }
   const server = createServer(createHandler(opts));
   const host = opts.lan ? "0.0.0.0" : "127.0.0.1";
   return new Promise((resolve, reject) => {
@@ -144,6 +158,13 @@ export async function startServer(opts: ServeOptions & { port: number; lan: bool
       opts.io.out(`Fairnight calendar: http://localhost:${port}`);
       if (opts.lan) for (const ip of lanAddresses()) opts.io.out(`  on your network: http://${ip}:${port}`);
       else opts.io.out("  only this computer can open it (add --lan to open it from a phone on the same network)");
+      if (guests) {
+        opts.io.out(
+          opts.lan
+            ? '  guest check-in forms: open on this network only ("fairnight ospiti elenco" lists their links)'
+            : "  guest check-in forms: only on this computer; add --lan to fill them in on a phone or tablet",
+        );
+      }
       opts.io.out("Press Ctrl+C to stop.");
       resolve(server);
     });

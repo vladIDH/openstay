@@ -10,6 +10,7 @@ import { SmoobuError } from "fairnight-smoobu";
 import { loadHostConfig, selectListings, SetupError, type HostListing } from "./config.js";
 import { openDb } from "./db.js";
 import { importPrices } from "./import.js";
+import { UsageError } from "./errors.js";
 import { initFolder } from "./init.js";
 import { dbPath, localToday, stripBom, type Io } from "./io.js";
 import { defaultExportPath, EXPORT_FORMATS, toCsv, writeExport } from "./export.js";
@@ -19,6 +20,7 @@ import { connect, importFromSmoobu, push } from "./smoobu.js";
 import { connect as connectBeds24, creditsLine, importFromBeds24, push as pushBeds24 } from "./beds24.js";
 import { Beds24Error } from "fairnight-beds24";
 import { formatFeedReport, syncEverything } from "./sync-all.js";
+import { GUEST_USAGE, runGuests } from "./guests/commands.js";
 
 export const USAGE = `Fairnight: dynamic prices for short-term rentals, on your own computer.
 
@@ -36,9 +38,10 @@ Usage:
   fairnight beds24 importa                         Beds24 rooms become listings; bookings into the local database
   fairnight beds24 spingi                          compare with Beds24; writes only with --applica [--da DATE] [--a DATE] [--alloggio ROOM]
 
-Every command works in the current folder; use --dir <folder> to point at another one.`;
+Guest registration (Fairguest, Spain: SES.HOSPEDAJES and Mossos d'Esquadra):
+${GUEST_USAGE}
 
-class UsageError extends Error {}
+Every command works in the current folder; use --dir <folder> to point at another one.`;
 
 const OPTIONS = {
   dir: { type: "string" },
@@ -56,6 +59,8 @@ const OPTIONS = {
   da: { type: "string" },
   a: { type: "string" },
   alloggio: { type: "string" },
+  tipo: { type: "string" },
+  persona: { type: "string" },
   "usa-storico-smoobu": { type: "boolean" },
   "usa-storico-beds24": { type: "boolean" },
   help: { type: "boolean", short: "h" },
@@ -103,6 +108,9 @@ export async function main(argv: string[], io: Io): Promise<number> {
         return await runSmoobu(dir, values, rest, io);
       case "beds24":
         return await runBeds24(dir, values, rest, io);
+      case "ospiti":
+      case "guests":
+        return await runGuests(dir, values, rest, io);
       default:
         throw new UsageError(`Unknown command "${command}".`);
     }

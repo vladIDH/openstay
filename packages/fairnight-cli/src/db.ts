@@ -4,6 +4,8 @@
  *
  * We keep only what pricing needs: dates and whether a night is a stay or a
  * block. No guest names, phone numbers or descriptions from the calendars.
+ * The guest registration (Fairguest, the guest_* tables) keeps every personal
+ * field encrypted: in clear there are only random ids, dates and states.
  */
 import { mkdirSync } from "node:fs";
 import path from "node:path";
@@ -11,7 +13,7 @@ import Database from "better-sqlite3";
 
 export type Db = Database.Database;
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (
@@ -113,6 +115,53 @@ CREATE TABLE IF NOT EXISTS beds24_pushes (
   mismatches INTEGER NOT NULL,
   credits    INTEGER NOT NULL,
   error      TEXT
+);
+
+-- Version 4 (Fairguest, guest registration). Times are the host's local
+-- "YYYY-MM-DDTHH:mm". Personal data only in the sealed columns (channel_data,
+-- host_data, data): encrypted for the host's key, see packages/fairguest.
+CREATE TABLE IF NOT EXISTS guest_stays (
+  id           TEXT PRIMARY KEY,
+  listing      TEXT NOT NULL,
+  -- where the stay came from: manual, a calendar feed key (airbnb, booking…), smoobu, beds24
+  source       TEXT NOT NULL,
+  source_uid   TEXT,
+  check_in     TEXT NOT NULL,
+  check_out    TEXT NOT NULL,
+  booked_at    TEXT,
+  seen_at      TEXT NOT NULL,
+  -- random code of the check-in form /checkin/<code>, valid until check-out
+  code         TEXT UNIQUE,
+  -- sealed: reference, holder's name and number of guests read from Smoobu or Beds24
+  channel_data TEXT,
+  -- sealed: corrections typed by the host; they win over channel_data
+  host_data    TEXT,
+  cancelled_at TEXT,
+  erased_at    TEXT,
+  UNIQUE (listing, source, source_uid)
+);
+
+-- One row per guest, sealed whole.
+CREATE TABLE IF NOT EXISTS guest_people (
+  id       TEXT PRIMARY KEY,
+  stay_id  TEXT NOT NULL REFERENCES guest_stays (id),
+  added_at TEXT NOT NULL,
+  added_by TEXT NOT NULL CHECK (added_by IN ('host', 'form')),
+  data     TEXT NOT NULL
+);
+
+-- Every communication prepared, sent or confirmed, with its outcome.
+CREATE TABLE IF NOT EXISTS guest_submissions (
+  id       INTEGER PRIMARY KEY,
+  stay_id  TEXT NOT NULL REFERENCES guest_stays (id),
+  kind     TEXT NOT NULL CHECK (kind IN ('reservation', 'checkin', 'cancellation')),
+  channel  TEXT NOT NULL,
+  status   TEXT NOT NULL CHECK (status IN ('prepared', 'sent', 'accepted', 'rejected', 'cancelled')),
+  at       TEXT NOT NULL,
+  batch    TEXT,
+  -- a file written for the host to upload (Mossos); deleted with the personal data
+  file     TEXT,
+  detail   TEXT
 );
 `;
 

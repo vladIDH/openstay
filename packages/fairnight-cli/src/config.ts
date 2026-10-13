@@ -6,6 +6,7 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { ConfigError, validateListingConfig } from "fairnight";
+import { validateGuestSettings, type GuestSettings } from "fairguest";
 import type { ConfigIssue, ListingConfig, ValidationResult } from "fairnight";
 import { CONFIG_FILE, configPath, stripBom } from "./io.js";
 
@@ -64,6 +65,8 @@ export interface HostListing {
   name: string;
   calendars: CalendarLink[];
   pricing: ListingConfig;
+  /** Guest registration (Fairguest): where this listing communicates its guests. */
+  fairguest?: GuestSettings;
 }
 
 export interface HostConfig {
@@ -162,7 +165,7 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
       issues.push({ path: lp, message: "must be an object with name, calendars and pricing" });
       return;
     }
-    unknownFields(l, lp, ["name", "calendars", "pricing"], issues);
+    unknownFields(l, lp, ["name", "calendars", "pricing", "fairguest"], issues);
     if (typeof l.name !== "string" || !NAME.test(l.name)) {
       issues.push({
         path: `${lp}.name`,
@@ -174,6 +177,12 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
       names.add(l.name);
     }
     checkCalendars(l.calendars, `${lp}.calendars`, issues);
+    let fairguest: GuestSettings | undefined;
+    if (l.fairguest !== undefined) {
+      const g = validateGuestSettings(l.fairguest, `${lp}.fairguest`);
+      issues.push(...g.issues);
+      if (g.value) fairguest = g.value;
+    }
 
     // The engine checks the price rules; its paths start with "listing".
     const pricingInput = isObj(l.pricing) && l.pricing.listingId === undefined ? { ...l.pricing, listingId: l.name } : l.pricing;
@@ -188,7 +197,7 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
         if (c.treatAs !== undefined) link.treatAs = c.treatAs;
         return link;
       });
-      listings.push({ name: l.name as string, calendars, pricing: r.value });
+      listings.push({ name: l.name as string, calendars, pricing: r.value, ...(fairguest ? { fairguest } : {}) });
     }
   });
 

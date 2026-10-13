@@ -1,0 +1,54 @@
+{
+  "name": "fairnight-market",
+  "version": "0.2.0",
+  "license": "AGPL-3.0-only",
+  "author": {
+    "name": "Vlad Humenny",
+    "email": "hello@khlumen.com"
+  },
+  "homepage": "https://github.com/vladIDH/openstay#readme",
+  "bugs": {
+    "url": "https://github.com/vladIDH/openstay/issues"
+  },
+  "description": "Zone data for Fairnight: your own CSV, the Inside Airbnb files you download, or AirROI zone metrics with your own API key. No scraping.",
+  "keywords": [
+    "dynamic-pricing",
+    "short-term-rental",
+    "vacation-rental",
+    "market-data",
+    "inside-airbnb",
+    "airroi"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vladIDH/openstay.git",
+    "directory": "packages/fairnight-market"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "fairnight": "0.1.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "prepack": "npm run build"
+  }
+}

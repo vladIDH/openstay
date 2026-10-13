@@ -84,14 +84,25 @@ describe("mapping Smoobu bookings", () => {
       { ...base, id: 2, type: "modification of booking", arrival: "2026-11-10", departure: "2026-11-11", "created-at": "2026-10-22T08:00:00+02:00", apartment: { id: 398 }, price: "95.50" },
     ]);
     expect(r.stays).toEqual([
-      { uid: "1", apartmentId: 398, checkIn: "2026-11-04", checkOut: "2026-11-08", kind: "reservation", bookedAt: "2026-10-20", stayPrice: { total: 410, nights: 4, perNight: 102.5 } },
-      { uid: "2", apartmentId: 398, checkIn: "2026-11-10", checkOut: "2026-11-11", kind: "reservation", bookedAt: "2026-10-22", stayPrice: { total: 95.5, nights: 1, perNight: 95.5 } },
+      { uid: "1", apartmentId: 398, checkIn: "2026-11-04", checkOut: "2026-11-08", kind: "reservation", bookedAt: "2026-10-20", stayPrice: { total: 410, nights: 4, perNight: 102.5 }, guests: { firstName: "x", lastName: null, guests: null, reference: null } },
+      { uid: "2", apartmentId: 398, checkIn: "2026-11-10", checkOut: "2026-11-11", kind: "reservation", bookedAt: "2026-10-22", stayPrice: { total: 95.5, nights: 1, perNight: 95.5 }, guests: { firstName: "x", lastName: null, guests: null, reference: null } },
     ]);
   });
 
   it("keeps blocked dates as unavailable, without booking day or price", () => {
     const r = mapBookings([{ ...base, id: 3, type: "reservation", arrival: "2026-12-01", departure: "2026-12-05", "created-at": "2026-10-01 10:00", apartment: { id: 398 }, price: 0, "is-blocked-booking": true }]);
-    expect(r.stays[0]).toMatchObject({ kind: "blocked", bookedAt: null, stayPrice: null });
+    expect(r.stays[0]).toMatchObject({ kind: "blocked", bookedAt: null, stayPrice: null, guests: null });
+  });
+
+  it("reads holder, number of guests and reference for guest registration", () => {
+    const r = mapBookings([
+      { ...base, id: 6, type: "reservation", arrival: "2099-06-10", departure: "2099-06-13", apartment: { id: 398 }, firstname: " Ospite ", lastname: "Prova", adults: 2, children: "1", "reference-id": "PROVA-0001" },
+      { ...base, id: 7, type: "reservation", arrival: "2099-07-10", departure: "2099-07-13", apartment: { id: 398 }, "guest-name": "Ospite Prova", adults: null },
+    ]);
+    expect(r.stays.map((s) => s.guests)).toEqual([
+      { firstName: "Ospite", lastName: "Prova", guests: 3, reference: "PROVA-0001" },
+      { firstName: "Ospite Prova", lastName: null, guests: null, reference: null },
+    ]);
   });
 
   it("drops cancellations, duplicates and unreadable bookings", () => {

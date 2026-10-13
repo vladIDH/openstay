@@ -114,6 +114,13 @@ export interface SmoobuBooking {
   apartment: { id: number; name?: string };
   price?: number | string | null;
   "is-blocked-booking"?: boolean;
+  /** Read only for guest registration (Fairguest); never stored by Fairnight's pricing. */
+  "guest-name"?: string | null;
+  firstname?: string | null;
+  lastname?: string | null;
+  adults?: number | string | null;
+  children?: number | string | null;
+  "reference-id"?: string | null;
 }
 
 export interface RateDay {

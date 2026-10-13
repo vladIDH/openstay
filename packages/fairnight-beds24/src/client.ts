@@ -136,6 +136,12 @@ export interface Beds24Booking {
   departure: string;
   bookingTime?: string | null;
   price?: number | string | null;
+  /** Read only for guest registration (Fairguest); never stored by Fairnight's pricing. */
+  firstName?: string | null;
+  lastName?: string | null;
+  numAdult?: number | string | null;
+  numChild?: number | string | null;
+  apiReference?: string | null;
 }
 
 /** One night of a room's calendar, as Fairnight reads it. */

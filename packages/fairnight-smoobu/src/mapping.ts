@@ -17,6 +17,8 @@ export interface ImportedStay {
   bookedAt: string | null;
   /** The price of the whole stay, when Smoobu has one (reservations only). */
   stayPrice: { total: number; nights: number; perNight: number } | null;
+  /** Holder, number of guests and reference, for guest registration only. Null for blocks. */
+  guests: BookingGuests | null;
 }
 
 export interface MappingResult {
@@ -25,6 +27,45 @@ export interface MappingResult {
   cancelled: string[];
   /** Bookings that could not be read, with the reason. */
   skipped: string[];
+}
+
+/**
+ * Who stays, as the channel manager knows it: only for guest registration
+ * (Fairguest), which seals it. Pricing never reads it and it is never printed.
+ */
+export interface BookingGuests {
+  firstName: string | null;
+  lastName: string | null;
+  /** Adults plus children, when known. */
+  guests: number | null;
+  /** The booking reference on the channel. */
+  reference: string | null;
+}
+
+const textOrNull = (v: unknown): string | null => {
+  const t = typeof v === "string" ? v.replace(/\s+/g, " ").trim() : "";
+  return t === "" ? null : t;
+};
+const countOrNull = (v: unknown): number | null => {
+  const n = Number(v);
+  return v !== null && v !== undefined && v !== "" && Number.isInteger(n) && n >= 0 ? n : null;
+};
+function guestCount(adults: unknown, children: unknown): number | null {
+  const a = countOrNull(adults);
+  const c = countOrNull(children);
+  return a === null && c === null ? null : (a ?? 0) + (c ?? 0);
+}
+
+/** Smoobu gives firstname/lastname, or only guest-name. */
+function smoobuGuests(b: SmoobuBooking): BookingGuests {
+  const first = textOrNull(b.firstname);
+  const last = textOrNull(b.lastname);
+  return {
+    firstName: first ?? (last ? null : textOrNull(b["guest-name"])),
+    lastName: last,
+    guests: guestCount(b.adults, b.children),
+    reference: textOrNull(b["reference-id"]),
+  };
 }
 
 function nightsBetween(a: string, b: string): number {
@@ -62,6 +103,7 @@ export function mapBookings(bookings: readonly SmoobuBooking[]): MappingResult {
         !blocked && Number.isFinite(total) && total > 0
           ? { total, nights, perNight: Math.round((total / nights) * 100) / 100 }
           : null,
+      guests: blocked ? null : smoobuGuests(b),
     });
   }
   // A booking listed both as a reservation and as cancelled is cancelled.

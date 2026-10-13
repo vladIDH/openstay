@@ -82,9 +82,17 @@ describe("mapping Beds24 bookings", () => {
 
   it("black is a blocked date, inquiry is ignored, cancelled is dropped", () => {
     const r = mapBookings([b({ id: 4, status: "black", price: 0 }), b({ id: 5, status: "inquiry" }), b({ id: 6, status: "cancelled" }), b({ id: 7, departure: "2026-11-04" })]);
-    expect(r.stays).toEqual([{ uid: "4", roomId: 101, checkIn: "2026-11-04", checkOut: "2026-11-08", kind: "blocked", bookedAt: null, stayPrice: null }]);
+    expect(r.stays).toEqual([{ uid: "4", roomId: 101, checkIn: "2026-11-04", checkOut: "2026-11-08", kind: "blocked", bookedAt: null, stayPrice: null, guests: null }]);
     expect(r.cancelled).toEqual(["6"]);
     expect(r.skipped).toEqual(["booking 7 has unreadable dates (2026-11-04 → 2026-11-04)"]);
+  });
+
+  it("reads holder, number of guests and reference for guest registration", () => {
+    const r = mapBookings([b({ id: 11, firstName: "Ospite", lastName: "Prova", numAdult: 2, numChild: 0, apiReference: "PROVA-0001" }), b({ id: 12, firstName: "", lastName: null })]);
+    expect(r.stays.map((s) => s.guests)).toEqual([
+      { firstName: "Ospite", lastName: "Prova", guests: 2, reference: "PROVA-0001" },
+      { firstName: null, lastName: null, guests: null, reference: null },
+    ]);
   });
 
   it("drops duplicates, and a booking that is also listed as cancelled", () => {

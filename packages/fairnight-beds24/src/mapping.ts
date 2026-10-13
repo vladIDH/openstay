@@ -21,12 +21,41 @@ export interface ImportedStay {
   bookedAt: string | null;
   /** Total price of the stay, when Beds24 has one (bookings only). */
   stayPrice: { total: number; nights: number; perNight: number } | null;
+  /** Holder, number of guests and reference, for guest registration only. Null for blocks. */
+  guests: BookingGuests | null;
 }
 
 export interface MappingResult {
   stays: ImportedStay[];
   cancelled: string[];
   skipped: string[];
+}
+
+/**
+ * Who stays, as the channel manager knows it: only for guest registration
+ * (Fairguest), which seals it. Pricing never reads it and it is never printed.
+ */
+export interface BookingGuests {
+  firstName: string | null;
+  lastName: string | null;
+  /** Adults plus children, when known. */
+  guests: number | null;
+  /** The booking reference on the channel. */
+  reference: string | null;
+}
+
+const textOrNull = (v: unknown): string | null => {
+  const t = typeof v === "string" ? v.replace(/\s+/g, " ").trim() : "";
+  return t === "" ? null : t;
+};
+const countOrNull = (v: unknown): number | null => {
+  const n = Number(v);
+  return v !== null && v !== undefined && v !== "" && Number.isInteger(n) && n >= 0 ? n : null;
+};
+function guestCount(adults: unknown, children: unknown): number | null {
+  const a = countOrNull(adults);
+  const c = countOrNull(children);
+  return a === null && c === null ? null : (a ?? 0) + (c ?? 0);
 }
 
 const nights = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
@@ -61,6 +90,9 @@ export function mapBookings(bookings: readonly Beds24Booking[]): MappingResult {
       kind: blocked ? "blocked" : "reservation",
       bookedAt: blocked ? null : (String(b.bookingTime ?? "").match(ISO)?.[0] ?? null),
       stayPrice: !blocked && Number.isFinite(total) && total > 0 ? { total, nights: n, perNight: Math.round((total / n) * 100) / 100 } : null,
+      guests: blocked
+        ? null
+        : { firstName: textOrNull(b.firstName), lastName: textOrNull(b.lastName), guests: guestCount(b.numAdult, b.numChild), reference: textOrNull(b.apiReference) },
     });
   }
   const cancelled = new Set(result.cancelled);

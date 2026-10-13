@@ -11,7 +11,7 @@ import Database from "better-sqlite3";
 
 export type Db = Database.Database;
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (
@@ -84,6 +84,35 @@ CREATE TABLE IF NOT EXISTS smoobu_pushes (
   operations   INTEGER NOT NULL,
   mismatches   INTEGER NOT NULL,
   error        TEXT
+);
+
+-- Version 3 (Beds24). Same meaning as the Smoobu tables: the total of each
+-- stay, its nights and the average per night (an average per STAY), used by
+-- the historical floor only with --usa-storico-beds24.
+CREATE TABLE IF NOT EXISTS beds24_stays (
+  listing     TEXT NOT NULL,
+  uid         TEXT NOT NULL,
+  check_in    TEXT NOT NULL,
+  check_out   TEXT NOT NULL,
+  nights      INTEGER NOT NULL,
+  total       REAL NOT NULL,
+  per_night   REAL NOT NULL,
+  imported_at TEXT NOT NULL,
+  PRIMARY KEY (listing, uid)
+);
+
+-- Every write to Beds24, for the record, with the credits it cost.
+CREATE TABLE IF NOT EXISTS beds24_pushes (
+  id         INTEGER PRIMARY KEY,
+  listing    TEXT NOT NULL,
+  room_id    INTEGER NOT NULL,
+  at         TEXT NOT NULL,
+  nights     INTEGER NOT NULL,
+  writes     INTEGER NOT NULL,
+  refused    INTEGER NOT NULL,
+  mismatches INTEGER NOT NULL,
+  credits    INTEGER NOT NULL,
+  error      TEXT
 );
 `;
 

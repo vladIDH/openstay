@@ -48,8 +48,12 @@ export function loadCredentials(dir: string, env: Record<string, string | undefi
 
 /** Write the file and keep it to the current user: chmod 600, or an ACL on Windows. Returns how it was protected. */
 export function saveCredentials(dir: string, credentials: Credentials, platform: NodeJS.Platform = process.platform): string {
-  const file = credentialsPath(dir);
-  writeFileSync(file, JSON.stringify({ apiKey: credentials.apiKey, apiSecret: credentials.apiSecret }, null, 2) + "\n", { encoding: "utf8", mode: 0o600 });
+  return writePrivateFile(credentialsPath(dir), { apiKey: credentials.apiKey, apiSecret: credentials.apiSecret }, platform);
+}
+
+/** Write a JSON file readable only by the current user where the system allows it. */
+export function writePrivateFile(file: string, content: unknown, platform: NodeJS.Platform = process.platform): string {
+  writeFileSync(file, JSON.stringify(content, null, 2) + "\n", { encoding: "utf8", mode: 0o600 });
   if (platform === "win32") {
     try {
       const user = process.env.USERNAME;

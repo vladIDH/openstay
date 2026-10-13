@@ -10,7 +10,7 @@ import type { ConfigIssue, ListingConfig, ValidationResult } from "fairnight";
 import { CONFIG_FILE, configPath, stripBom } from "./io.js";
 
 export const ICAL_SOURCES = ["airbnb", "booking", "vrbo", "other"] as const;
-export const SOURCES = [...ICAL_SOURCES, "smoobu"] as const;
+export const SOURCES = [...ICAL_SOURCES, "smoobu", "beds24"] as const;
 export type IcalSource = (typeof ICAL_SOURCES)[number];
 export type CalendarSource = (typeof SOURCES)[number];
 export const TREAT_AS = ["auto", "reservation", "blocked"] as const;
@@ -30,9 +30,28 @@ export interface SmoobuLink {
   apartmentId: number;
 }
 
-export type CalendarLink = IcalLink | SmoobuLink;
+/** A Beds24 room, read (and written) through the Beds24 API v2. */
+export interface Beds24Link {
+  source: "beds24";
+  roomId: number;
+  /** Which of the 16 Beds24 price fields Fairnight writes. Default price1. */
+  priceField?: Beds24PriceField;
+}
+
+export const BEDS24_PRICE_FIELDS = Array.from({ length: 16 }, (_, i) => `price${i + 1}`);
+export type Beds24PriceField = `price${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16}`;
+
+export type CalendarLink = IcalLink | SmoobuLink | Beds24Link;
 
 export const isSmoobu = (c: CalendarLink): c is SmoobuLink => c.source === "smoobu";
+export const isBeds24 = (c: CalendarLink): c is Beds24Link => c.source === "beds24";
+export const isIcal = (c: CalendarLink): c is IcalLink => !isSmoobu(c) && !isBeds24(c);
+
+/** The Beds24 room of a listing and the price field to write, if it has one. */
+export function beds24Room(listing: HostListing): { roomId: number; priceField: Beds24PriceField } | null {
+  const link = listing.calendars.find(isBeds24);
+  return link ? { roomId: link.roomId, priceField: link.priceField ?? "price1" } : null;
+}
 
 /** The Smoobu apartment of a listing, if it has one. */
 export function smoobuApartment(listing: HostListing): number | null {
@@ -81,7 +100,7 @@ function checkCalendars(v: unknown, path: string, issues: ConfigIssue[]): void {
     return;
   }
   const seen = new Set<string>();
-  let smoobu = 0;
+  let channels = 0;
   v.forEach((c, j) => {
     const cp = `${path}[${j}]`;
     if (!isObj(c)) {
@@ -96,7 +115,18 @@ function checkCalendars(v: unknown, path: string, issues: ConfigIssue[]): void {
       if (typeof c.apartmentId !== "number" || !Number.isInteger(c.apartmentId) || c.apartmentId <= 0) {
         issues.push({ path: `${cp}.apartmentId`, message: `must be the number of the Smoobu apartment, got ${JSON.stringify(c.apartmentId)}` });
       }
-      if (++smoobu > 1) issues.push({ path: cp, message: "a listing can be linked to one Smoobu apartment only" });
+      if (++channels > 1) issues.push({ path: cp, message: "a listing can be linked to one channel manager only (one Smoobu apartment or one Beds24 room)" });
+      return;
+    }
+    if (c.source === "beds24") {
+      unknownFields(c, cp, ["source", "roomId", "priceField"], issues);
+      if (typeof c.roomId !== "number" || !Number.isInteger(c.roomId) || c.roomId <= 0) {
+        issues.push({ path: `${cp}.roomId`, message: `must be the number of the Beds24 room, got ${JSON.stringify(c.roomId)}` });
+      }
+      if (c.priceField !== undefined && !BEDS24_PRICE_FIELDS.includes(c.priceField as string)) {
+        issues.push({ path: `${cp}.priceField`, message: `must be one of price1 … price16, got ${JSON.stringify(c.priceField)}` });
+      }
+      if (++channels > 1) issues.push({ path: cp, message: "a listing can be linked to one channel manager only (one Smoobu apartment or one Beds24 room)" });
       return;
     }
     unknownFields(c, cp, ["source", "url", "treatAs"], issues);
@@ -153,6 +183,7 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
     } else if (issues.length === 0) {
       const calendars = (l.calendars as CalendarLink[]).map((c): CalendarLink => {
         if (isSmoobu(c)) return { source: "smoobu", apartmentId: c.apartmentId };
+        if (isBeds24(c)) return c.priceField !== undefined ? { source: "beds24", roomId: c.roomId, priceField: c.priceField } : { source: "beds24", roomId: c.roomId };
         const link: IcalLink = { source: c.source, url: normaliseCalendarUrl(c.url) as string };
         if (c.treatAs !== undefined) link.treatAs = c.treatAs;
         return link;
@@ -168,6 +199,14 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
     const other = byApartment.get(apt);
     if (other) issues.push({ path: `listings (${l.name})`, message: `Smoobu apartment ${apt} is already linked to "${other}"` });
     byApartment.set(apt, l.name);
+  }
+  const byRoom = new Map<number, string>();
+  for (const l of listings) {
+    const room = beds24Room(l);
+    if (room === null) continue;
+    const other = byRoom.get(room.roomId);
+    if (other) issues.push({ path: `listings (${l.name})`, message: `Beds24 room ${room.roomId} is already linked to "${other}"` });
+    byRoom.set(room.roomId, l.name);
   }
   if (issues.length > 0) return { ok: false, issues };
   return { ok: true, value: { listings } };

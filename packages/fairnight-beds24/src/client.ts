@@ -76,6 +76,7 @@ export interface ClientOptions {
 export type QueryValue = string | number | boolean | readonly (string | number)[] | undefined;
 
 const realSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+const positive = (v: unknown) => (v === null || v === undefined || v === "" || !(Number(v) > 0) ? null : Number(v));
 
 function header(h: { get(name: string): string | null }, ...names: string[]): number | null {
   for (const n of names) {
@@ -121,6 +122,9 @@ export interface Room {
   name: string;
   /** How many identical units the room has. */
   qty: number;
+  /** The room's standard and minimum price in Beds24, when set. */
+  rackRate: number | null;
+  minPrice: number | null;
 }
 
 /** One booking as Beds24 returns it (only the fields Fairnight reads). */
@@ -338,7 +342,7 @@ export class Beds24Client {
       id: number;
       name?: string;
       currency?: string | null;
-      roomTypes?: { id: number; name?: string; qty?: number }[];
+      roomTypes?: { id: number; name?: string; qty?: number; rackRate?: number | string | null; minPrice?: number | string | null }[];
     }>("/properties", { includeAllRooms: true });
     return properties.flatMap((p) =>
       (p.roomTypes ?? []).map((r) => ({
@@ -348,6 +352,8 @@ export class Beds24Client {
         roomId: Number(r.id),
         name: r.name ?? String(r.id),
         qty: Number(r.qty ?? 1),
+        rackRate: positive(r.rackRate),
+        minPrice: positive(r.minPrice),
       })),
     );
   }

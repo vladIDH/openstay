@@ -13,6 +13,8 @@ export interface FakeRoom {
   id: number;
   name: string;
   qty: number;
+  rackRate?: number;
+  minPrice?: number;
 }
 
 export interface FakeProperty {
@@ -146,7 +148,7 @@ export async function startFakeBeds24(opts: FakeOptions) {
           id: p.id,
           name: p.name,
           currency: p.currency,
-          ...(url.searchParams.get("includeAllRooms") === "true" ? { roomTypes: p.rooms.map((r) => ({ id: r.id, propertyId: p.id, name: r.name, qty: r.qty })) } : {}),
+          ...(url.searchParams.get("includeAllRooms") === "true" ? { roomTypes: p.rooms.map((r) => ({ id: r.id, propertyId: p.id, name: r.name, qty: r.qty, rackRate: r.rackRate ?? 0, minPrice: r.minPrice ?? 0 })) } : {}),
         })),
       }, price);
     }

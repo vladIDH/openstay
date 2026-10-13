@@ -20,7 +20,7 @@ async function setUp(over: Partial<Parameters<typeof startFakeBeds24>[0]> = {}) 
     refreshToken: TEST_REFRESH,
     clock,
     properties: [
-      { id: 10, name: "Seaside House", currency: "EUR", rooms: [{ id: 101, name: "Loft", qty: 1 }, { id: 102, name: "Dorm", qty: 4 }] },
+      { id: 10, name: "Seaside House", currency: "EUR", rooms: [{ id: 101, name: "Loft", qty: 1, rackRate: 120, minPrice: 70 }, { id: 102, name: "Dorm", qty: 4 }] },
       { id: 20, name: "Garden", currency: "EUR", rooms: [{ id: 201, name: "Studio", qty: 1 }] },
     ],
     bookings: [],
@@ -175,9 +175,9 @@ describe("reading", () => {
   it("lists every room of every property with its number of units", async () => {
     const { client } = await setUp();
     expect(await client.listRooms()).toEqual([
-      { propertyId: 10, propertyName: "Seaside House", currency: "EUR", roomId: 101, name: "Loft", qty: 1 },
-      { propertyId: 10, propertyName: "Seaside House", currency: "EUR", roomId: 102, name: "Dorm", qty: 4 },
-      { propertyId: 20, propertyName: "Garden", currency: "EUR", roomId: 201, name: "Studio", qty: 1 },
+      { propertyId: 10, propertyName: "Seaside House", currency: "EUR", roomId: 101, name: "Loft", qty: 1, rackRate: 120, minPrice: 70 },
+      { propertyId: 10, propertyName: "Seaside House", currency: "EUR", roomId: 102, name: "Dorm", qty: 4, rackRate: null, minPrice: null },
+      { propertyId: 20, propertyName: "Garden", currency: "EUR", roomId: 201, name: "Studio", qty: 1, rackRate: null, minPrice: null },
     ]);
   });
 

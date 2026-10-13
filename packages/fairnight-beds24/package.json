@@ -1,0 +1,53 @@
+{
+  "name": "fairnight-beds24",
+  "version": "0.2.0",
+  "license": "AGPL-3.0-only",
+  "author": {
+    "name": "Vlad Humenny",
+    "email": "hello@khlumen.com"
+  },
+  "homepage": "https://github.com/vladIDH/openstay#readme",
+  "bugs": {
+    "url": "https://github.com/vladIDH/openstay/issues"
+  },
+  "description": "Beds24 connector for Fairnight: read rooms and bookings, write nightly prices and minimum stays through the official API v2 (refresh token, credit-aware).",
+  "keywords": [
+    "beds24",
+    "dynamic-pricing",
+    "short-term-rental",
+    "vacation-rental",
+    "channel-manager"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vladIDH/openstay.git",
+    "directory": "packages/fairnight-beds24"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "fairnight": "0.1.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "prepack": "npm run build"
+  }
+}

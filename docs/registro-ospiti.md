@@ -1,6 +1,8 @@
 # Fairguest: registro degli ospiti
 
-Fase 1, solo ricerca e progetto: niente codice. Verifica fatta il 12 ottobre 2026 solo su documentazione pubblica: nessuna iscrizione, nessuna chiamata ai servizi, nessuno scraping. **[NV]** = non verificato su fonte ufficiale. **Non è un parere legale.**
+Fase 1 (ricerca e progetto) del 12 ottobre 2026, fatta solo su documentazione pubblica: nessuna iscrizione, nessuna chiamata ai servizi, nessuno scraping. **[NV]** = non verificato su fonte ufficiale. **Non è un parere legale.**
+
+**Fase 2 (codice) iniziata il 13 ottobre 2026** sul ramo `fairguest`, con tutto quello che non dipende dagli schemi SES: lo stato è nella sezione 10.
 
 OpenStay è il contenitore; Fairnight è il modulo dei prezzi. **Fairguest** è il secondo modulo: la comunicazione obbligatoria degli ospiti alle autorità.
 
@@ -93,7 +95,7 @@ La **prenotazione (RH)** chiede meno: un titolare con nome e primo cognome, più
 
 | Comunità | Portale | SES la copre? | Formato |
 |---|---|---|---|
-| **Catalogna** | piattaforma dei Mossos d'Esquadra (registreviatgers.mossos.gencat.cat), alta col modulo PI-15 | **no, e non serve il doppio invio**: si inserisce solo dai Mossos, poi la Generalitat trasferisce i dati al sistema statale (nota DGP del 7/08/2024) | schede web oppure **file .txt con campi separati da `\|`** (record 0, 1, 2 e prenotazioni), nome `IDSTRUTTURA.001…999`, manuale v8 di maggio 2025. Un web service non risulta documentato **[NV]** |
+| **Catalogna** | piattaforma dei Mossos d'Esquadra (registreviatgers.mossos.gencat.cat), alta col modulo PI-15 | **no, e non serve il doppio invio**: si inserisce solo dai Mossos, poi la Generalitat trasferisce i dati al sistema statale (nota DGP del 7/08/2024) | schede web oppure **file di testo con campi separati da `\|`** (record 0, 1, 2; contratto o prenotazione), nome `IDSTRUTTURA.001…999`. Il formato è **pubblico**: manuale v8 di maggio 2025, cap. 4 e 9, scaricabile senza accesso (sezione 10). Un web service non risulta documentato **[NV]** |
 | **Paesi Baschi** | Ertzaintza, servizio «hotel-erregistroa» ([pagina](https://www.ertzaintza.euskadi.eus/lfr/web/ertzaintza/actividades-relevantes-sc)), Orden 25/11/2022 | dalla [nota del 24/09/2024](https://www.ertzaintza.euskadi.eus/lfr/documents/62347/823444/Nota++informativa+Hospedajes+Octubre+2024.pdf/c46980e8-d16d-b1fd-ca81-3e8463ff1e6c) si ricava che si invia solo alla Ertzaintza, ma non è scritto in chiaro **[NV]** | modulo o file; **il formato del file non è pubblicato** **[NV]** |
 | **Canarie** | nessun portale regionale trovato | sì, si usa SES **[NV: deduzione, nessuna dichiarazione ufficiale]** | come SES |
 
@@ -155,34 +157,38 @@ Nessuno copre più paesi e nessuno gira in locale con cancellazione automatica. 
 
 ```
 packages/
-├── fairguest/               # motore PURO: tipi, validazione, scadenze, conservazione. Niente rete, niente file
-├── fairguest-es-ses/        # SES.HOSPEDAJES: XML PV/RH → zip → Base64 → SOAP, consultaLote, annullamento
-├── fairguest-es-mossos/     # Catalogna: solo generazione del file .txt da caricare a mano
-└── fairnight-cli/           # comandi `fairnight ospiti …` e pagina di check-in dentro `fairnight serve`
+├── fairguest/               # motore PURO: tipi, regole, scadenze, conservazione, cifratura. Niente rete, niente file
+│   └── src/countries/
+│       ├── es-ses.ts        # SES.HOSPEDAJES: regole pronte, XML ancora stub (servono gli XSD)
+│       └── es-mossos.ts     # Catalogna: file di testo da caricare a mano
+└── fairnight-cli/           # comandi `fairnight ospiti …` e modulo di check-in dentro `fairnight serve`
 ```
 
-Nelle versioni successive (sezione 8): `fairguest-it-alloggiati`, `fairguest-it-ross1000`, `fairguest-pt-siba`.
+**Scelta del 13 ottobre:** per ora un pacchetto solo, con un file per paese. All'arrivo dell'Italia i paesi si separano in pacchetti propri (`fairguest-it-alloggiati`, `fairguest-it-ross1000`, `fairguest-pt-siba`), perché l'interfaccia non cambia.
 
 ### Interfaccia comune
 
+Nel codice i nomi sono in inglese, come nel resto del repo (`packages/fairguest/src/types.ts`):
+
 ```ts
 // fairguest: tipi neutri, nessun campo specifico di un paese
-interface Ospite { nome; cognome1; cognome2?; nascita; sesso?; nazionalita?;
-                   documento?: { tipo; numero; supporto?; rilascio? };
-                   residenza?: { paese; comune?; indirizzo?; cap? };
-                   contatto?: { telefono?; email? }; parentela?; ruolo: "titolare" | "capogruppo" | "membro" }
-interface Soggiorno { alloggio; riferimento; dataContratto; arrivo; partenza;
-                      persone; pagamento?: { tipo }; ospiti: Ospite[] }
+interface Guest { givenName; surname1; surname2?; birthDate?; sex?; nationality?;      // ospite
+                  document?: { type; number; support?; issuedOn?; spanish? };
+                  address?: { country; street?; locality?; postalCode?; municipalityCode? };
+                  phone?; phone2?; email?; kinship? }                                  // il primo è il titolare
+interface Stay { id; establishment; establishmentName?; reference; contractDate;       // soggiorno
+                 checkIn; checkInTime?; checkOut; checkOutTime?; people; rooms?; internet?;
+                 payment?: { type }; guests: Guest[] }
 
-interface Registro {                       // un'implementazione per paese
-  paese: "ES" | "ES-CT" | "IT" | "PT";
-  valida(s: Soggiorno): Problema[];        // campi mancanti secondo le regole del paese, spiegati in chiaro
-  scadenze(s: Soggiorno): Scadenza[];      // es. RH entro 24h dalla prenotazione, PV entro 24h dall'arrivo
-  prepara(s: Soggiorno): Invio;            // anteprima esatta di cosa parte, senza rete
-  invia(i: Invio): Promise<Ricevuta>;      // solo con --applica
-  stato(r: Ricevuta): Promise<Esito>;      // SES: consultaLote; IT: esito riga per riga
-  annulla?(r: Ricevuta): Promise<Esito>;
-  conservazione(s: Soggiorno): Regola;     // cosa cancellare e quando
+interface Registry {                                   // un'implementazione per paese
+  country: "ES" | "ES-CT";                             // poi "IT", "PT"
+  validate(s: Stay, kind: "reservation" | "checkin"): Problem[];
+  deadlines(s): Deadline[];                            // RH entro 24h dalla prenotazione, PV entro 24h dall'arrivo
+  prepare(stays: Stay[], kind, at): Submission;        // invio: anteprima esatta, senza rete
+  send?(sub, transport): Promise<Receipt>;             // ricevuta; la rete la passa chi chiama
+  status?(receipt, transport): Promise<Outcome>;       // esito; SES: consultaLote
+  cancel?(receipt, transport): Promise<Outcome>;
+  retention(stay, duty, records): RetentionRule;       // cosa cancellare e quando
 }
 ```
 
@@ -190,16 +196,24 @@ L'interfaccia è pensata fin da ora anche per Italia e Portogallo, così aggiung
 
 ### Dati in locale e cifratura
 
-- **Stesso file SQLite di Fairnight** (`data/fairnight.db`, better-sqlite3), con tabelle nuove: `soggiorni`, `ospiti`, `invii`, `ricevute`, `scadenze`.
+- **Stesso file SQLite di Fairnight** (`data/fairnight.db`, better-sqlite3), schema 4, con tre tabelle nuove:
+  - `guest_stays`: i soggiorni, con due colonne cifrate (dati dal gestionale e correzioni dell'host);
+  - `guest_people`: gli ospiti, una riga cifrata per ospite;
+  - `guest_submissions`: gli invii e i loro esiti, cioè le ricevute.
+
+  Le scadenze non si salvano: si calcolano ogni volta dalle date, così non vanno mai tenute allineate.
 - **Cifratura a riposo a livello di campo:**
   - AES-256-GCM con `node:crypto`, senza dipendenze nuove;
   - tutto ciò che identifica una persona (nomi, data di nascita, documento, indirizzo, contatti) sta in una colonna cifrata;
   - in chiaro restano solo le date, il paese, lo stato dell'invio e un identificativo casuale.
 - **SQLCipher scartato:** cambierebbe il pacchetto SQLite che Fairnight già usa e ne complicherebbe l'installazione.
-- **Chiave:**
-  - di base si ricava da una **frase segreta** scelta dall'host (con scrypt), chiesta a ogni comando che legge i dati;
-  - in alternativa c'è un file chiave `registro.key` leggibile solo dall'utente, sullo stesso modello di `smoobu-credentials.json`, con l'avviso che vicino al database protegge meno;
-  - persa la chiave, i dati sono persi: va scritto chiaro.
+- **Chiave (scelta del 13 ottobre):**
+  - ogni valore è sigillato per una **chiave pubblica X25519**: una coppia di chiavi nuova per ogni valore, poi HKDF-SHA256 e AES-256-GCM, legati alla riga e alla colonna in cui il valore è salvato;
+  - la chiave privata è cifrata con una chiave ricavata dalla **frase segreta** dell'host con scrypt (N = 2¹⁷, almeno 12 caratteri). La frase si chiede senza eco, oppure si legge da `FAIRGUEST_FRASE`;
+  - per **scrivere** basta la chiave pubblica: il modulo di check-in e la precompilazione da Smoobu/Beds24 salvano senza conoscere la frase. Per **leggere** serve la frase;
+  - `fairnight ospiti frase` cambia la frase ricifrando solo la chiave privata: i dati restano come sono;
+  - **persa la frase, i dati sono persi**: è scritto nei README e lo ripete ogni comando che tocca la frase;
+  - il file chiave `registro.key` previsto come alternativa non è stato fatto.
 - **Credenziali di SES:** stesso schema del connettore Smoobu, cioè variabili d'ambiente oppure file locale, mai stampate. Il certificato del Ministero si legge da un file locale indicato dall'host.
 - **Cancellazione automatica**, a ogni comando e con `fairnight ospiti pulisci`:
   - **host professionale:** si conserva 3 anni dalla fine del soggiorno, poi si cancella;
@@ -216,7 +230,7 @@ L'interfaccia è pensata fin da ora anche per Italia e Portogallo, così aggiung
    - il modulo è **raggiungibile solo dalla rete locale**. Non pubblichiamo nulla su internet, quindi non c'è un link da mandare all'ospite prima dell'arrivo.
 3. **Precompilazione dalle prenotazioni:**
    - dal **calendario iCal** già letto da Fairnight arrivano solo le date e l'alloggio;
-   - dalle **prenotazioni Smoobu** (il connettore del ramo `smoobu`) arrivano anche il riferimento, il numero di ospiti e il nome del titolare. Basta per la comunicazione della prenotazione (RH);
+   - da **Smoobu e Beds24** arrivano anche il riferimento, il numero di ospiti e il nome del titolare. Basta per la comunicazione della prenotazione (RH). Questi dati vanno **solo** nelle colonne cifrate di Fairguest, mai in `calendar_events` né a schermo;
    - il resto lo completa l'ospite. Dal canale non si importa mai il documento.
 4. **Promemoria:**
    - `fairnight ospiti` mostra le scadenze: prenotazioni da comunicare, arrivi di oggi senza parte, lotti senza esito;
@@ -448,9 +462,54 @@ Fra i tre paesi è quello più facile da aggiungere.
 
 ---
 
-## 9. Prossimi passi prima del codice
+## 9. Prossimi passi
 
 1. Vlad manda la mail della sezione 7a.
 2. Vlad scarica i file della sezione 7b in `C:\Users\vladd\openstay-ses-docs\`.
-3. Si confrontano XSD e specifica scaricati con quanto scritto qui, e si correggono le differenze.
-4. Controllo dei marchi su EUIPO e OEPM, prima della pubblicazione su npm.
+3. Si confrontano XSD e specifica scaricati con quanto scritto qui, si correggono le differenze e si scrive l'XML di SES al posto dello stub.
+4. Primo caricamento vero di un file Mossos fatto da un host, per verificare i punti segnati **[NV]** nella sezione 10.
+5. Controllo dei marchi su EUIPO e OEPM, prima della pubblicazione su npm.
+
+---
+
+## 10. Stato del codice (13 ottobre 2026, ramo `fairguest`)
+
+### Fatto
+
+| Pezzo | Dove |
+|---|---|
+| Interfaccia comune, regole del RD 933/2021, scadenze delle 24 ore, regole di conservazione | `packages/fairguest` |
+| Cifratura dei campi (X25519 + scrypt, solo `node:crypto`) e cambio della frase | `packages/fairguest/src/crypto.ts`, `fairnight ospiti attiva` / `frase` |
+| Archivio nelle tabelle `guest_*` dello stesso database, cancellazione automatica, esportazione e cancellazione su richiesta | `fairnight-cli/src/guests/store.ts`, `fairnight ospiti esporta` / `cancella` / `pulisci` |
+| Modulo di check-in in es/en/it, solo rete locale, senza JavaScript, solo il tipo di pagamento | `fairnight-cli/src/guests/checkin.ts` |
+| Precompilazione da iCal, Smoobu e Beds24 | `prefillFromCalendar`, `noteChannelGuests` |
+| File per i Mossos | `packages/fairguest/src/countries/es-mossos.ts`, `fairnight ospiti prepara` |
+| Promemoria: comando e tool MCP in sola lettura | `fairnight ospiti` (uscita 1 se c'è un ritardo), `get_guest_deadlines` |
+| **SES: stub esplicito** | `prepare` fallisce con `SES_NOT_READY` e dice che mancano gli XSD in `openstay-ses-docs`; nessun XML inventato |
+
+### Catalogna: il formato è pubblico
+
+- **Fonte ufficiale usata per il codice:** «Manual de instrucciones de la página web Registro de viajeros», versione 8 (aggiornamento di maggio 2025), cap. 4 «Creación y formato de los ficheros» e cap. 9 «Ejemplo fichero TXT». Si scarica senza accesso dalla pagina dei documenti del portale (`registreviatgers.mossos.gencat.cat/mossos_hotels/AppJava/info.do?reqCode=listDocuments&docIdPare=2`; in catalano id 335, in castigliano id 336). Non è stato salvato nel repo.
+- **Cosa dice:**
+  - record 0 (solo per gruppi), record 1 (struttura: 7 campi, formato `V24`), record 2 (viaggiatore: 32 campi);
+  - `|` come separatore, obbligatorio anche per i campi vuoti;
+  - maiuscole, CR LF fra i record, alfabeto occidentale;
+  - nome del file `ID.001`…`ID.999`, poi di nuovo `.001`;
+  - codici: documento D/N/P/O, sesso M/F/O, tipo C (contratto) o R (prenotazione); pagamento e parentela con gli stessi codici di SES;
+  - documento obbligatorio dai 14 anni, parentela sotto i 18, dati postali obbligatori per il contratto.
+- **Scelte e punti aperti [NV]:**
+  - nell'esempio del manuale ogni record 2 finisce con un `|` in più dopo il 32° campo: lo copiamo;
+  - il manuale chiama il file `ID.001` e insieme dice che l'estensione è `.txt`: seguiamo gli esempi (`ID.001`). Lo conferma il primo caricamento vero;
+  - scriviamo in ISO-8859-1: il manuale dice solo «alfabeto occidentale»;
+  - un file per struttura, mai il record 0 dei gruppi.
+- **Fonti di terzi trovate, solo come indizio, il codice non si basa su di loro:**
+  - [Civitfun Academy](https://academy.civitfun.com/hc/en-gb/articles/28644295842077--Guest-Registration-Sending-Data-to-Mossos-or-Ertzaintza): file .txt secondo la Resolución del 14/07/2003, nome `ID.001`;
+  - [Net2Rent](https://net2rent.com/registro-viajeros-mossos-esquadra/): nessuna integrazione automatica, solo file da caricare;
+  - [Chekin](https://chekin.com/en/blog/mossos-desquadra-how-to-make-travelers-registration/): guida al portale.
+
+### Ancora da fare
+
+- **XML di SES** (PV e RH), zip + Base64, SOAP, `consultaLote`, annullamento: dopo gli XSD (sezione 7b). Fino ad allora l'host inserisce i dati sul sito SES e li registra con `fairnight ospiti inviato`.
+- **Codice INE del comune** per chi risiede in Spagna: il modulo non lo chiede, perché un ospite di solito non lo conosce. Lo aggiunge l'host con `fairnight ospiti correggi … address.municipalityCode`. Con la tabella pubblica dell'INE si potrà ricavare dal CAP e dal nome.
+- **Segno sulla pagina calendario** per le notti con un invio mancante: non fatto, per ora ci sono `fairnight ospiti` e il tool MCP.
+- **Invio di un annullamento:** oggi si registra soltanto (`--tipo annullamento`).

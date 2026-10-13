@@ -2,6 +2,52 @@
 
 All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org).
 
+## Fairguest [0.1.0] - in development, not released
+
+Guest registration for Spain (Real Decreto 933/2021). Everything runs on the host's computer; no server of ours in between.
+
+### fairguest (new)
+
+- One interface for every country (`Registry`: validate, deadlines, prepare, send, status, cancel, retention) over neutral `Guest` and `Stay` types. The network stays outside: send and status take a transport.
+- The rules of RD 933/2021, every problem at once with its field path:
+  - identity document from 18 years old for SES and from 14 for the Mossos;
+  - support number for DNI and NIE, second surname with a DNI, INE code for addresses in Spain;
+  - kinship for minors, a contact for each guest, the payment type.
+- DNI and NIE check letters.
+- 24-hour deadlines from the booking and from check-in. An unknown hour counts from midnight, so the deadline shown is never later than the real one.
+- Retention: 3 years from check-out for professional hosts; for the others, erasure once the check-in communication is confirmed, or 48 hours after a cancellation.
+- Encryption with `node:crypto` only:
+  - X25519 sealing per value with HKDF-SHA256 and AES-256-GCM, bound to the row and column it is stored in;
+  - private key locked with scrypt (N = 2¹⁷) from the host's passphrase;
+  - passphrase change re-encrypts only the key.
+- Mossos d'Esquadra file, from the public manual v8 (May 2025): record 1 with `V24`, record 2 with 32 fields, capitals, CR LF, ISO-8859-1, name `<ID>.001`…`.999`, one establishment per file.
+- SES.HOSPEDAJES: validation, deadlines and retention. `prepare` is an explicit stub that fails with `SES_NOT_READY` until the Ministry's XSD schemas are available.
+- Card numbers and IBANs have no place anywhere; unknown input fields are ignored.
+
+### fairnight-cli
+
+- `fairnight ospiti` with these subcommands: `attiva`, `frase`, `elenco`, `nuovo`, `mostra`, `correggi`, `prepara`, `inviato`, `esporta`, `cancella`, `pulisci`, and the deadlines by default (exit code 1 when something is late, `--json`).
+- A `fairguest` block per listing in `fairnight.config.json`: country, establishment, name, professional, check-in and check-out times, rooms, internet.
+- Database schema 4: `guest_stays`, `guest_people`, `guest_submissions`. Only random ids, dates and states are in clear.
+- `fairnight sync` creates a stay to register for every booking that ends today or later, marks vanished bookings as cancelled, and applies retention.
+- Check-in form at `/checkin/<code>` in `fairnight serve`:
+  - local network only, refused through proxies and tunnels;
+  - random 96-bit code valid until check-out, slowed down after 20 wrong codes;
+  - signed form token;
+  - no JavaScript, strict CSP;
+  - Spanish, English and Italian;
+  - guests sealed on arrival without the passphrase.
+- The passphrase comes from a hidden prompt or `FAIRGUEST_FRASE`. Corrections are asked, never passed as arguments, so they never end up in the shell history.
+- Erasure deletes the guests, the sealed details, the form code and the generated files, with SQLite `secure_delete`.
+
+### fairnight-smoobu, fairnight-beds24
+
+- Bookings also carry the holder's name, the number of guests (adults plus children) and the channel reference, for guest registration only. Pricing never reads them; they are sealed by Fairguest and never stored in `calendar_events` or printed.
+
+### fairnight-mcp
+
+- New read-only tool `get_guest_deadlines`: the communications due per stay, dates and states only.
+
 ## [0.2.0] - in development, not released
 
 ### fairnight-smoobu (new)

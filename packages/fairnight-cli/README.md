@@ -66,6 +66,12 @@ Every command works in the current folder. Add `--dir <folder>` to use another o
 | `fairnight smoobu importa` | Each Smoobu apartment not linked yet becomes a listing (source `smoobu`, starting prices from Smoobu, to review). Its bookings and blocked dates come in. |
 | `fairnight smoobu spingi [--applica] [--da DATE] [--a DATE] [--alloggio ID]` | Compares Smoobu's prices and minimum stays with Fairnight's (default: the next 90 days) and shows the differences. **Writes only with `--applica`**, then reads back from Smoobu to check. |
 
+| `fairnight mercato importa <file> --zona <name>` | Zone data from your own CSV (`date,occupancy,average_price,comparables`) or from the Inside Airbnb files you downloaded (`calendar.csv.gz`, optionally `--annunci listings.csv.gz --tipo "Entire home/apt" --camere 2 --quartiere <name>`). `--fonte csv\|insideairbnb` if the type is not recognised, `--dry-run` to check. |
+| `fairnight mercato importa --fonte airroi [--zona <name>]` | AirROI zone metrics with your own key. **Off until AirROI confirms its terms in writing** (see below). |
+| `fairnight mercato collega` | Asks for your own AirROI key (never shown) and saves it in `airroi-credentials.json`, readable only by you. Refuses while AirROI is off. |
+| `fairnight mercato stato` | The zones, their source and attribution, their age, and which listings use them. |
+| `fairnight mercato cancella [--zona <name>] [--fonte <source>]` | Deletes zone data on request. |
+
 **About Smoobu:** Smoobu does not publish a CSV format for importing rates, so there is no `--format smoobu`: use the `fairnight smoobu` commands below.
 
 ## Smoobu (0.2.0, in development)
@@ -131,6 +137,24 @@ fairnight beds24 spingi --applica        # writes, lists refused nights, reads b
   - The stale-calendar discount uses the real booking time.
   - Stay prices feed the historical floor only with `fairnight price --usa-storico-beds24`, because they are averages per stay.
 - **Writing.** One element per night, all in one request per room, until the first real `--applica` has checked once how Beds24 reads the end of a range; then ranges of up to 7 equal nights. Nights Beds24 refuses are listed one by one, and everything is read back.
+
+## Zone data (0.2.0, in development)
+
+Optional. Without zone data, nothing changes: Fairnight prices with your data only.
+
+1. Import a zone: `fairnight mercato importa zona.csv --zona costa`.
+2. In `fairnight.config.json`, give the listing its zone and switch the factor on:
+
+```json
+{ "name": "seaview-loft", "marketArea": "costa", "calendars": [], "pricing": { "factors": { "market": { "enabled": true } } } }
+```
+
+The factor compares each night of the zone with the zone's own average and moves the price by half of the difference, at most +15% or -10% (`weight`, `highPercent`, `lowPercent`, `maxRaisePercent`, `maxLowerPercent`, `withinDays` and `minComparables` change this). `fairnight price --explain` shows the line, with its source.
+
+- **Your own CSV.** For figures you are allowed to use. The first line names the columns, in English, Italian or Spanish. Occupancy is 0–100; one of occupancy or price may be empty.
+- **Inside Airbnb.** Only files you download yourself from insideairbnb.com, once; Fairnight never downloads them or visits the site. The data is licensed **CC BY 4.0**: every explanation says "Inside Airbnb (insideairbnb.com), CC BY 4.0". **The occupancy is an estimate**: "not available" means booked *or* closed by the host, and the file cannot tell them apart. Do not republish the data. Not every city is covered (no Canary Islands).
+- **AirROI.** With your own key, for your own pricing, zone metrics only (never their price recommendations). It is switched off with `"market": { "airroi": { "enabled": false } }` until AirROI confirms its terms in writing. When on: zones go under `market.airroi.areas` (`country`, `region`, `locality` as AirROI names them, optional `roomType`, `bedrooms`), the key comes from `AIRROI_API_KEY` or `airroi-credentials.json`, every call is billed to your AirROI account, explanations say "powered by AirROI", and the data is deleted after 30 days or with `fairnight mercato cancella --fonte airroi`.
+- **Never** scraping of Airbnb, Booking, PriceLabs or any other site.
 
 ## How calendars are read
 

@@ -67,13 +67,83 @@ export interface HostListing {
   pricing: ListingConfig;
   /** Guest registration (Fairguest): where this listing communicates its guests. */
   fairguest?: GuestSettings;
+  /** The zone whose data (imported with `fairnight mercato importa --zona`) the market factor uses. */
+  marketArea?: string;
+}
+
+/** Where AirROI should look for one zone, and which listings count as comparable. */
+export interface AirRoiArea {
+  country: string;
+  region: string;
+  locality: string;
+  district?: string;
+  /** AirROI room type, e.g. "entire_home". */
+  roomType?: string;
+  bedrooms?: number;
+}
+
+export interface MarketSettings {
+  airroi?: {
+    /** Off until AirROI confirms its terms of use in writing. */
+    enabled: boolean;
+    /** Zone name → AirROI market. */
+    areas?: Record<string, AirRoiArea>;
+  };
 }
 
 export interface HostConfig {
   listings: HostListing[];
+  market?: MarketSettings;
 }
 
 const NAME = /^[a-z0-9][a-z0-9-]{0,62}$/;
+
+/** Zone names follow the listing names: lowercase letters, digits and dashes. */
+export const isAreaName = (v: unknown): v is string => typeof v === "string" && NAME.test(v);
+
+function checkMarket(v: unknown, issues: ConfigIssue[]): MarketSettings | null {
+  const path = "config.market";
+  if (!isObj(v)) {
+    issues.push({ path, message: "must be an object" });
+    return null;
+  }
+  unknownFields(v, path, ["airroi"], issues);
+  if (v.airroi === undefined) return {};
+  const ap = `${path}.airroi`;
+  const a = v.airroi;
+  if (!isObj(a)) {
+    issues.push({ path: ap, message: "must be an object with enabled and areas" });
+    return null;
+  }
+  unknownFields(a, ap, ["enabled", "areas"], issues);
+  if (typeof a.enabled !== "boolean") issues.push({ path: `${ap}.enabled`, message: `must be true or false, got ${JSON.stringify(a.enabled)}` });
+  const areas: Record<string, AirRoiArea> = {};
+  if (a.areas !== undefined) {
+    if (!isObj(a.areas)) issues.push({ path: `${ap}.areas`, message: "must be an object: zone name → country, region, locality" });
+    else {
+      for (const [name, area] of Object.entries(a.areas)) {
+        const zp = `${ap}.areas.${name}`;
+        if (!isAreaName(name)) issues.push({ path: zp, message: "zone names use lowercase letters, digits and dashes" });
+        if (!isObj(area)) {
+          issues.push({ path: zp, message: "must be an object with country, region and locality" });
+          continue;
+        }
+        unknownFields(area, zp, ["country", "region", "locality", "district", "roomType", "bedrooms"], issues);
+        for (const key of ["country", "region", "locality"] as const) {
+          if (typeof area[key] !== "string" || (area[key] as string).trim() === "") issues.push({ path: `${zp}.${key}`, message: "must be a non-empty text, as AirROI names it" });
+        }
+        for (const key of ["district", "roomType"] as const) {
+          if (area[key] !== undefined && (typeof area[key] !== "string" || (area[key] as string).trim() === "")) issues.push({ path: `${zp}.${key}`, message: "must be a non-empty text" });
+        }
+        if (area.bedrooms !== undefined && (typeof area.bedrooms !== "number" || !Number.isInteger(area.bedrooms) || area.bedrooms < 0)) {
+          issues.push({ path: `${zp}.bedrooms`, message: `must be a whole number, got ${JSON.stringify(area.bedrooms)}` });
+        }
+        areas[name] = area as unknown as AirRoiArea;
+      }
+    }
+  }
+  return { airroi: { enabled: a.enabled === true, ...(a.areas !== undefined ? { areas } : {}) } };
+}
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -151,7 +221,8 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
   if (!isObj(input)) {
     return { ok: false, issues: [{ path: "config", message: "must be an object with a listings list" }] };
   }
-  unknownFields(input, "config", ["listings"], issues);
+  unknownFields(input, "config", ["listings", "market"], issues);
+  const market = input.market === undefined ? undefined : checkMarket(input.market, issues);
   if (!Array.isArray(input.listings) || input.listings.length === 0) {
     issues.push({ path: "config.listings", message: "must be a list with at least one listing" });
     return { ok: false, issues };
@@ -165,7 +236,10 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
       issues.push({ path: lp, message: "must be an object with name, calendars and pricing" });
       return;
     }
-    unknownFields(l, lp, ["name", "calendars", "pricing", "fairguest"], issues);
+    unknownFields(l, lp, ["name", "calendars", "pricing", "marketArea", "fairguest"], issues);
+    if (l.marketArea !== undefined && !isAreaName(l.marketArea)) {
+      issues.push({ path: `${lp}.marketArea`, message: `must be a zone name with lowercase letters, digits and dashes (like "adeje"), got ${JSON.stringify(l.marketArea)}` });
+    }
     if (typeof l.name !== "string" || !NAME.test(l.name)) {
       issues.push({
         path: `${lp}.name`,
@@ -197,7 +271,10 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
         if (c.treatAs !== undefined) link.treatAs = c.treatAs;
         return link;
       });
-      listings.push({ name: l.name as string, calendars, pricing: r.value, ...(fairguest ? { fairguest } : {}) });
+      const listing: HostListing = { name: l.name as string, calendars, pricing: r.value };
+      if (typeof l.marketArea === "string") listing.marketArea = l.marketArea;
+      if (fairguest) listing.fairguest = fairguest;
+      listings.push(listing);
     }
   });
 
@@ -218,7 +295,7 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
     byRoom.set(room.roomId, l.name);
   }
   if (issues.length > 0) return { ok: false, issues };
-  return { ok: true, value: { listings } };
+  return { ok: true, value: market ? { listings, market } : { listings } };
 }
 
 export class SetupError extends Error {

@@ -196,7 +196,7 @@ L'interfaccia è pensata fin da ora anche per Italia e Portogallo, così aggiung
 
 ### Dati in locale e cifratura
 
-- **Stesso file SQLite di Fairnight** (`data/fairnight.db`, better-sqlite3), schema 4, con tre tabelle nuove:
+- **Stesso file SQLite di Fairnight** (`data/fairnight.db`, better-sqlite3), schema 5 (dopo il 4 dei dati di zona), con tre tabelle nuove:
   - `guest_stays`: i soggiorni, con due colonne cifrate (dati dal gestionale e correzioni dell'host);
   - `guest_people`: gli ospiti, una riga cifrata per ospite;
   - `guest_submissions`: gli invii e i loro esiti, cioè le ricevute.

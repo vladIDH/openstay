@@ -13,7 +13,7 @@ import Database from "better-sqlite3";
 
 export type Db = Database.Database;
 
-const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (
@@ -117,7 +117,31 @@ CREATE TABLE IF NOT EXISTS beds24_pushes (
   error      TEXT
 );
 
--- Version 4 (Fairguest, guest registration). Times are the host's local
+-- Version 4 (zone data). One source per zone: a new import replaces the zone.
+-- expires_on is set for sources whose terms limit how long data is kept
+-- (AirROI: 30 days); expired zones are never used and are deleted.
+CREATE TABLE IF NOT EXISTS market_areas (
+  area        TEXT PRIMARY KEY,
+  source      TEXT NOT NULL,
+  attribution TEXT NOT NULL,
+  estimated   INTEGER NOT NULL DEFAULT 0,
+  read_on     TEXT NOT NULL,
+  imported_at TEXT NOT NULL,
+  expires_on  TEXT,
+  file        TEXT,
+  note        TEXT
+);
+
+CREATE TABLE IF NOT EXISTS market_days (
+  area          TEXT NOT NULL,
+  date          TEXT NOT NULL,
+  occupancy     REAL,
+  average_price REAL,
+  comparables   INTEGER,
+  PRIMARY KEY (area, date)
+);
+
+-- Version 5 (Fairguest, guest registration). Times are the host's local
 -- "YYYY-MM-DDTHH:mm". Personal data only in the sealed columns (channel_data,
 -- host_data, data): encrypted for the host's key, see packages/fairguest.
 CREATE TABLE IF NOT EXISTS guest_stays (
@@ -165,12 +189,32 @@ CREATE TABLE IF NOT EXISTS guest_submissions (
 );
 `;
 
-/** Columns added after version 1, for databases created before them. */
+/**
+ * The steps from one schema version to the next, applied in order to an older
+ * database (a new one starts at 1 and runs them all). New tables come from
+ * SCHEMA (CREATE TABLE IF NOT EXISTS), so a step only changes what exists.
+ */
+const MIGRATIONS: { to: number; run(db: Database.Database): void }[] = [
+  {
+    to: 2, // Smoobu: the day the booking was made, when the source knows it (Smoobu's created-at)
+    run: (db) => {
+      if (!hasColumn(db, "calendar_events", "booked_at")) db.exec("ALTER TABLE calendar_events ADD COLUMN booked_at TEXT");
+    },
+  },
+  { to: 3, run: () => {} }, // Beds24: new tables only
+  { to: 4, run: () => {} }, // zone data: new tables only
+  { to: 5, run: () => {} }, // Fairguest: new tables only
+];
+
 function upgrade(db: Database.Database): void {
-  const columns = (db.prepare("PRAGMA table_info(calendar_events)").all() as { name: string }[]).map((c) => c.name);
-  // The day the booking was made, when the source knows it (Smoobu's created-at).
-  if (!columns.includes("booked_at")) db.exec("ALTER TABLE calendar_events ADD COLUMN booked_at TEXT");
-  db.prepare("UPDATE meta SET value = ? WHERE key = 'schema_version' AND CAST(value AS INTEGER) < ?").run(String(SCHEMA_VERSION), SCHEMA_VERSION);
+  const current = Number(getMeta(db, "schema_version") ?? "1");
+  db.transaction(() => {
+    for (const m of MIGRATIONS) {
+      if (m.to <= current || m.to > SCHEMA_VERSION) continue;
+      m.run(db);
+      setMeta(db, "schema_version", String(m.to));
+    }
+  })();
 }
 
 /** Does this (possibly older, read-only) database have the column? */
@@ -199,7 +243,8 @@ export function openDb(file: string): Db {
   mkdirSync(path.dirname(file), { recursive: true });
   const db = new Database(file);
   db.exec(SCHEMA);
-  db.prepare("INSERT OR IGNORE INTO meta (key, value) VALUES ('schema_version', ?)").run(String(SCHEMA_VERSION));
+  // A new database starts at version 1 and goes through every migration.
+  db.prepare("INSERT OR IGNORE INTO meta (key, value) VALUES ('schema_version', '1')").run();
   upgrade(db);
   return db;
 }

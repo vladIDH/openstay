@@ -50,9 +50,10 @@
   "dependencies": {
     "fairnight": "0.1.0",
     "fairguest": "0.1.0",
+    "better-sqlite3": "12.11.1",
     "fairnight-beds24": "0.2.0",
-    "fairnight-smoobu": "0.2.0",
-    "better-sqlite3": "12.11.1"
+    "fairnight-market": "0.2.0",
+    "fairnight-smoobu": "0.2.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "7.6.13"

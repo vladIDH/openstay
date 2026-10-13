@@ -42,7 +42,7 @@ describe("listing configuration", () => {
       'listing.currency: must be a 3-letter code like EUR, got "euro"',
       "listing.basePrice: must be greater than 0, got -5",
       "listing.defaultMinStay: must be a whole number, got 1.5",
-      "listing.factors.celing: unknown field (allowed: limits, seasons, dayOfWeek, lastMinute, farOut, gaps, occupancy, events, staleCalendar, historicalFloor, rounding, overrides)",
+      "listing.factors.celing: unknown field (allowed: limits, seasons, dayOfWeek, lastMinute, farOut, gaps, occupancy, events, staleCalendar, historicalFloor, market, rounding, overrides)",
       "listing.factors.limits: floorPrice (300) is higher than ceilingPrice (200)",
     ]);
   });

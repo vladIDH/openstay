@@ -15,6 +15,7 @@ import type {
   LastMinuteStep,
   ListingCalendar,
   ListingConfig,
+  MarketData,
   PricingOptions,
   Stay,
 } from "./types.js";
@@ -46,6 +47,16 @@ export const DEFAULT_IMPACT_PERCENT: Record<`${Impact}`, number> = {
 export const DEFAULT_OCCUPANCY_WITHIN_DAYS = 60;
 export const DEFAULT_STALE = { everyDays: 7, withinDays: 30 } as const;
 export const DEFAULT_HISTORICAL_MIN_NIGHTS = 3;
+/** Prudent on purpose: the zone moves the price by half its own swing, at most +15% or -10%. */
+export const DEFAULT_MARKET = {
+  weight: 0.5,
+  highPercent: 10,
+  lowPercent: 10,
+  maxRaisePercent: 15,
+  maxLowerPercent: 10,
+  withinDays: 365,
+  minComparables: 5,
+} as const;
 
 type Obj = Record<string, unknown>;
 
@@ -252,9 +263,47 @@ const FACTOR_KEYS = [
   "events",
   "staleCalendar",
   "historicalFloor",
+  "market",
   "rounding",
   "overrides",
 ] as const;
+
+const MARKET_KEYS = ["enabled", "weight", "highPercent", "lowPercent", "maxRaisePercent", "maxLowerPercent", "withinDays", "minComparables"] as const;
+
+function validateMarket(c: Checker, v: unknown, path: string): void {
+  if (!c.object(v, path, MARKET_KEYS)) return;
+  c.bool(v.enabled, `${path}.enabled`);
+  if (v.weight !== undefined) c.number(v.weight, `${path}.weight`, { min: 0, max: 1 });
+  if (v.highPercent !== undefined) c.number(v.highPercent, `${path}.highPercent`, { min: 0, max: 100 });
+  if (v.lowPercent !== undefined) c.number(v.lowPercent, `${path}.lowPercent`, { min: 0, max: 100 });
+  if (v.maxRaisePercent !== undefined) c.number(v.maxRaisePercent, `${path}.maxRaisePercent`, { min: 0, max: 100 });
+  if (v.maxLowerPercent !== undefined) c.number(v.maxLowerPercent, `${path}.maxLowerPercent`, DISCOUNT);
+  if (v.withinDays !== undefined) c.number(v.withinDays, `${path}.withinDays`, { integer: true, min: 0, max: 1096 });
+  if (v.minComparables !== undefined) c.number(v.minComparables, `${path}.minComparables`, { integer: true, min: 0, max: 100000 });
+}
+
+function validateMarketData(c: Checker, v: unknown, path: string): void {
+  if (!c.object(v, path, ["source", "attribution", "area", "readOn", "estimated", "days"])) return;
+  c.string(v.source, `${path}.source`);
+  c.string(v.attribution, `${path}.attribution`);
+  if (v.area !== undefined) c.string(v.area, `${path}.area`);
+  if (v.readOn !== undefined) c.isoDate(v.readOn, `${path}.readOn`);
+  if (v.estimated !== undefined) c.bool(v.estimated, `${path}.estimated`);
+  if (!c.list(v.days, `${path}.days`)) return;
+  const seen = new Set<string>();
+  v.days.forEach((d, i) => {
+    const dp = `${path}.days[${i}]`;
+    if (!c.object(d, dp, ["date", "occupancyPercent", "averagePrice", "comparables"])) return;
+    if (c.isoDate(d.date, `${dp}.date`)) {
+      if (seen.has(d.date)) c.fail(`${dp}.date`, `${d.date} appears twice`);
+      seen.add(d.date);
+    }
+    if (d.occupancyPercent === undefined && d.averagePrice === undefined) c.fail(dp, "set occupancyPercent, averagePrice or both");
+    if (d.occupancyPercent !== undefined) c.number(d.occupancyPercent, `${dp}.occupancyPercent`, { min: 0, max: 100 });
+    if (d.averagePrice !== undefined) c.number(d.averagePrice, `${dp}.averagePrice`, { positive: true });
+    if (d.comparables !== undefined) c.number(d.comparables, `${dp}.comparables`, { integer: true, min: 0 });
+  });
+}
 
 function checkListing(c: Checker, input: unknown): void {
   if (!c.object(input, "listing", ["listingId", "name", "currency", "basePrice", "defaultMinStay", "factors"])) {
@@ -350,6 +399,7 @@ function checkListing(c: Checker, input: unknown): void {
       c.number(f.historicalFloor.minNights, `${p}.historicalFloor.minNights`, { integer: true, min: 1, max: 31 });
     }
   }
+  if (f.market !== undefined) validateMarket(c, f.market, `${p}.market`);
   if (f.rounding !== undefined && c.object(f.rounding, `${p}.rounding`, ["enabled", "step"])) {
     c.bool(f.rounding.enabled, `${p}.rounding.enabled`);
     c.number(f.rounding.step, `${p}.rounding.step`, { positive: true });
@@ -391,6 +441,7 @@ function normalise(cfg: ListingConfig): ListingConfig {
     f.staleCalendar.withinDays ??= DEFAULT_STALE.withinDays;
   }
   if (f.historicalFloor) f.historicalFloor.minNights ??= DEFAULT_HISTORICAL_MIN_NIGHTS;
+  if (f.market) f.market = { ...DEFAULT_MARKET, ...f.market };
   if (f.overrides) f.overrides.dates.sort((a: DateOverride, b: DateOverride) => a.date.localeCompare(b.date));
   return copy;
 }
@@ -398,10 +449,11 @@ function normalise(cfg: ListingConfig): ListingConfig {
 /** Validate the stays of a listing. */
 export function validateCalendar(input: unknown): ValidationResult<ListingCalendar> {
   const c = new Checker();
-  if (!c.object(input, "calendar", ["stays", "priceHistory", "lastBookingReceived"])) {
+  if (!c.object(input, "calendar", ["stays", "priceHistory", "lastBookingReceived", "market"])) {
     return { ok: false, issues: c.issues };
   }
   if (input.lastBookingReceived !== undefined) c.isoDate(input.lastBookingReceived, "calendar.lastBookingReceived");
+  if (input.market !== undefined) validateMarketData(c, input.market, "calendar.market");
   if (input.priceHistory !== undefined && c.list(input.priceHistory, "calendar.priceHistory")) {
     input.priceHistory.forEach((p, i) => {
       const pp = `calendar.priceHistory[${i}]`;
@@ -429,6 +481,7 @@ export function validateCalendar(input: unknown): ValidationResult<ListingCalend
   const value: ListingCalendar = { stays: cal.stays.map((s: Stay) => ({ ...s })) };
   if (cal.priceHistory) value.priceHistory = cal.priceHistory.map((p) => ({ date: p.date, price: p.price }));
   if (cal.lastBookingReceived) value.lastBookingReceived = cal.lastBookingReceived;
+  if (cal.market) value.market = JSON.parse(JSON.stringify(cal.market)) as MarketData;
   return { ok: true, value };
 }
 

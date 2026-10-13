@@ -11,6 +11,8 @@ import {
   guestDeadlines,
   guestsEnabled,
   lastSync,
+  listMarketAreas,
+  loadMarket,
   loadHostConfig,
   loadStays,
   localToday,
@@ -275,6 +277,49 @@ export function syncStatus(folder: Folder) {
       return { listing: l.name, dataFrom: kinds.length === 0 ? "none" : kinds.join("+"), sources };
     }),
   }));
+}
+
+/**
+ * The zone data a listing's prices use: source and attribution, how old it is,
+ * the zone's average, and the zone's figures night by night in a range. Read
+ * only; expired data (AirROI after 30 days) is never shown.
+ */
+export function marketArea(folder: Folder, args: { listing: string; from?: string; to?: string }) {
+  const today = localToday(folder.now());
+  const from = args.from === undefined ? today : checkDate(args.from, "from");
+  const to = args.to === undefined ? fromDay(toDay(from) + 13) : checkDate(args.to, "to");
+  if (to < from) throw new ToolError(`"to" (${to}) is before "from" (${from}).`);
+  if (toDay(to) - toDay(from) + 1 > MAX_RANGE) throw new ToolError(`Ask for at most ${MAX_RANGE} days.`);
+  return withFolder(
+    folder,
+    (db, listings) => {
+      const listing = only(listings);
+      const factor = listing.pricing.factors.market ?? null;
+      const base = { listing: listing.name, zone: listing.marketArea ?? null, factor, from, to };
+      if (listing.marketArea === undefined) return { ...base, data: null, nights: [] };
+      const market = loadMarket(db, listing.marketArea, today);
+      const summary = listMarketAreas(db, today).find((a) => a.area === listing.marketArea) ?? null;
+      if (market === null || summary === null) return { ...base, data: null, nights: [] };
+      return {
+        ...base,
+        data: {
+          source: summary.source,
+          attribution: summary.attribution,
+          estimated: summary.estimated,
+          readOn: summary.readOn,
+          keptUntil: summary.expiresOn,
+          nights: summary.days,
+          first: summary.first,
+          last: summary.last,
+          averageOccupancyPercent: summary.averageOccupancy,
+          averagePrice: summary.averagePrice,
+          note: summary.note,
+        },
+        nights: market.days.filter((d) => d.date >= from && d.date <= to),
+      };
+    },
+    args.listing,
+  );
 }
 
 /**

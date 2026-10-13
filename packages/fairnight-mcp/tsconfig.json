@@ -18,6 +18,9 @@
       "fairnight-beds24": [
         "../fairnight-beds24/src/index.ts"
       ],
+      "fairnight-market": [
+        "../fairnight-market/src/index.ts"
+      ],
       "fairguest": [
         "../fairguest/src/index.ts"
       ]

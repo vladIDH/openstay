@@ -6,6 +6,7 @@ import type { ListingCalendar, NightQuote, PastPrice, PricingResult, Stay } from
 import { localToday } from "./io.js";
 import { feedKeys, type HostListing } from "./config.js";
 import { hasColumn, type Db } from "./db.js";
+import { loadMarket } from "./market-store.js";
 
 /** Live (not removed) stays and blocks of a listing, from the calendars still in its config. */
 export function loadStays(db: Db, listing: HostListing): Stay[] {
@@ -105,6 +106,10 @@ export function priceOne(db: Db, listing: HostListing, today: string, days: numb
   };
   const last = lastBookingReceived(db, listing);
   if (last !== null) calendar.lastBookingReceived = last;
+  if (listing.marketArea !== undefined) {
+    const market = loadMarket(db, listing.marketArea, today);
+    if (market !== null) calendar.market = market;
+  }
   return priceListing(listing.pricing, calendar, { today, days });
 }
 

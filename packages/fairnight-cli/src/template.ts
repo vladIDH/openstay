@@ -5,6 +5,8 @@
 import type { HostConfig } from "./config.js";
 
 export const EXAMPLE_CONFIG: HostConfig = {
+  // AirROI stays off until AirROI confirms its terms of use in writing.
+  market: { airroi: { enabled: false } },
   listings: [
     {
       name: "seaview-loft",
@@ -50,6 +52,9 @@ export const EXAMPLE_CONFIG: HostConfig = {
             enabled: true,
             list: [{ date: "2026-12-31", name: "New Year's Eve", impact: 5 }],
           },
+          // Zone demand: off. To use it, import zone data ("fairnight mercato importa"),
+          // add "marketArea" to the listing and set enabled to true.
+          market: { enabled: false, weight: 0.5, maxRaisePercent: 15, maxLowerPercent: 10 },
           rounding: { enabled: true, step: 1 },
           overrides: { enabled: true, dates: [] },
         },

@@ -19,6 +19,8 @@ import { startServer } from "./serve.js";
 import { connect, importFromSmoobu, push } from "./smoobu.js";
 import { connect as connectBeds24, creditsLine, importFromBeds24, push as pushBeds24 } from "./beds24.js";
 import { Beds24Error } from "fairnight-beds24";
+import { AirRoiError, InsideAirbnbError } from "fairnight-market";
+import { connectAirRoi, deleteMarketData, importAirRoi, importFile, marketStatus } from "./mercato.js";
 import { formatFeedReport, syncEverything } from "./sync-all.js";
 import { GUEST_USAGE, runGuests } from "./guests/commands.js";
 
@@ -37,6 +39,13 @@ Usage:
   fairnight beds24 collega                         exchange a Beds24 invite code for a refresh token (asked, never shown)
   fairnight beds24 importa                         Beds24 rooms become listings; bookings into the local database
   fairnight beds24 spingi                          compare with Beds24; writes only with --applica [--da DATE] [--a DATE] [--alloggio ROOM]
+  fairnight mercato importa <file> --zona <name>   zone data from your CSV (date, occupancy, average_price, comparables)
+                                                   or from Inside Airbnb files you downloaded (calendar.csv.gz)
+                                                   [--fonte csv|insideairbnb] [--annunci listings.csv.gz --tipo T --camere N --quartiere Q] [--dry-run]
+  fairnight mercato importa --fonte airroi         AirROI zone metrics with your own key (off until AirROI confirms its terms) [--zona <name>]
+  fairnight mercato collega                        save your own AirROI API key (asked, never shown)
+  fairnight mercato stato                          zone data, sources, which listings use them
+  fairnight mercato cancella                       delete zone data [--zona <name>] [--fonte csv|insideairbnb|airroi]
 
 Guest registration (Fairguest, Spain: SES.HOSPEDAJES and Mossos d'Esquadra):
 ${GUEST_USAGE}
@@ -59,10 +68,16 @@ const OPTIONS = {
   da: { type: "string" },
   a: { type: "string" },
   alloggio: { type: "string" },
+  // --tipo: the communication for "ospiti", the room type for "mercato".
   tipo: { type: "string" },
   persona: { type: "string" },
   "usa-storico-smoobu": { type: "boolean" },
   "usa-storico-beds24": { type: "boolean" },
+  zona: { type: "string" },
+  fonte: { type: "string" },
+  annunci: { type: "string" },
+  camere: { type: "string" },
+  quartiere: { type: "string" },
   help: { type: "boolean", short: "h" },
 } as const;
 
@@ -108,6 +123,9 @@ export async function main(argv: string[], io: Io): Promise<number> {
         return await runSmoobu(dir, values, rest, io);
       case "beds24":
         return await runBeds24(dir, values, rest, io);
+      case "mercato":
+      case "market":
+        return await runMercato(dir, values, rest, io);
       case "ospiti":
       case "guests":
         return await runGuests(dir, values, rest, io);
@@ -120,7 +138,7 @@ export async function main(argv: string[], io: Io): Promise<number> {
       io.err(USAGE);
       return 2;
     }
-    if (e instanceof ConfigError || e instanceof SetupError || e instanceof SmoobuError || e instanceof Beds24Error) {
+    if (e instanceof ConfigError || e instanceof SetupError || e instanceof SmoobuError || e instanceof Beds24Error || e instanceof AirRoiError || e instanceof InsideAirbnbError) {
       io.err(e.message);
       return 1;
     }
@@ -380,5 +398,62 @@ async function runBeds24(
     }
     default:
       throw new UsageError(sub === undefined ? "Which Beds24 command? collega, importa or spingi." : `Unknown Beds24 command "${sub}". Use collega, importa or spingi.`);
+  }
+}
+
+async function runMercato(
+  dir: string,
+  values: { zona?: string; fonte?: string; annunci?: string; tipo?: string; camere?: string; quartiere?: string; "dry-run"?: boolean },
+  rest: string[],
+  io: Io,
+): Promise<number> {
+  const [sub, ...extra] = rest;
+  switch (sub) {
+    case "importa":
+    case "import": {
+      if (values.fonte === "airroi") {
+        noExtra(extra);
+        return importAirRoi(dir, io, values.zona !== undefined ? { area: values.zona } : {});
+      }
+      const [file, ...more] = extra;
+      if (file === undefined) throw new UsageError("Which file? fairnight mercato importa <file> --zona <name> (or --fonte airroi).");
+      noExtra(more);
+      let bedrooms: number | undefined;
+      if (values.camere !== undefined) {
+        bedrooms = Number(values.camere);
+        if (!Number.isInteger(bedrooms) || bedrooms < 0) throw new UsageError(`--camere must be a whole number of bedrooms, got "${values.camere}"`);
+      }
+      return importFile(dir, io, {
+        file,
+        area: values.zona,
+        ...(values.fonte !== undefined ? { source: values.fonte } : {}),
+        ...(values.annunci !== undefined ? { listingsFile: values.annunci } : {}),
+        filter: {
+          ...(values.tipo !== undefined ? { roomType: values.tipo } : {}),
+          ...(bedrooms !== undefined ? { bedrooms } : {}),
+          ...(values.quartiere !== undefined ? { neighbourhood: values.quartiere } : {}),
+        },
+        dryRun: values["dry-run"] ?? false,
+      });
+    }
+    case "collega":
+    case "connect":
+      noExtra(extra);
+      return connectAirRoi(dir, io);
+    case "stato":
+    case "status":
+      noExtra(extra);
+      return marketStatus(dir, io);
+    case "cancella":
+    case "delete":
+      noExtra(extra);
+      return deleteMarketData(dir, io, {
+        ...(values.zona !== undefined ? { area: values.zona } : {}),
+        ...(values.fonte !== undefined ? { source: values.fonte } : {}),
+      });
+    default:
+      throw new UsageError(
+        sub === undefined ? "Which zone data command? importa, collega, stato or cancella." : `Unknown command "mercato ${sub}". Use importa, collega, stato or cancella.`,
+      );
   }
 }

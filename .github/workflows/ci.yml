@@ -41,7 +41,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Proves that the scan above would stop Smoobu or Beds24 credentials committed by mistake:
+  # Proves that the scan above would stop Smoobu, Beds24 or AirROI credentials committed by mistake:
   # a throw-away repo with a freshly generated fake key must be caught.
   secret-rules:
     runs-on: ubuntu-latest
@@ -49,7 +49,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install gitleaks 8.30.1
         run: curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz | tar -xz -C "$RUNNER_TEMP" gitleaks
-      - name: Committed Smoobu and Beds24 credentials must be caught
+      - name: Committed Smoobu, Beds24 and AirROI credentials must be caught
         run: |
           fake() { head -c 64 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 24; }
           mkdir "$RUNNER_TEMP/leak" && cd "$RUNNER_TEMP/leak"
@@ -58,10 +58,12 @@ jobs:
           printf 'SMOOBU_API_KEY=%s\nexport SMOOBU_API_SECRET=%s\n' "$(fake)" "$(fake)" > .env
           printf '{\n  "refreshToken": "%s",\n  "cachedToken": { "token": "%s" }\n}\n' "$(fake)" "$(fake)" > beds24-credentials.json
           printf 'export BEDS24_REFRESH_TOKEN=%s\n' "$(fake)" > beds24.env
+          printf '{\n  "apiKey": "%s"\n}\n' "$(fake)" > airroi-credentials.json
+          printf 'AIRROI_API_KEY=%s\n' "$(fake)" > airroi.env
           git add -A && git commit -q -m "a mistake"
           "$RUNNER_TEMP/gitleaks" git --no-banner --redact --exit-code 0 --config "$GITHUB_WORKSPACE/.gitleaks.toml" \
             --report-format json --report-path "$RUNNER_TEMP/report.json" .
-          for rule in smoobu-credentials-file smoobu-api-credential-env beds24-credentials-file beds24-refresh-token-env; do
+          for rule in smoobu-credentials-file smoobu-api-credential-env beds24-credentials-file beds24-refresh-token-env airroi-credentials-file airroi-api-key-env; do
             grep -q "\"RuleID\": \"$rule\"" "$RUNNER_TEMP/report.json" || { echo "gitleaks did NOT catch: $rule"; exit 1; }
           done
-          echo "gitleaks caught the Smoobu and Beds24 credentials, as it should"
+          echo "gitleaks caught the Smoobu, Beds24 and AirROI credentials, as it should"

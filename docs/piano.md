@@ -95,6 +95,12 @@ Documenti in `docs/`, repo locale, licenza.
 | Soggiorno minimo calcolato | 3,5 |
 | Previsione della domanda | 5 |
 
+**Anticipato sul ramo `mercato` (13 ottobre 2026):**
+- il fattore «domanda di zona» nel motore, spento di default;
+- l'import del CSV dell'host e dei file Inside Airbnb scaricati dall'utente (al posto dello «scaricatore»: nel codice non ce n'è);
+- l'adattatore AirROI, pronto ma spento finché AirROI non conferma per iscritto i termini (vedi `fonti-mercato.md`);
+- i comandi `fairnight mercato importa | collega | stato | cancella` e il tool MCP `get_market_area`.
+
 **Totale fino alla fase 3: circa 49 giorni di lavoro.** La 0.1 pubblica esce dopo circa 13.
 
 ## Cosa esce nella 0.1 pubblica
@@ -116,3 +122,4 @@ Documenti in `docs/`, repo locale, licenza.
 - Nessun dato reale di host o ospiti nel repo.
 - Nessun nome di funzioni di PriceLabs nel codice o nei testi del prodotto.
 - Le fonti di mercato sono solo adattatori opzionali, con la chiave o il file dell'utente.
+- AirROI resta spento (`market.airroi.enabled: false`) finché non arriva la risposta scritta alla domanda n. 1 di `fonti-mercato.md`.

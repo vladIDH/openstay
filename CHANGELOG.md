@@ -14,8 +14,30 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 - Reads apartments, bookings (cancellations and blocked dates included) and rates. Writes price and minimum stay together.
 - Single-night operations until Smoobu's handling of a range end is checked; ranges of at most 7 nights after that.
 
+### fairnight-beds24 (new)
+
+- Beds24 API v2 client:
+  - an invite code becomes a refresh token;
+  - short tokens are kept with their expiry and renewed when less than 2 minutes are left, or once at once after a 401 in the middle of a run;
+  - every token lifetime is taken from `expiresIn`.
+- Credits: never more than half of the 5-minute window. On 429, wait for the window to reset plus one second; 5xx are retried after 1, 2, 4 and 8 seconds; 400 stops with Beds24's message. Credits used are counted from `X-RequestCost`.
+- Reads rooms (with their number of units), bookings and the calendar, expanding runs night by night.
+- Writes only the chosen price field (`price1`…`price16`) and `minStay`, one element per night, in one request per room. Answers are checked element by element.
+- Single nights until Beds24's handling of the range end is checked; ranges of at most 7 nights after that.
+
 ### fairnight-cli
 
+- `fairnight beds24 collega`: asks for an invite code without echo and keeps the refresh token for the current user only. `BEDS24_REFRESH_TOKEN` takes precedence.
+- `fairnight beds24 importa`: each single-unit Beds24 room becomes a listing (source `beds24`). Rooms with several identical units are skipped with a message.
+- `fairnight beds24 spingi [--applica] [--da] [--a] [--alloggio ROOM]`: the table of differences. With `--applica` it writes, lists the nights Beds24 refused, and reads back.
+- Every Beds24 command prints the credits used and the credits left.
+- `fairnight sync` and Recalculate also read Beds24 bookings.
+  - `black` bookings are blocked dates.
+  - `cancelled` bookings are removed.
+  - `bookingTime` drives the stale-calendar discount.
+  - Stay prices are used by the historical floor only with `--usa-storico-beds24`.
+- Database schema 3: `beds24_stays`, `beds24_pushes`.
+- Shared code of the connectors moved into `channel.ts`.
 - `fairnight smoobu collega`: asks for the API key and secret without echo, checks them on Smoobu, and saves them for the current user only. `SMOOBU_API_KEY` and `SMOOBU_API_SECRET` take precedence.
 - `fairnight smoobu importa`: new Smoobu apartments become listings (source `smoobu`), and bookings enter the local database.
 - `fairnight smoobu spingi [--applica] [--da] [--a] [--alloggio]`: a table of differences; it writes only with `--applica`, then reads back from Smoobu.
@@ -27,12 +49,13 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 
 ### fairnight-mcp
 
-- New read-only tool `get_sync_status`: where each listing's data comes from (iCal or Smoobu) and when it was last read.
+- New read-only tool `get_sync_status`: where each listing's data comes from (iCal, Smoobu or Beds24) and when it was last read.
 
 ### Repository
 
 - `smoobu-credentials.json` is git-ignored.
-- `.gitleaks.toml` adds two rules for Smoobu credentials, and a CI job proves on every push that they catch a committed key.
+- `beds24-credentials.json` is git-ignored.
+- `.gitleaks.toml` adds rules for Smoobu and Beds24 credentials, and a CI job proves on every push that they catch a committed key or token.
 
 ## [0.1.0] - not released yet
 

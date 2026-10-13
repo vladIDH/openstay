@@ -91,3 +91,57 @@ In alternativa si usano le variabili `SMOOBU_API_KEY` e `SMOOBU_API_SECRET`, che
 - È nel `.gitignore` del repo.
 - Gitleaks ha due regole dedicate (`.gitleaks.toml`), e un job della CI prova a ogni push che un file o una variabile con la chiave verrebbero presi.
 - Chiave e secret non vengono mai stampati, nemmeno troncati, nemmeno negli errori.
+
+## Beds24: il connettore (0.2.0, in lavorazione)
+
+Pacchetto `packages/fairnight-beds24` e comandi `fairnight beds24 …`. Usa solo la documentazione pubblica ufficiale: il wiki (wiki.beds24.com, «API V2.0») e la specifica OpenAPI (`beds24.com/api/v2/apiV2.yaml`), lette il 13 ottobre 2026.
+
+**Mappatura.** Un annuncio Fairnight corrisponde a una **stanza** Beds24 (`roomId`), perché prezzi e minimi in Beds24 sono per stanza. Una proprietà con più stanze diventa più annunci.
+
+**Stanze con più unità identiche (`qty` > 1): non gestite in questa versione.** `importa` le salta e lo dice («4 identical units, not handled in this version»). Il motore oggi ragiona su una casa singola: per gestirle serve un pezzo futuro **del motore, non del connettore**, cioè l'occupazione calcolata come unità prenotate diviso `qty` (vedi `piano.md`).
+
+**Come si ottiene l'accesso:**
+1. Nel pannello di Beds24: *Settings → Marketplace → API → Generate invite code*.
+2. **I permessi vanno scelti in quel momento e non si possono cambiare dopo:** `read:bookings`, `all:inventory` (lettura e scrittura del calendario), `read:properties`.
+3. Il codice invito vale una volta e per 24 ore. `fairnight beds24 collega` lo chiede senza mostrarlo e lo scambia (`GET /authentication/setup`, intestazione `code`) con un **refresh token**.
+
+**Token:**
+- Il refresh token dà token brevi (`GET /authentication/token`, intestazione `refreshToken`). La durata è quella di `expiresIn` nella risposta: il wiki dice 24 ore, la specifica mostra 3600 secondi, e Fairnight usa sempre la risposta.
+- Il token breve resta nel file con la sua scadenza e si rinnova da solo quando mancano meno di 2 minuti. Se Beds24 risponde 401 a metà giro, viene rinnovato una volta e si continua.
+- Il refresh token **scade se non viene usato per 30 giorni**.
+- `BEDS24_REFRESH_TOKEN` ha la precedenza sul file `beds24-credentials.json` (permessi solo per l'utente, nel `.gitignore`, con due regole gitleaks dedicate provate dal job della CI).
+- Nessun token o codice viene mai stampato.
+
+**Cosa legge:**
+- `GET /properties?includeAllRooms=true`: proprietà, stanze, numero di unità, prezzo di listino e prezzo minimo.
+- `GET /bookings`: prenotazioni delle stanze collegate, dagli ultimi 400 giorni in avanti, tutte le pagine.
+  - `confirmed`, `new` e `request` sono prenotazioni;
+  - `black` è una data bloccata (indisponibile, fuori da occupazione e storico);
+  - `cancelled` è tolta, anche se era stata importata prima;
+  - `inquiry` non viene chiesta.
+  - `bookingTime` è la data vera di prenotazione, usata dallo sconto per calendario fermo.
+- `GET /inventory/rooms/calendar`: prezzo (nel campo scelto), `minStay`, `numAvail` e `override`, a intervalli `from`/`to` che Fairnight espande notte per notte. `numAvail` 0 o `override: blackout` significano «non disponibile su Beds24»: quella notte non viene toccata.
+
+**Cosa scrive:**
+- Solo `POST /inventory/rooms/calendar`, e **solo il campo prezzo scelto** (`price1` di default, `price1`…`price16` per annuncio con `"priceField"`) **e `minStay`**. Mai `numAvail`, `override` o gli altri prezzi.
+- **Mai di default.** `fairnight beds24 spingi` mostra la tabella delle differenze; solo `--applica` scrive.
+- Un elemento per notte (o per intervallo), tutti nella stessa richiesta per stanza. La risposta 201 ha un esito per elemento: le notti rifiutate vengono elencate con il messaggio di Beds24.
+- Dopo la scrittura Fairnight rilegge il calendario e controlla notte per notte. Ogni invio resta nel database (`beds24_pushes`, con i crediti spesi).
+
+**Crediti e limiti (dalla documentazione):**
+- **100 crediti ogni 5 minuti per account** (200 a 10 €/mese chiedendo al supporto). Ogni richiesta costa in base alla complessità, e anche chiedere un token costa crediti.
+- La specifica chiama le intestazioni `X-FiveMinCreditLimit`, `-Remaining`, `-ResetsIn` e `X-RequestCost`; il wiki le scrive `x-five-min-limit-…`. Fairnight legge entrambe le forme.
+- **Il nostro freno:** non scendere mai sotto metà finestra. Se restano meno crediti, aspetta la fine della finestra più un secondo.
+- 429 («Usage limit exceeded»): aspetta la fine della finestra più un secondo. I 5xx vengono ritentati dopo 1, 2, 4 e 8 secondi. Su 400 Fairnight si ferma e mostra il messaggio di Beds24; su 403 spiega quali permessi servono.
+- A fine comando Fairnight stampa i crediti usati nel giro e quelli rimasti.
+- Altri limiti: circa 1 MB per POST, al massimo 10.000 elementi per array.
+- Non esiste una sandbox: i test usano un finto server locale con la forma della specifica.
+
+**Fine degli intervalli `from`/`to` in scrittura (non documentata).** L'esempio della specifica va «dal 1° aprile al 1° maggio», ma non dice se l'ultimo giorno è incluso. Quindi:
+- finché non è verificato, Fairnight scrive giorni singoli (`from` = `to`);
+- al primo `spingi --applica` vero scrive un intervallo di 2 notti uguali, rilegge la seconda notte e salva il risultato (`meta.beds24_range_end`);
+- se l'ultimo giorno è incluso, da lì in poi usa intervalli di massimo 7 notti.
+
+**Risultato della verifica: non ancora fatta** (nessun account Beds24 vero su cui provarla). Va scritto qui al primo giro vero.
+
+**Lettura degli intervalli (ipotesi).** In lettura Fairnight considera `to` incluso (es. `from` = `to` = un giorno). La rilettura dopo ogni scrittura farebbe emergere subito un'ipotesi sbagliata come notti «non corrispondenti».

@@ -71,13 +71,13 @@ async function call(name: string, args: Record<string, unknown> = {}) {
 }
 
 describe("fairnight MCP server", () => {
-  it("offers six tools, all read-only", async () => {
+  it("offers seven tools, all read-only", async () => {
     const { tools } = await client.listTools();
-    expect(tools.map((t) => t.name)).toEqual(["list_listings", "get_prices", "explain_night", "occupancy", "next_gaps", "get_sync_status"]);
+    expect(tools.map((t) => t.name)).toEqual(["list_listings", "get_prices", "explain_night", "occupancy", "next_gaps", "get_sync_status", "get_market_area"]);
     for (const t of tools) {
       expect(t.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false });
     }
-    expect(TOOLS).toHaveLength(6);
+    expect(TOOLS).toHaveLength(7);
   });
 
   it("lists the listings without ever showing the calendar links", async () => {
@@ -166,6 +166,44 @@ describe("fairnight MCP server", () => {
     await call("occupancy", { listing: "garden-studio", month: "2026-11" });
     await call("next_gaps", { listing: "garden-studio" });
     expect(dbHash()).toBe(before);
+  });
+});
+
+describe("zone data", () => {
+  it("shows the zone data a listing uses, with its attribution, and never writes", async () => {
+    const folder = mkdtempSync(path.join(os.tmpdir(), "fairnight-mcp-zone-"));
+    await main(["init"], io(folder));
+    const file = path.join(folder, "fairnight.config.json");
+    const config = JSON.parse(readFileSync(file, "utf8"));
+    config.listings[0].calendars = [];
+    config.listings[0].marketArea = "costa";
+    config.listings[0].pricing.factors.market.enabled = true;
+    config.listings[1].calendars = [];
+    writeFileSync(file, JSON.stringify(config));
+    // Invented zone: 60% every night of November 2026, 90% on Saturday the 14th.
+    const rows = ["date,occupancy,average_price,comparables"];
+    for (let d = 1; d <= 30; d++) rows.push(`2026-11-${String(d).padStart(2, "0")},${d === 14 ? 90 : 60},100,25`);
+    writeFileSync(path.join(folder, "zona.csv"), rows.join("\n"));
+    expect(await main(["mercato", "importa", "zona.csv", "--zona", "costa"], io(folder))).toBe(0);
+
+    const [c, s] = InMemoryTransport.createLinkedPair();
+    await buildServer({ dir: folder, now }).connect(s);
+    const other = new Client({ name: "test", version: "1.0.0" });
+    await other.connect(c);
+    const ask = async (name: string, args: Record<string, unknown>) =>
+      ((await other.callTool({ name, arguments: args })) as { content: { text: string }[] }).content[0]?.text ?? "";
+    const before = createHash("sha256").update(readFileSync(path.join(folder, "data", "fairnight.db"))).digest("hex");
+
+    expect((await ask("get_market_area", { listing: "seaview-loft", from: "2026-11-13", to: "2026-11-14" })).split("\n")).toEqual([
+      'seaview-loft: zone "costa", zone demand on (weight 0.5, at most +15% / -10%). Source: your file "zona.csv", read 2026-11-01. 30 nights 2026-11-01 → 2026-11-30, average occupancy 61%, average price 100.',
+      "2026-11-13: 60% booked, price 100, 25 comparables",
+      "2026-11-14: 90% booked, price 100, 25 comparables",
+    ]);
+    expect(await ask("explain_night", { listing: "seaview-loft", date: "2026-11-14" })).toContain('zone demand "costa" +15%');
+    expect(await ask("get_market_area", { listing: "garden-studio" })).toBe("garden-studio: no zone set (marketArea), zone demand off. Prices use only the host's own data.");
+    expect(createHash("sha256").update(readFileSync(path.join(folder, "data", "fairnight.db"))).digest("hex")).toBe(before);
+    await other.close();
+    rmSync(folder, { recursive: true, force: true });
   });
 });
 

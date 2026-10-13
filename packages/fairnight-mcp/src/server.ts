@@ -1,5 +1,5 @@
 /**
- * Fairnight MCP server: five read-only tools over a Fairnight folder.
+ * Fairnight MCP server: seven read-only tools over a Fairnight folder.
  *
  * Built like mador-mcp: every tool is declared read-only (no confirmation
  * prompts in Claude or ChatGPT), errors come back as text the model can act
@@ -7,7 +7,7 @@
  */
 import { McpServer, fromJsonSchema, type JsonSchemaType } from "@modelcontextprotocol/server";
 import { ConfigError, formatAmount } from "fairnight";
-import { explainNight, getPrices, listListings, nextGaps, occupancy, syncStatus, ToolError, type Folder } from "./data.js";
+import { explainNight, getPrices, listListings, marketArea, nextGaps, occupancy, syncStatus, ToolError, type Folder } from "./data.js";
 
 export const VERSION = "0.1.0";
 
@@ -155,12 +155,50 @@ export const TOOLS: Tool[] = [
       return { text: lines.join("\n"), data };
     },
   },
+  {
+    name: "get_market_area",
+    title: "Zone data used by a listing",
+    description:
+      "The zone data behind the zone demand factor of a listing: its source and the attribution to quote (your own file, Inside Airbnb CC BY 4.0, powered by AirROI), when it was read, how long it is kept, whether the occupancy is an estimate, the zone's average, and the zone's occupancy, average price and comparable listings for each night between two dates (default: the next 14). Also the factor's settings (on or off, weight, caps). Always quote the attribution when you use these figures.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        listing: LISTING,
+        from: { type: "string", description: "First night, YYYY-MM-DD. Default: today." },
+        to: { type: "string", description: "Last night, YYYY-MM-DD. Default: 13 days after from." },
+      },
+      required: ["listing"],
+      additionalProperties: false,
+    },
+    handler: (folder, args) => {
+      const d = marketArea(folder, args);
+      const factor = d.factor?.enabled
+        ? `zone demand on (weight ${d.factor.weight}, at most +${d.factor.maxRaisePercent}% / -${d.factor.maxLowerPercent}%)`
+        : "zone demand off";
+      if (d.zone === null) return { text: `${d.listing}: no zone set (marketArea), ${factor}. Prices use only the host's own data.`, data: d };
+      if (d.data === null) return { text: `${d.listing}: zone "${d.zone}" has no data (none imported, or it expired), ${factor}. Prices are not changed by the zone.`, data: d };
+      const z = d.data;
+      const head =
+        `${d.listing}: zone "${d.zone}", ${factor}. Source: ${z.attribution}, read ${z.readOn}` +
+        (z.keptUntil ? `, kept until ${z.keptUntil}` : "") +
+        `. ${z.nights} nights ${z.first} → ${z.last}` +
+        (z.averageOccupancyPercent !== null ? `, average occupancy ${fmt(z.averageOccupancyPercent)}%${z.estimated ? " (estimated: booked and closed nights look the same)" : ""}` : "") +
+        (z.averagePrice !== null ? `, average price ${fmt(z.averagePrice)}` : "") +
+        ".";
+      const lines = d.nights.map(
+        (n) =>
+          `${n.date}: ${n.occupancyPercent !== undefined ? `${fmt(n.occupancyPercent)}% booked` : "occupancy —"}` +
+          `${n.averagePrice !== undefined ? `, price ${fmt(n.averagePrice)}` : ""}${n.comparables !== undefined ? `, ${n.comparables} comparables` : ""}`,
+      );
+      return { text: [head, ...(lines.length ? lines : [`No zone figures between ${d.from} and ${d.to}.`])].join("\n"), data: d };
+    },
+  },
 ];
 
 export const INSTRUCTIONS = `Fairnight prices the host's short-term rental listings night by night, on the host's own computer.
 Start with list_listings to get the listing names. Prices come from the host's rules and calendars; explain_night says why a night costs what it costs.
 These tools only read: they never change prices, calendars or bookings. To change a price, the host edits fairnight.config.json.
-Calendars are as fresh as the last "fairnight sync" (see lastSync). Answer in the host's language.`;
+Calendars are as fresh as the last "fairnight sync" (see lastSync). get_market_area shows the zone data a listing uses, if any: always quote its attribution. Answer in the host's language.`;
 
 const errorResult = (text: string) => ({ content: [{ type: "text" as const, text }], isError: true });
 

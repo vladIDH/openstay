@@ -71,13 +71,13 @@ async function call(name: string, args: Record<string, unknown> = {}) {
 }
 
 describe("fairnight MCP server", () => {
-  it("offers seven tools, all read-only", async () => {
+  it("offers eight tools, all read-only", async () => {
     const { tools } = await client.listTools();
-    expect(tools.map((t) => t.name)).toEqual(["list_listings", "get_prices", "explain_night", "occupancy", "next_gaps", "get_sync_status", "get_market_area"]);
+    expect(tools.map((t) => t.name)).toEqual(["list_listings", "get_prices", "explain_night", "occupancy", "next_gaps", "get_sync_status", "get_market_area", "get_guest_deadlines"]);
     for (const t of tools) {
       expect(t.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false });
     }
-    expect(TOOLS).toHaveLength(7);
+    expect(TOOLS).toHaveLength(8);
   });
 
   it("lists the listings without ever showing the calendar links", async () => {
@@ -260,5 +260,46 @@ describe("a folder that is not ready", () => {
     expect(r2.content[0]?.text).toMatch(/^No database in .*: run "fairnight init" and "fairnight sync" there first\.$/);
     await other.close();
     rmSync(empty, { recursive: true, force: true });
+  });
+});
+
+describe("guest registration deadlines (Fairguest)", () => {
+  async function call(folderDir: string, args: Record<string, unknown> = {}) {
+    const [c, srv] = InMemoryTransport.createLinkedPair();
+    await buildServer({ dir: folderDir, now }).connect(srv);
+    const cl = new Client({ name: "test", version: "1.0.0" });
+    await cl.connect(c);
+    const r = await cl.callTool({ name: "get_guest_deadlines", arguments: args });
+    await cl.close();
+    return { text: (r.content as { text: string }[])[0]?.text ?? "", data: r.structuredContent as Record<string, unknown> };
+  }
+
+  it("says when Fairguest is off", async () => {
+    expect((await call(dir)).text).toBe('Guest registration (Fairguest) is not turned on in this folder ("fairnight ospiti attiva").');
+  });
+
+  it("lists the communications due, without any personal data and without writing", async () => {
+    const own = mkdtempSync(path.join(os.tmpdir(), "fairnight-mcp-guests-"));
+    try {
+      await main(["init"], io(own));
+      const file = path.join(own, "fairnight.config.json");
+      const config = JSON.parse(readFileSync(file, "utf8"));
+      config.listings[0].calendars = [{ source: "airbnb", url: "https://cal.example.org/airbnb/loft.ics" }];
+      config.listings[0].fairguest = { country: "ES-CT", establishment: "ZZ00000000", establishmentName: "Casa di Prova", checkInTime: "16:00" };
+      config.listings[1].calendars = [];
+      writeFileSync(file, JSON.stringify(config));
+      const withKey = { ...io(own), env: { FAIRGUEST_FRASE: "frase segreta di prova" }, scryptCost: { N: 2 ** 10, r: 8, p: 1 } };
+      expect(await main(["ospiti", "attiva"], withKey)).toBe(0);
+      expect(await main(["sync"], io(own))).toBe(0);
+      const before = createHash("sha256").update(readFileSync(path.join(own, "data", "fairnight.db"))).digest("hex");
+      const r = await call(own);
+      const lines = r.text.split("\n");
+      expect(lines[0]).toBe("Now 2026-11-01 09:00. 0 late.");
+      expect(lines).toContainEqual(expect.stringMatching(/^- open: guests at check-in for stay fg[0-9a-f]{10} \(seaview-loft, 2026-11-04 → 2026-11-08\) to Mossos d'Esquadra, due 2026-11-05 16:00, 0 guests registered$/));
+      expect(r.data.enabled).toBe(true);
+      expect(createHash("sha256").update(readFileSync(path.join(own, "data", "fairnight.db"))).digest("hex")).toBe(before);
+    } finally {
+      rmSync(own, { recursive: true, force: true });
+    }
   });
 });

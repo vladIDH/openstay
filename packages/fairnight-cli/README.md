@@ -156,6 +156,89 @@ The factor compares each night of the zone with the zone's own average and moves
 - **AirROI.** With your own key, for your own pricing, zone metrics only (never their price recommendations). It is switched off with `"market": { "airroi": { "enabled": false } }` until AirROI confirms its terms in writing. When on: zones go under `market.airroi.areas` (`country`, `region`, `locality` as AirROI names them, optional `roomType`, `bedrooms`), the key comes from `AIRROI_API_KEY` or `airroi-credentials.json`, every call is billed to your AirROI account, explanations say "powered by AirROI", and the data is deleted after 30 days or with `fairnight mercato cancella --fonte airroi`.
 - **Never** scraping of Airbnb, Booking, PriceLabs or any other site.
 
+## Guest registration: Fairguest (0.1.0, in development)
+
+In Spain every host must send the police the details of each guest (Real Decreto 933/2021), within 24 hours of the booking and within 24 hours of check-in. `fairnight ospiti` keeps those details **encrypted on your computer**, collects them with a form the guests fill in on a phone or tablet on your own network, reminds you of the deadlines and erases the data when the law allows.
+
+Where the data goes:
+- **SES.HOSPEDAJES** for most of Spain (`"country": "ES"`);
+- the **Mossos d'Esquadra** for Catalonia (`"country": "ES-CT"`).
+
+**1. Tell each listing where its guests are communicated.** Add a `fairguest` block in `fairnight.config.json`:
+
+```json
+"fairguest": {
+  "country": "ES-CT",
+  "establishment": "ZZ00000000",
+  "establishmentName": "Casa di Prova",
+  "professional": false,
+  "checkInTime": "16:00",
+  "checkOutTime": "10:00",
+  "rooms": 1,
+  "internet": true
+}
+```
+
+- `establishment` is the code the authority gave the listing (SES `codigoEstablecimiento`, or the Mossos ID).
+- `professional`: `true` if you are registered in the Censo de Empresarios. Professionals keep the register 3 years; everyone else keeps nothing once the communication is confirmed. The default is `false`.
+
+**2. Turn it on and choose a passphrase.**
+
+```
+fairnight ospiti attiva
+```
+
+The passphrase is asked twice, without echo, and must be at least 12 characters (a few words are easier to remember).
+
+> **If you lose the passphrase, the guests' data cannot be recovered.** Not by you, not by us, not by anyone: there is no reset. Write it down and keep it away from this computer. Change it with `fairnight ospiti frase`, which needs the current one.
+
+**3. Every booking becomes a stay to register.** `fairnight sync` does this for bookings that end today or later, from your iCal links, Smoobu or Beds24:
+- the iCal links give only dates and listing;
+- Smoobu and Beds24 also give the holder's name, the number of guests and the booking reference. Those go **only** into the encrypted Fairguest tables, never into the calendar tables or the output.
+
+**4. The guests fill in the form.**
+
+```
+fairnight serve --lan
+fairnight ospiti elenco
+```
+
+`elenco` lists each stay with its form path, for example `/checkin/Xb3…`. Open `http://<this computer>:4321/checkin/Xb3…` on a phone or tablet on the same Wi-Fi.
+
+- The form opens **only from the local network**. Other addresses are refused, and so is anything that comes through a proxy or tunnel. The code stops working after check-out.
+- It is in Spanish, English and Italian.
+- It asks what the decree asks for, one guest at a time, and says what is missing.
+- It asks only for the **type** of payment. There is no field for a card number or an IBAN, and any such field sent to the server is thrown away.
+- Each guest is encrypted as soon as it arrives. The server does not know your passphrase and cannot read back what it saved.
+
+**5. Send, and record it.**
+
+```
+fairnight ospiti                         # what is due, late or open (exit code 1 when something is late)
+fairnight ospiti mostra <stay>           # the data and what is still missing (asks the passphrase)
+fairnight ospiti prepara <stay>          # Catalonia: writes data/fairguest/<ID>.001 to upload on the Mossos portal
+fairnight ospiti inviato <stay> --tipo checkin
+```
+
+- **Catalonia:** upload the file on registreviatgers.mossos.gencat.cat (*Envío de ficheros masivos*), then record it with `inviato`. The file holds the guests' data in clear, so it is deleted at that moment.
+- **Rest of Spain:** sending to SES.HOSPEDAJES is **not written yet**, because it needs the Ministry's XSD schemas, which are published only inside the SES application. `prepara` says so and stops. Until then, enter the guests on the SES website and record it with `inviato`.
+
+**Corrections and guests' requests.**
+
+```
+fairnight ospiti correggi <stay> pagamento                # the new value is asked, never typed on the command line
+fairnight ospiti correggi <stay> address.municipalityCode --persona 1
+fairnight ospiti esporta <stay> --persona 1 --out data.json
+fairnight ospiti cancella <stay> --persona 2 --applica
+fairnight ospiti pulisci                                  # apply the retention rules now, and show each stay's rule
+```
+
+The INE code of the municipality, needed for guests who live in Spain, is not asked in the form: guests rarely know it. Add it with `correggi`.
+
+**Retention runs by itself** at every `fairnight ospiti` command, at every `sync` and when `serve` starts. It deletes the guests, the encrypted details, the form link and any file, and keeps only dates and the record of what was sent. Backups and copies of `data/fairnight.db` are not touched: erasing works only on the file itself.
+
+The MCP server has a read-only tool, `get_guest_deadlines`, that answers "what do I still have to send?" with dates and states only.
+
 ## How calendars are read
 
 - **Airbnb**: "Reserved" counts as a stay; "Airbnb (Not available)" counts as a blocked date.
@@ -171,10 +254,10 @@ Calendars do not say when a booking was made. Fairnight counts a booking as new 
 
 Everything stays in your folder:
 - `fairnight.config.json` holds your rules and your iCal links. Treat those links like passwords: anyone who has one can read that calendar.
-- `data/fairnight.db` is a single SQLite file. It holds stay dates, blocked dates and imported prices. Guest names, phone numbers and descriptions are never stored.
+- `data/fairnight.db` is a single SQLite file. It holds stay dates, blocked dates and imported prices; the calendars' guest names, phone numbers and descriptions are never stored there. If you turn on guest registration, the guests' details are in the same file, **encrypted** with a key only your passphrase opens (see above).
 - `exports/` holds the CSV files you asked for.
 
-The only network requests go to the iCal links you wrote. The calendar page listens only on your computer unless you add `--lan`, and even then only devices on your own network can open it. No accounts, no telemetry. To back up, copy the folder. To start over, delete it.
+The only network requests go to the iCal links you wrote (and to Smoobu or Beds24, if you connect them). The calendar page listens only on your computer unless you add `--lan`, and even then only devices on your own network can open it. No accounts, no telemetry. To back up, copy the folder. To start over, delete it.
 
 ## License
 

@@ -10,6 +10,7 @@ import { SmoobuError } from "fairnight-smoobu";
 import { loadHostConfig, selectListings, SetupError, type HostListing } from "./config.js";
 import { openDb } from "./db.js";
 import { importPrices } from "./import.js";
+import { UsageError } from "./errors.js";
 import { initFolder } from "./init.js";
 import { dbPath, localToday, stripBom, type Io } from "./io.js";
 import { defaultExportPath, EXPORT_FORMATS, toCsv, writeExport } from "./export.js";
@@ -21,6 +22,7 @@ import { Beds24Error } from "fairnight-beds24";
 import { AirRoiError, InsideAirbnbError } from "fairnight-market";
 import { connectAirRoi, deleteMarketData, importAirRoi, importFile, marketStatus } from "./mercato.js";
 import { formatFeedReport, syncEverything } from "./sync-all.js";
+import { GUEST_USAGE, runGuests } from "./guests/commands.js";
 
 export const USAGE = `Fairnight: dynamic prices for short-term rentals, on your own computer.
 
@@ -45,9 +47,10 @@ Usage:
   fairnight mercato stato                          zone data, sources, which listings use them
   fairnight mercato cancella                       delete zone data [--zona <name>] [--fonte csv|insideairbnb|airroi]
 
-Every command works in the current folder; use --dir <folder> to point at another one.`;
+Guest registration (Fairguest, Spain: SES.HOSPEDAJES and Mossos d'Esquadra):
+${GUEST_USAGE}
 
-class UsageError extends Error {}
+Every command works in the current folder; use --dir <folder> to point at another one.`;
 
 const OPTIONS = {
   dir: { type: "string" },
@@ -65,12 +68,14 @@ const OPTIONS = {
   da: { type: "string" },
   a: { type: "string" },
   alloggio: { type: "string" },
+  // --tipo: the communication for "ospiti", the room type for "mercato".
+  tipo: { type: "string" },
+  persona: { type: "string" },
   "usa-storico-smoobu": { type: "boolean" },
   "usa-storico-beds24": { type: "boolean" },
   zona: { type: "string" },
   fonte: { type: "string" },
   annunci: { type: "string" },
-  tipo: { type: "string" },
   camere: { type: "string" },
   quartiere: { type: "string" },
   help: { type: "boolean", short: "h" },
@@ -121,6 +126,9 @@ export async function main(argv: string[], io: Io): Promise<number> {
       case "mercato":
       case "market":
         return await runMercato(dir, values, rest, io);
+      case "ospiti":
+      case "guests":
+        return await runGuests(dir, values, rest, io);
       default:
         throw new UsageError(`Unknown command "${command}".`);
     }

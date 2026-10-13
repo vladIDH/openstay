@@ -8,6 +8,7 @@
  */
 import { existsSync } from "node:fs";
 import { Beds24Client, Beds24Error, buildWrites, mapBookings, nightsOf, planPush, probePair, type CreditState, type RangeEnd, type Room } from "fairnight-beds24";
+import { noteChannelGuests } from "./guests/store.js";
 import { addDays, appendListings, daysBetween, diffTable, emptyReport, HISTORY_DAYS, recordRun, slugify, storeStays } from "./channel.js";
 import { beds24Room, isBeds24, loadHostConfig, SetupError, type HostListing } from "./config.js";
 import { BEDS24_CREDENTIALS_FILE, loadBeds24Credentials, saveBeds24Credentials, saveBeds24Token } from "./beds24-credentials.js";
@@ -107,6 +108,7 @@ export async function importBookings(db: Db, listings: HostListing[], client: Be
     const stays = mapped.stays.filter((s) => s.roomId === roomId);
     const r = { ...emptyReport(listing.name, BEDS24_FEED), ok: true, seen: stays.length, skipped: mapped.skipped };
     storeStays(db, { listing: listing.name, feed: BEDS24_FEED, priceTable: "beds24_stays", stays, from, at, report: r });
+    noteChannelGuests(db, listing, BEDS24_FEED, stays, now);
     recordRun(db, r, at);
     return r;
   });

@@ -358,3 +358,27 @@ describe("config", () => {
     expect(shared.errors[1]).toBe('  - listings (twin): Beds24 room 101 is already linked to "loft"');
   });
 });
+
+describe("guest registration from Beds24 (Fairguest)", () => {
+  it("seals holder, number of guests and reference; never in calendar_events or in the output", async () => {
+    const { dir } = await setUp([booking(920, 101, "2099-06-10", "2099-06-13", { firstName: "Ospite", lastName: "Prova", numAdult: 2, numChild: 0, apiReference: "PROVA-0002" })]);
+    await main(["beds24", "collega"], io(dir, { env: {}, prompt: async () => TEST_INVITE }));
+    const file = path.join(dir, "fairnight.config.json");
+    const config = JSON.parse(readFileSync(file, "utf8"));
+    config.listings[0].fairguest = { country: "ES-CT", establishment: "ZZ00000000", establishmentName: "Casa di Prova" };
+    writeFileSync(file, JSON.stringify(config));
+    const env = { BEDS24_REFRESH_TOKEN: TEST_REFRESH, FAIRGUEST_FRASE: "frase segreta di prova" };
+    expect(await main(["ospiti", "attiva"], io(dir, { env, scryptCost: { N: 2 ** 10, r: 8, p: 1 } }))).toBe(0);
+    const t = io(dir, { env });
+    expect(await main(["beds24", "importa"], t)).toBe(0);
+    expect([...t.lines, ...t.errors].join("\n")).not.toMatch(/Ospite|PROVA-0002/);
+    const d = db(dir);
+    expect(JSON.stringify(d.prepare("SELECT * FROM calendar_events").all())).not.toMatch(/Ospite|Prova|PROVA-0002/);
+    const row = d.prepare("SELECT id, channel_data FROM guest_stays").get() as { id: string; channel_data: string };
+    expect(row.channel_data).not.toMatch(/Ospite|PROVA/);
+    const shown = io(dir, { env });
+    expect(await main(["ospiti", "mostra", row.id], shown)).toBe(0);
+    expect(shown.lines[1]).toMatch(/reference PROVA-0002 · contract 2026-10-20 · 2 people/);
+    expect(shown.lines[2]).toBe("  holder from beds24: Ospite Prova");
+  });
+});

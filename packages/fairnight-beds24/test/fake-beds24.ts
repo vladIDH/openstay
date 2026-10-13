@@ -35,6 +35,9 @@ export interface FakeBooking {
   price: number;
   firstName: string;
   lastName: string;
+  numAdult?: number;
+  numChild?: number;
+  apiReference?: string;
 }
 
 export type FakeDay = Record<string, number | string | null | undefined> & {

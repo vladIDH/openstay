@@ -426,3 +426,36 @@ describe("config", () => {
     ]);
   });
 });
+
+describe("guest registration from Smoobu (Fairguest)", () => {
+  it("seals holder, number of guests and reference; never in calendar_events or in the output", async () => {
+    const { dir, configFile } = await setUp([
+      booking(910, 398, "2099-06-10", "2099-06-13", { "guest-name": "Ospite Prova", firstname: "Ospite", lastname: "Prova", adults: 2, children: 1, "reference-id": "PROVA-0001" }),
+    ]);
+    const config = JSON.parse(readFileSync(configFile, "utf8"));
+    config.listings[0].fairguest = { country: "ES-CT", establishment: "ZZ00000000", establishmentName: "Casa di Prova" };
+    writeFileSync(configFile, JSON.stringify(config));
+    const env = { ...ENV, FAIRGUEST_FRASE: "frase segreta di prova" };
+    const fast = { N: 2 ** 10, r: 8, p: 1 };
+    expect(await main(["ospiti", "attiva"], io(dir, { env, scryptCost: fast }))).toBe(0);
+    const t = io(dir, { env });
+    expect(await main(["smoobu", "importa"], t)).toBe(0);
+    expect([...t.lines, ...t.errors].join("\n")).not.toMatch(/Ospite|PROVA-0001/);
+    const d = db(dir);
+    expect(JSON.stringify(d.prepare("SELECT * FROM calendar_events").all())).not.toMatch(/Ospite|Prova|PROVA-0001/);
+    const row = d.prepare("SELECT id, source, channel_data FROM guest_stays").get() as { id: string; source: string; channel_data: string };
+    expect(row.source).toBe("smoobu");
+    expect(row.channel_data).toMatch(/^fg1\./);
+    expect(row.channel_data).not.toMatch(/Ospite|PROVA/);
+    const shown = io(dir, { env });
+    expect(await main(["ospiti", "mostra", row.id], shown)).toBe(0);
+    expect(shown.lines[1]).toMatch(/reference PROVA-0001 · contract 2026-10-20 · 3 people/);
+    expect(shown.lines[2]).toBe("  holder from smoobu: Ospite Prova");
+  });
+
+  it("does nothing for guests while Fairguest is off", async () => {
+    const { dir } = await setUp([booking(911, 398, "2099-06-10", "2099-06-13", { firstname: "Ospite", lastname: "Prova" })]);
+    expect(await main(["smoobu", "importa"], io(dir))).toBe(0);
+    expect(db(dir).prepare("SELECT COUNT(*) AS n FROM guest_stays").get()).toEqual({ n: 0 });
+  });
+});

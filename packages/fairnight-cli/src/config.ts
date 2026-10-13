@@ -6,6 +6,7 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { ConfigError, validateListingConfig } from "fairnight";
+import { validateGuestSettings, type GuestSettings } from "fairguest";
 import type { ConfigIssue, ListingConfig, ValidationResult } from "fairnight";
 import { CONFIG_FILE, configPath, stripBom } from "./io.js";
 
@@ -64,6 +65,8 @@ export interface HostListing {
   name: string;
   calendars: CalendarLink[];
   pricing: ListingConfig;
+  /** Guest registration (Fairguest): where this listing communicates its guests. */
+  fairguest?: GuestSettings;
   /** The zone whose data (imported with `fairnight mercato importa --zona`) the market factor uses. */
   marketArea?: string;
 }
@@ -233,7 +236,7 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
       issues.push({ path: lp, message: "must be an object with name, calendars and pricing" });
       return;
     }
-    unknownFields(l, lp, ["name", "calendars", "pricing", "marketArea"], issues);
+    unknownFields(l, lp, ["name", "calendars", "pricing", "marketArea", "fairguest"], issues);
     if (l.marketArea !== undefined && !isAreaName(l.marketArea)) {
       issues.push({ path: `${lp}.marketArea`, message: `must be a zone name with lowercase letters, digits and dashes (like "adeje"), got ${JSON.stringify(l.marketArea)}` });
     }
@@ -248,6 +251,12 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
       names.add(l.name);
     }
     checkCalendars(l.calendars, `${lp}.calendars`, issues);
+    let fairguest: GuestSettings | undefined;
+    if (l.fairguest !== undefined) {
+      const g = validateGuestSettings(l.fairguest, `${lp}.fairguest`);
+      issues.push(...g.issues);
+      if (g.value) fairguest = g.value;
+    }
 
     // The engine checks the price rules; its paths start with "listing".
     const pricingInput = isObj(l.pricing) && l.pricing.listingId === undefined ? { ...l.pricing, listingId: l.name } : l.pricing;
@@ -264,6 +273,7 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
       });
       const listing: HostListing = { name: l.name as string, calendars, pricing: r.value };
       if (typeof l.marketArea === "string") listing.marketArea = l.marketArea;
+      if (fairguest) listing.fairguest = fairguest;
       listings.push(listing);
     }
   });

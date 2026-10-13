@@ -18,6 +18,11 @@ export interface FakeBooking {
   "guest-name": string;
   price: number | null;
   "is-blocked-booking": boolean;
+  firstname?: string;
+  lastname?: string;
+  adults?: number;
+  children?: number;
+  "reference-id"?: string;
 }
 
 export interface FakeOptions {

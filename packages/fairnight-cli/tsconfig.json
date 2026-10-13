@@ -17,6 +17,9 @@
       ],
       "fairnight-market": [
         "../fairnight-market/src/index.ts"
+      ],
+      "fairguest": [
+        "../fairguest/src/index.ts"
       ]
     }
   },

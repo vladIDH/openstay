@@ -10,3 +10,5 @@ export { CONFIG_FILE, configPath, dbPath, localToday } from "./io.js";
 export { listMarketAreas, loadMarket } from "./market-store.js";
 export type { MarketAreaRow } from "./market-store.js";
 export { lastBookingReceived, lastSync, loadPriceHistory, loadStays, priceOne } from "./price.js";
+export { guestDeadlines, guestsEnabled } from "./guests/store.js";
+export type { DeadlineRow } from "./guests/store.js";

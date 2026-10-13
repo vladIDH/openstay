@@ -4,6 +4,8 @@
  *
  * We keep only what pricing needs: dates and whether a night is a stay or a
  * block. No guest names, phone numbers or descriptions from the calendars.
+ * The guest registration (Fairguest, the guest_* tables) keeps every personal
+ * field encrypted: in clear there are only random ids, dates and states.
  */
 import { mkdirSync } from "node:fs";
 import path from "node:path";
@@ -11,7 +13,7 @@ import Database from "better-sqlite3";
 
 export type Db = Database.Database;
 
-const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (
@@ -138,14 +140,81 @@ CREATE TABLE IF NOT EXISTS market_days (
   comparables   INTEGER,
   PRIMARY KEY (area, date)
 );
+
+-- Version 5 (Fairguest, guest registration). Times are the host's local
+-- "YYYY-MM-DDTHH:mm". Personal data only in the sealed columns (channel_data,
+-- host_data, data): encrypted for the host's key, see packages/fairguest.
+CREATE TABLE IF NOT EXISTS guest_stays (
+  id           TEXT PRIMARY KEY,
+  listing      TEXT NOT NULL,
+  -- where the stay came from: manual, a calendar feed key (airbnb, booking…), smoobu, beds24
+  source       TEXT NOT NULL,
+  source_uid   TEXT,
+  check_in     TEXT NOT NULL,
+  check_out    TEXT NOT NULL,
+  booked_at    TEXT,
+  seen_at      TEXT NOT NULL,
+  -- random code of the check-in form /checkin/<code>, valid until check-out
+  code         TEXT UNIQUE,
+  -- sealed: reference, holder's name and number of guests read from Smoobu or Beds24
+  channel_data TEXT,
+  -- sealed: corrections typed by the host; they win over channel_data
+  host_data    TEXT,
+  cancelled_at TEXT,
+  erased_at    TEXT,
+  UNIQUE (listing, source, source_uid)
+);
+
+-- One row per guest, sealed whole.
+CREATE TABLE IF NOT EXISTS guest_people (
+  id       TEXT PRIMARY KEY,
+  stay_id  TEXT NOT NULL REFERENCES guest_stays (id),
+  added_at TEXT NOT NULL,
+  added_by TEXT NOT NULL CHECK (added_by IN ('host', 'form')),
+  data     TEXT NOT NULL
+);
+
+-- Every communication prepared, sent or confirmed, with its outcome.
+CREATE TABLE IF NOT EXISTS guest_submissions (
+  id       INTEGER PRIMARY KEY,
+  stay_id  TEXT NOT NULL REFERENCES guest_stays (id),
+  kind     TEXT NOT NULL CHECK (kind IN ('reservation', 'checkin', 'cancellation')),
+  channel  TEXT NOT NULL,
+  status   TEXT NOT NULL CHECK (status IN ('prepared', 'sent', 'accepted', 'rejected', 'cancelled')),
+  at       TEXT NOT NULL,
+  batch    TEXT,
+  -- a file written for the host to upload (Mossos); deleted with the personal data
+  file     TEXT,
+  detail   TEXT
+);
 `;
 
-/** Columns added after version 1, for databases created before them. */
+/**
+ * The steps from one schema version to the next, applied in order to an older
+ * database (a new one starts at 1 and runs them all). New tables come from
+ * SCHEMA (CREATE TABLE IF NOT EXISTS), so a step only changes what exists.
+ */
+const MIGRATIONS: { to: number; run(db: Database.Database): void }[] = [
+  {
+    to: 2, // Smoobu: the day the booking was made, when the source knows it (Smoobu's created-at)
+    run: (db) => {
+      if (!hasColumn(db, "calendar_events", "booked_at")) db.exec("ALTER TABLE calendar_events ADD COLUMN booked_at TEXT");
+    },
+  },
+  { to: 3, run: () => {} }, // Beds24: new tables only
+  { to: 4, run: () => {} }, // zone data: new tables only
+  { to: 5, run: () => {} }, // Fairguest: new tables only
+];
+
 function upgrade(db: Database.Database): void {
-  const columns = (db.prepare("PRAGMA table_info(calendar_events)").all() as { name: string }[]).map((c) => c.name);
-  // The day the booking was made, when the source knows it (Smoobu's created-at).
-  if (!columns.includes("booked_at")) db.exec("ALTER TABLE calendar_events ADD COLUMN booked_at TEXT");
-  db.prepare("UPDATE meta SET value = ? WHERE key = 'schema_version' AND CAST(value AS INTEGER) < ?").run(String(SCHEMA_VERSION), SCHEMA_VERSION);
+  const current = Number(getMeta(db, "schema_version") ?? "1");
+  db.transaction(() => {
+    for (const m of MIGRATIONS) {
+      if (m.to <= current || m.to > SCHEMA_VERSION) continue;
+      m.run(db);
+      setMeta(db, "schema_version", String(m.to));
+    }
+  })();
 }
 
 /** Does this (possibly older, read-only) database have the column? */
@@ -174,7 +243,8 @@ export function openDb(file: string): Db {
   mkdirSync(path.dirname(file), { recursive: true });
   const db = new Database(file);
   db.exec(SCHEMA);
-  db.prepare("INSERT OR IGNORE INTO meta (key, value) VALUES ('schema_version', ?)").run(String(SCHEMA_VERSION));
+  // A new database starts at version 1 and goes through every migration.
+  db.prepare("INSERT OR IGNORE INTO meta (key, value) VALUES ('schema_version', '1')").run();
   upgrade(db);
   return db;
 }

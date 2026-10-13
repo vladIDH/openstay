@@ -12,6 +12,6 @@ export type {
   WriteResult,
 } from "./client.js";
 export { mapBookings } from "./mapping.js";
-export type { ImportedStay, MappingResult } from "./mapping.js";
+export type { BookingGuests, ImportedStay, MappingResult } from "./mapping.js";
 export { buildWrites, MAX_RANGE_NIGHTS, nightsOf, planPush, probePair } from "./plan.js";
 export type { DiffRow, PushPlan, RangeEnd } from "./plan.js";

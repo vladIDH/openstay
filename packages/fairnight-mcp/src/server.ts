@@ -182,12 +182,12 @@ export const TOOLS: Tool[] = [
         `${d.listing}: zone "${d.zone}", ${factor}. Source: ${z.attribution}, read ${z.readOn}` +
         (z.keptUntil ? `, kept until ${z.keptUntil}` : "") +
         `. ${z.nights} nights ${z.first} → ${z.last}` +
-        (z.averageOccupancyPercent !== null ? `, average occupancy ${fmt(z.averageOccupancyPercent)}%${z.estimated ? " (estimated: booked and closed nights look the same)" : ""}` : "") +
+        (z.averageOccupancyPercent !== null ? `, average occupancy ${z.averageOccupancyPercent}%${z.estimated ? " (estimated: booked and closed nights look the same)" : ""}` : "") +
         (z.averagePrice !== null ? `, average price ${fmt(z.averagePrice)}` : "") +
         ".";
       const lines = d.nights.map(
         (n) =>
-          `${n.date}: ${n.occupancyPercent !== undefined ? `${fmt(n.occupancyPercent)}% booked` : "occupancy —"}` +
+          `${n.date}: ${n.occupancyPercent !== undefined ? `${n.occupancyPercent}% booked` : "occupancy —"}` +
           `${n.averagePrice !== undefined ? `, price ${fmt(n.averagePrice)}` : ""}${n.comparables !== undefined ? `, ${n.comparables} comparables` : ""}`,
       );
       return { text: [head, ...(lines.length ? lines : [`No zone figures between ${d.from} and ${d.to}.`])].join("\n"), data: d };

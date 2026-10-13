@@ -319,7 +319,7 @@ export function marketStatus(dir: string, io: Io): number {
     io.out(areas.length === 0 ? 'No zone data yet: "fairnight mercato importa <file> --zona <name>".' : "Zones:");
     for (const a of areas) {
       const figures = [
-        a.averageOccupancy !== null ? `average occupancy ${formatAmount(a.averageOccupancy)}%${a.estimated ? " (estimated)" : ""}` : null,
+        a.averageOccupancy !== null ? `average occupancy ${a.averageOccupancy}%${a.estimated ? " (estimated)" : ""}` : null,
         a.averagePrice !== null ? `average price ${formatAmount(a.averagePrice)}` : null,
       ].filter(Boolean);
       io.out(`- ${a.area}: ${a.source}, ${a.days} nights ${a.first} → ${a.last}, ${figures.join(", ")}; read ${a.readOn}.`);

@@ -63,7 +63,16 @@ export function lastBookingReceived(db: Db, listing: HostListing): string | null
  * the average of a whole STAY (total / nights), not what each night sold for.
  */
 export function loadSmoobuHistory(db: Db, listing: string): PastPrice[] {
-  const rows = db.prepare("SELECT check_in, nights, per_night FROM smoobu_stays WHERE listing = ? ORDER BY check_in").all(listing) as {
+  return loadStayHistory(db, "smoobu_stays", listing);
+}
+
+/** The same for Beds24 stays (total / nights of each stay). */
+export function loadBeds24History(db: Db, listing: string): PastPrice[] {
+  return loadStayHistory(db, "beds24_stays", listing);
+}
+
+function loadStayHistory(db: Db, table: "smoobu_stays" | "beds24_stays", listing: string): PastPrice[] {
+  const rows = db.prepare(`SELECT check_in, nights, per_night FROM ${table} WHERE listing = ? ORDER BY check_in`).all(listing) as {
     check_in: string;
     nights: number;
     per_night: number;
@@ -79,6 +88,8 @@ export function loadSmoobuHistory(db: Db, listing: string): PastPrice[] {
 export interface PriceOptions {
   /** Add Smoobu stay averages to the history used by the historical floor (CSV prices win on the same night). */
   useSmoobuHistory?: boolean;
+  /** The same for Beds24 stay averages (--usa-storico-beds24). */
+  useBeds24History?: boolean;
 }
 
 export function priceOne(db: Db, listing: HostListing, today: string, days: number, options: PriceOptions = {}): PricingResult {
@@ -86,7 +97,11 @@ export function priceOne(db: Db, listing: HostListing, today: string, days: numb
   const calendar: ListingCalendar = {
     stays: loadStays(db, listing),
     // Later entries win for the same night: Smoobu averages first, then the CSV prices.
-    priceHistory: options.useSmoobuHistory ? [...loadSmoobuHistory(db, listing.name), ...csv] : csv,
+    priceHistory: [
+      ...(options.useSmoobuHistory ? loadSmoobuHistory(db, listing.name) : []),
+      ...(options.useBeds24History ? loadBeds24History(db, listing.name) : []),
+      ...csv,
+    ],
   };
   const last = lastBookingReceived(db, listing);
   if (last !== null) calendar.lastBookingReceived = last;

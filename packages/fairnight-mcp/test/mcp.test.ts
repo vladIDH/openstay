@@ -178,12 +178,14 @@ describe("sync status with Smoobu", () => {
     config.listings = [
       { name: "loft", calendars: [{ source: "smoobu", apartmentId: 398 }], pricing: config.listings[0].pricing },
       { name: "studio", calendars: [], pricing: config.listings[1].pricing },
+      { name: "room", calendars: [{ source: "beds24", roomId: 101, priceField: "price2" }], pricing: config.listings[1].pricing },
     ];
     writeFileSync(file, JSON.stringify(config));
     const db = openDb(path.join(folder, "data", "fairnight.db"));
     const run = db.prepare("INSERT INTO sync_runs (listing, feed, at, ok, error) VALUES (?, ?, ?, ?, ?)");
     run.run("loft", "smoobu", "2026-10-31T08:00:00.000Z", 1, null);
     run.run("loft", "smoobu", "2026-11-01T08:00:00.000Z", 0, "Smoobu refused the request (401).");
+    run.run("room", "beds24", "2026-11-01T07:30:00.000Z", 1, null);
     db.close();
     const [c, s] = InMemoryTransport.createLinkedPair();
     await buildServer({ dir: folder, now }).connect(s);
@@ -194,9 +196,10 @@ describe("sync status with Smoobu", () => {
       [
         "- loft (data from smoobu): Smoobu apartment 398: last read 2026-10-31T08:00:00.000Z (latest attempt failed: Smoobu refused the request (401).)",
         "- studio (data from none): no sources",
+        "- room (data from beds24): Beds24 room 101: last read 2026-11-01T07:30:00.000Z",
       ].join("\n"),
     );
-    expect(r.structuredContent.listings.map((l) => l.dataFrom)).toEqual(["smoobu", "none"]);
+    expect(r.structuredContent.listings.map((l) => l.dataFrom)).toEqual(["smoobu", "none", "beds24"]);
     await other.close();
     rmSync(folder, { recursive: true, force: true });
   });

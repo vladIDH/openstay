@@ -8,6 +8,7 @@ export default defineConfig({
     // Test against the sources of the other packages, so nothing needs to be built first.
     alias: [
       { find: /^fairnight$/, replacement: src("../fairnight/src/engine/index.ts") },
+      { find: /^fairnight-beds24$/, replacement: src("../fairnight-beds24/src/index.ts") },
       { find: /^fairnight-smoobu$/, replacement: src("../fairnight-smoobu/src/index.ts") },
     ],
   },

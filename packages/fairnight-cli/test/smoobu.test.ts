@@ -422,7 +422,7 @@ describe("config", () => {
       "Invalid fairnight.config.json:",
       "  - listings[1].calendars[1].url: unknown field (allowed: source, apartmentId)",
       "  - listings[1].calendars[1].apartmentId: must be the number of the Smoobu apartment, got 0",
-      "  - listings[1].calendars[1]: a listing can be linked to one Smoobu apartment only",
+      "  - listings[1].calendars[1]: a listing can be linked to one channel manager only (one Smoobu apartment or one Beds24 room)",
     ]);
   });
 });

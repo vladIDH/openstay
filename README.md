@@ -28,7 +28,7 @@ It is free and open source (AGPL-3.0). It has no account, no monthly fee per lis
 - **Exports a CSV** (date, price, minimum stay) to upload where you need it.
 - **Answers questions in Claude** through an optional read-only MCP server: "which gaps do I have before Christmas?"
 
-What it does **not** do (yet): it does not change prices on Airbnb or Booking.com by itself. You copy the prices or upload the CSV, or, with Smoobu, confirm and let Fairnight write them (0.2.0, see below). More channel managers come in phase 2.
+What it does **not** do (yet): it does not change prices on Airbnb or Booking.com by itself. You copy the prices or upload the CSV, or, with Smoobu or Beds24, confirm and let Fairnight write them (0.2.0, see below). More channel managers come in phase 2.
 
 ## Five-minute setup
 
@@ -72,6 +72,21 @@ fairnight smoobu spingi           # shows what would change; add --applica to wr
 
 The connector uses only Smoobu's HMAC request signing: create the API key **with its secret** in *Settings → Advanced → API Keys*. The old key-only login stops working on 31 October 2026 and is not used. After `importa`, `fairnight sync` reads Smoobu too.
 
+## Beds24
+
+If you use [Beds24](https://beds24.com), Fairnight reads your rooms and bookings from it, and writes prices and minimum stays back only after you have seen the differences and confirmed. *In development for 0.2.0.*
+
+```
+fairnight beds24 collega          # asks for a Beds24 invite code (never shown) and keeps the refresh token
+fairnight beds24 importa          # each Beds24 room becomes a listing, bookings come in
+fairnight beds24 spingi           # shows what would change; add --applica to write it to Beds24
+```
+
+- **Permissions.** Create the invite code in *Settings → Marketplace → API* with the permissions **read:bookings, all:inventory and read:properties**. They are chosen when the code is created and cannot be changed later.
+- **Token lifetime.** The invite code works once, for 24 hours. The refresh token it gives **stops working after 30 days without use**, so run a Beds24 command at least once a month.
+- **Credits.** Beds24 counts credits (100 every 5 minutes by default). Fairnight never uses more than half of them and prints, after each command, how many it used and how many are left.
+- **Rooms with several identical units** are not handled yet.
+
 ## Fairnight today and PriceLabs
 
 PriceLabs is a mature, paid service with market data from millions of listings. Fairnight is a first version that works only with **your** data. This is where it stands, compared with PriceLabs' public feature pages:
@@ -93,7 +108,7 @@ PriceLabs is a mature, paid service with market data from millions of listings. 
 | AI assistant connection (MCP) | ✓ | ✓ read-only, local | write access with confirmation: phase 2 |
 | Rules per group / portfolio, reusable rule sets | ✓ | — | phase 2 |
 | Length-of-stay discounts, extra-guest fees, check-in days | ✓ | — | phase 2 |
-| Pushing prices to channel managers | ✓ 160+ | CSV export; Smoobu in 0.2.0, with confirmation | Beds24: phase 2 |
+| Pushing prices to channel managers | ✓ 160+ | CSV export; Smoobu and Beds24 in 0.2.0, with confirmation | more connectors: phase 2 |
 | Alerts, portfolio reports, pacing vs last year | ✓ | — | phase 2 |
 | Try the rules on last year first (backtest) | preview of new rules only | — | phase 2 |
 | Market data: neighbourhood prices, comp sets | ✓ | — | phase 3, optional, with your own data key |

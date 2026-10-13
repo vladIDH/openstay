@@ -16,6 +16,8 @@ import { defaultExportPath, EXPORT_FORMATS, toCsv, writeExport } from "./export.
 import { formatTable, lastSync, priceOne } from "./price.js";
 import { startServer } from "./serve.js";
 import { connect, importFromSmoobu, push } from "./smoobu.js";
+import { connect as connectBeds24, creditsLine, importFromBeds24, push as pushBeds24 } from "./beds24.js";
+import { Beds24Error } from "fairnight-beds24";
 import { formatFeedReport, syncEverything } from "./sync-all.js";
 
 export const USAGE = `Fairnight: dynamic prices for short-term rentals, on your own computer.
@@ -30,6 +32,9 @@ Usage:
   fairnight smoobu collega                         save your Smoobu API key and secret (asked, never shown)
   fairnight smoobu importa                         Smoobu apartments become listings; bookings into the local database
   fairnight smoobu spingi                          compare with Smoobu; writes only with --applica [--da DATE] [--a DATE] [--alloggio ID]
+  fairnight beds24 collega                         exchange a Beds24 invite code for a refresh token (asked, never shown)
+  fairnight beds24 importa                         Beds24 rooms become listings; bookings into the local database
+  fairnight beds24 spingi                          compare with Beds24; writes only with --applica [--da DATE] [--a DATE] [--alloggio ROOM]
 
 Every command works in the current folder; use --dir <folder> to point at another one.`;
 
@@ -52,6 +57,7 @@ const OPTIONS = {
   a: { type: "string" },
   alloggio: { type: "string" },
   "usa-storico-smoobu": { type: "boolean" },
+  "usa-storico-beds24": { type: "boolean" },
   help: { type: "boolean", short: "h" },
 } as const;
 
@@ -95,6 +101,8 @@ export async function main(argv: string[], io: Io): Promise<number> {
         return await runServe(dir, values, rest, io);
       case "smoobu":
         return await runSmoobu(dir, values, rest, io);
+      case "beds24":
+        return await runBeds24(dir, values, rest, io);
       default:
         throw new UsageError(`Unknown command "${command}".`);
     }
@@ -104,7 +112,7 @@ export async function main(argv: string[], io: Io): Promise<number> {
       io.err(USAGE);
       return 2;
     }
-    if (e instanceof ConfigError || e instanceof SetupError || e instanceof SmoobuError) {
+    if (e instanceof ConfigError || e instanceof SetupError || e instanceof SmoobuError || e instanceof Beds24Error) {
       io.err(e.message);
       return 1;
     }
@@ -132,12 +140,13 @@ async function runSync(dir: string, listing: string | undefined, rest: string[],
   const listings = selectListings(config, listing);
   const db = openDb(dbPath(dir));
   try {
-    const reports = await syncEverything(db, dir, listings, io);
+    const { reports, notes } = await syncEverything(db, dir, listings, io);
     let failed = 0;
     for (const r of reports) {
       if (!r.ok) failed++;
       for (const line of formatFeedReport(r)) io.out(line);
     }
+    for (const line of notes) io.out(line);
     if (reports.length === 0) io.out("No calendars in the config: add iCal links under \"calendars\".");
     return failed > 0 ? 1 : 0;
   } finally {
@@ -174,7 +183,7 @@ function runImport(dir: string, listing: string | undefined, rest: string[], dry
 
 function runPrice(
   dir: string,
-  values: { listing?: string; days?: string; today?: string; explain?: boolean; json?: boolean; "usa-storico-smoobu"?: boolean },
+  values: { listing?: string; days?: string; today?: string; explain?: boolean; json?: boolean; "usa-storico-smoobu"?: boolean; "usa-storico-beds24"?: boolean },
   rest: string[],
   io: Io,
 ): number {
@@ -187,7 +196,7 @@ function runPrice(
   try {
     const results = listings.map((l) => ({
       listing: l,
-      result: priceOne(db, l, today, days, { useSmoobuHistory: values["usa-storico-smoobu"] ?? false }),
+      result: priceOne(db, l, today, days, { useSmoobuHistory: values["usa-storico-smoobu"] ?? false, useBeds24History: values["usa-storico-beds24"] ?? false }),
     }));
     if (values.json) {
       io.out(JSON.stringify(results.map((r) => ({ listing: r.listing.name, ...r.result })), null, 2));
@@ -309,5 +318,59 @@ async function runSmoobu(
     }
     default:
       throw new UsageError(sub === undefined ? "Which Smoobu command? collega, importa or spingi." : `Unknown Smoobu command "${sub}". Use collega, importa or spingi.`);
+  }
+}
+
+async function runBeds24(
+  dir: string,
+  values: { applica?: boolean; da?: string; a?: string; alloggio?: string; "usa-storico-beds24"?: boolean },
+  rest: string[],
+  io: Io,
+): Promise<number> {
+  const [sub, ...extra] = rest;
+  noExtra(extra);
+  switch (sub) {
+    case "collega":
+    case "connect":
+      return connectBeds24(dir, io);
+    case "importa":
+    case "import": {
+      const summary = await importFromBeds24(dir, io);
+      for (const a of summary.added) {
+        io.out(`Added listing "${a.name}" for Beds24 room ${a.roomId} (${a.title}): base price ${a.basePrice} ${a.currency}, from the prices set in Beds24. Check its rules in fairnight.config.json.`);
+      }
+      for (const s of summary.skipped) {
+        io.out(`Room "${s.name}" (Beds24 room ${s.roomId}, ${s.propertyName}): ${s.qty} identical units, not handled in this version.`);
+      }
+      if (summary.added.length > 0) io.out("The previous config is kept as fairnight.config.json.bak.");
+      let failed = 0;
+      for (const r of summary.reports) {
+        if (!r.ok) failed++;
+        for (const line of formatFeedReport(r)) io.out(line);
+      }
+      if (summary.reports.length === 0) io.out("No Beds24 room linked to a listing.");
+      io.out(creditsLine(summary.credits));
+      return failed > 0 ? 1 : 0;
+    }
+    case "spingi":
+    case "push": {
+      for (const [flag, v] of [["da", values.da], ["a", values.a]] as const) {
+        if (v !== undefined && !ISO_DATE.test(v)) throw new UsageError(`--${flag} must be a date like 2026-11-01, got "${v}"`);
+      }
+      let room: number | undefined;
+      if (values.alloggio !== undefined) {
+        room = Number(values.alloggio);
+        if (!Number.isInteger(room) || room <= 0) throw new UsageError(`--alloggio must be a Beds24 room number, got "${values.alloggio}"`);
+      }
+      return pushBeds24(dir, io, {
+        apply: values.applica ?? false,
+        ...(values.da !== undefined ? { from: values.da } : {}),
+        ...(values.a !== undefined ? { to: values.a } : {}),
+        ...(room !== undefined ? { room } : {}),
+        useBeds24History: values["usa-storico-beds24"] ?? false,
+      });
+    }
+    default:
+      throw new UsageError(sub === undefined ? "Which Beds24 command? collega, importa or spingi." : `Unknown Beds24 command "${sub}". Use collega, importa or spingi.`);
   }
 }

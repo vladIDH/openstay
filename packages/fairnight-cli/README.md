@@ -111,6 +111,27 @@ $ fairnight export --listing seaview-loft --today 2026-11-01
 seaview-loft: 344 nights for sale written to …/exports/seaview-loft-2026-11-01.csv
 ```
 
+## Beds24 (0.2.0, in development)
+
+One Fairnight listing is one Beds24 **room**. Rooms with several identical units (`qty` > 1) are skipped in this version.
+
+```
+fairnight beds24 collega                 # once: the invite code, asked without echo
+fairnight beds24 importa                 # rooms become listings, bookings come in
+fairnight beds24 spingi                  # dry run: the table of differences, nothing written
+fairnight beds24 spingi --applica        # writes, lists refused nights, reads back
+```
+
+- **Invite code.** Create it in Beds24: *Settings → Marketplace → API → Generate invite code*. Choose the permissions **read:bookings, all:inventory, read:properties** at that moment: they cannot be changed later. The code works once, for 24 hours.
+- **Refresh token.** `collega` exchanges the code for a refresh token and saves it in `beds24-credentials.json`, readable only by you. `BEDS24_REFRESH_TOKEN` wins over the file. **A refresh token stops working after 30 days without use.** Short tokens are renewed automatically. No token is ever printed.
+- **Which price.** Fairnight writes `price1` unless the listing says otherwise, for example `{ "source": "beds24", "roomId": 1234567, "priceField": "price2" }`. It writes only that field and `minStay`: availability, overrides and the other prices are never touched.
+- **Credits.** Beds24 allows 100 credits every 5 minutes by default. Fairnight never goes below half of them, waits for the reset when needed, and prints after each command: `Beds24 credits: 7 used in this run · 93 left of 100 in this 5-minute window.`
+- **Bookings.**
+  - `confirmed`, `new` and `request` count as bookings; `black` is a blocked date; `cancelled` is removed; enquiries are ignored.
+  - The stale-calendar discount uses the real booking time.
+  - Stay prices feed the historical floor only with `fairnight price --usa-storico-beds24`, because they are averages per stay.
+- **Writing.** One element per night, all in one request per room, until the first real `--applica` has checked once how Beds24 reads the end of a range; then ranges of up to 7 equal nights. Nights Beds24 refuses are listed one by one, and everything is read back.
+
 ## How calendars are read
 
 - **Airbnb**: "Reserved" counts as a stay; "Airbnb (Not available)" counts as a blocked date.

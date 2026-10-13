@@ -6,8 +6,7 @@
  * Writing: prices and minimum stays, ONLY with --applica; without it, a dry run
  * that shows the differences and writes nothing.
  */
-import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
-import { formatAmount } from "fairnight";
+import { existsSync } from "node:fs";
 import {
   buildOperations,
   chunks,
@@ -16,10 +15,10 @@ import {
   probePair,
   SmoobuClient,
   SmoobuError,
-  type DiffRow,
   type RangeEnd,
 } from "fairnight-smoobu";
-import { CONFIG_FILE, configPath, localToday, stripBom, type Io } from "./io.js";
+import { CONFIG_FILE, configPath, localToday, type Io } from "./io.js";
+import { addDays, appendListings, daysBetween, diffTable, emptyReport, HISTORY_DAYS, recordRun, slugify, storeStays } from "./channel.js";
 import { isSmoobu, loadHostConfig, SetupError, smoobuApartment, type HostListing } from "./config.js";
 import { CREDENTIALS_FILE, loadCredentials, saveCredentials } from "./credentials.js";
 import { getMeta, openDb, setMeta, type Db } from "./db.js";
@@ -28,18 +27,10 @@ import { priceOne } from "./price.js";
 import type { FeedReport } from "./sync.js";
 
 export const SMOOBU_FEED = "smoobu";
-/** How far back bookings are imported: enough for "same month last year". */
-const HISTORY_DAYS = 400;
 /** Operations per POST /api/rates request (Smoobu documents no maximum). */
 const OPERATIONS_PER_REQUEST = 50;
 const RANGE_END_KEY = "smoobu_range_end";
 const RANGE_CHECKED_KEY = "smoobu_range_end_checked_on";
-
-const DAY = 86_400_000;
-const addDays = (iso: string, n: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * DAY).toISOString().slice(0, 10);
-const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / DAY);
-const WEEKDAY = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-const weekday = (iso: string) => WEEKDAY[new Date(`${iso}T00:00:00Z`).getUTCDay()] as string;
 
 export function smoobuClient(dir: string, io: Io): SmoobuClient {
   const { credentials } = loadCredentials(dir, io.env ?? {});
@@ -100,15 +91,6 @@ export async function connect(dir: string, io: Io): Promise<number> {
 
 // ---------------------------------------------------------------- import of bookings
 
-interface Row {
-  uid: string;
-  check_in: string;
-  check_out: string;
-  kind: string;
-  booked_at: string | null;
-  removed_at: string | null;
-}
-
 /**
  * Bookings of every listing linked to Smoobu, into the same tables the iCal
  * calendars use (feed "smoobu"). One request series for all apartments.
@@ -120,12 +102,7 @@ export async function importBookings(db: Db, listings: HostListing[], client: Sm
   if (linked.length === 0) return [];
   const at = now.toISOString();
   const from = addDays(localToday(now), -HISTORY_DAYS);
-  const empty = (listing: string): FeedReport => ({ listing, feed: SMOOBU_FEED, ok: false, seen: 0, added: 0, changed: 0, removed: 0, restored: 0, skipped: [] });
-  const recordRun = db.prepare(
-    `INSERT INTO sync_runs (listing, feed, at, ok, seen, added, changed, removed, restored, error)
-     VALUES (@listing, @feed, @at, @ok, @seen, @added, @changed, @removed, @restored, @error)`,
-  );
-  const record = (r: FeedReport) => recordRun.run({ ...r, ok: r.ok ? 1 : 0, at, error: r.error ?? null, skipped: undefined });
+  const record = (r: FeedReport) => recordRun(db, r, at);
 
   let bookings;
   try {
@@ -133,61 +110,19 @@ export async function importBookings(db: Db, listings: HostListing[], client: Sm
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return linked.map((l) => {
-      const r = { ...empty(l.name), error: message };
+      const r = { ...emptyReport(l.name, SMOOBU_FEED), error: message };
       record(r);
       return r;
     });
   }
   const mapped = mapBookings(bookings);
 
-  const select = db.prepare("SELECT uid, check_in, check_out, kind, booked_at, removed_at FROM calendar_events WHERE listing = ? AND feed = ?");
-  const insert = db.prepare(
-    `INSERT INTO calendar_events (listing, feed, uid, check_in, check_out, kind, first_seen_at, last_seen_at, booked_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  );
-  const update = db.prepare(
-    `UPDATE calendar_events SET check_in = ?, check_out = ?, kind = ?, booked_at = ?, last_seen_at = ?, removed_at = NULL
-     WHERE listing = ? AND feed = ? AND uid = ?`,
-  );
-  const markRemoved = db.prepare("UPDATE calendar_events SET removed_at = ? WHERE listing = ? AND feed = ? AND uid = ?");
-  const upsertPrice = db.prepare(
-    `INSERT INTO smoobu_stays (listing, uid, check_in, check_out, nights, total, per_night, imported_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT (listing, uid) DO UPDATE SET check_in = excluded.check_in, check_out = excluded.check_out, nights = excluded.nights,
-       total = excluded.total, per_night = excluded.per_night, imported_at = excluded.imported_at`,
-  );
-  const dropPrice = db.prepare("DELETE FROM smoobu_stays WHERE listing = ? AND uid = ?");
-
   const reports: FeedReport[] = [];
   for (const listing of linked) {
     const apt = smoobuApartment(listing) as number;
     const stays = mapped.stays.filter((s) => s.apartmentId === apt);
-    const r = { ...empty(listing.name), ok: true, seen: stays.length, skipped: mapped.skipped };
-    db.transaction(() => {
-      const existing = new Map((select.all(listing.name, SMOOBU_FEED) as Row[]).map((row) => [row.uid, row]));
-      const present = new Set<string>();
-      for (const s of stays) {
-        present.add(s.uid);
-        const row = existing.get(s.uid);
-        if (!row) {
-          insert.run(listing.name, SMOOBU_FEED, s.uid, s.checkIn, s.checkOut, s.kind, at, at, s.bookedAt);
-          r.added++;
-        } else {
-          if (row.removed_at !== null) r.restored++;
-          else if (row.check_in !== s.checkIn || row.check_out !== s.checkOut || row.kind !== s.kind || row.booked_at !== s.bookedAt) r.changed++;
-          update.run(s.checkIn, s.checkOut, s.kind, s.bookedAt, at, listing.name, SMOOBU_FEED, s.uid);
-        }
-        if (s.stayPrice) upsertPrice.run(listing.name, s.uid, s.checkIn, s.checkOut, s.stayPrice.nights, s.stayPrice.total, s.stayPrice.perNight, at);
-        else dropPrice.run(listing.name, s.uid);
-      }
-      // Gone from Smoobu (cancelled or deleted) within the imported window: removed, not deleted.
-      for (const row of existing.values()) {
-        if (row.removed_at === null && !present.has(row.uid) && row.check_out >= from) {
-          markRemoved.run(at, listing.name, SMOOBU_FEED, row.uid);
-          dropPrice.run(listing.name, row.uid);
-          r.removed++;
-        }
-      }
-    })();
+    const r = { ...emptyReport(listing.name, SMOOBU_FEED), ok: true, seen: stays.length, skipped: mapped.skipped };
+    storeStays(db, { listing: listing.name, feed: SMOOBU_FEED, priceTable: "smoobu_stays", stays, from, at, report: r });
     record(r);
     reports.push(r);
   }
@@ -195,21 +130,6 @@ export async function importBookings(db: Db, listings: HostListing[], client: Sm
 }
 
 // ---------------------------------------------------------------- importa
-
-function slugify(name: string, taken: Set<string>, id: number): string {
-  let base = name
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 56);
-  if (!/^[a-z0-9]/.test(base)) base = `smoobu-${id}`;
-  let slug = base;
-  for (let n = 2; taken.has(slug); n++) slug = `${base}-${n}`;
-  taken.add(slug);
-  return slug;
-}
 
 export interface ImportSummary {
   added: { name: string; apartmentId: number; title: string; basePrice: number; currency: string }[];
@@ -234,7 +154,7 @@ export async function importFromSmoobu(dir: string, io: Io): Promise<ImportSumma
     const base = Math.round(min !== null && max !== null ? (min + max) / 2 : (min ?? max ?? 100));
     const floor = Math.round(min ?? base * 0.6);
     const ceiling = Math.round(Math.max(max ?? base * 2.5, base));
-    const name = slugify(apt.name, taken, apt.id);
+    const name = slugify(apt.name, taken, `smoobu-${apt.id}`);
     const currency = d.currency && /^[A-Z]{3}$/.test(d.currency) ? d.currency : "EUR";
     newListings.push({
       name,
@@ -253,13 +173,7 @@ export async function importFromSmoobu(dir: string, io: Io): Promise<ImportSumma
     added.push({ name, apartmentId: apt.id, title: apt.name, basePrice: base, currency });
   }
 
-  if (newListings.length > 0) {
-    const file = configPath(dir);
-    copyFileSync(file, `${file}.bak`);
-    const raw = JSON.parse(stripBom(readFileSync(file, "utf8"))) as { listings: unknown[] };
-    raw.listings.push(...newListings);
-    writeFileSync(file, JSON.stringify(raw, null, 2) + "\n", "utf8");
-  }
+  appendListings(dir, newListings);
 
   const fresh = loadHostConfig(dir);
   const db = openDb(dbPath(dir));
@@ -278,18 +192,6 @@ export interface PushOptions {
   to?: string;
   apartment?: number;
   useSmoobuHistory?: boolean;
-}
-
-const pad = (s: string, n: number) => s.padStart(n);
-const money = (n: number | null) => (n === null ? "—" : formatAmount(n));
-const min = (n: number | null) => (n === null ? "—" : String(n));
-
-function table(rows: DiffRow[]): string[] {
-  const lines = [`date        day  ${pad("on Smoobu", 10)}  ${pad("Fairnight", 10)}  min stay`];
-  for (const r of rows) {
-    lines.push(`${r.date}  ${weekday(r.date)}  ${pad(money(r.currentPrice), 10)}  ${pad(money(r.newPrice), 10)}  ${min(r.currentMinStay)} → ${r.newMinStay}`);
-  }
-  return lines;
 }
 
 /** `fairnight smoobu spingi`: show the differences; write them only with apply. */
@@ -325,7 +227,7 @@ export async function push(dir: string, io: Io, opts: PushOptions): Promise<numb
       const current = (await client.getRates([apt], from, to))[String(apt)] ?? {};
       const plan = planPush(quotes, current);
       io.out(`${listing.name} → Smoobu apartment ${apt} · ${from} → ${to} · prices in ${listing.pricing.currency}`);
-      if (plan.changes.length > 0) for (const line of table(plan.changes)) io.out(line);
+      if (plan.changes.length > 0) for (const line of diffTable(plan.changes, "Smoobu")) io.out(line);
       io.out(
         `${plan.changes.length} night${plan.changes.length === 1 ? "" : "s"} to change · ${plan.unchanged} already right` +
           (plan.unavailableOnSmoobu.length > 0

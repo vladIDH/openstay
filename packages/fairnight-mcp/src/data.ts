@@ -259,9 +259,11 @@ export function syncStatus(folder: Folder) {
         const ok = db.prepare("SELECT MAX(at) AS at FROM sync_runs WHERE listing = ? AND feed = ? AND ok = 1").get(l.name, feed) as { at: string | null };
         return {
           feed,
-          kind: c.source === "smoobu" ? ("smoobu" as const) : ("ical" as const),
+          kind: c.source === "smoobu" ? ("smoobu" as const) : c.source === "beds24" ? ("beds24" as const) : ("ical" as const),
           channel: c.source,
-          ...(c.source === "smoobu" ? { apartmentId: c.apartmentId } : {}), // never the iCal links: they work like passwords
+          // Never the iCal links: they work like passwords.
+          ...(c.source === "smoobu" ? { apartmentId: c.apartmentId } : {}),
+          ...(c.source === "beds24" ? { roomId: c.roomId } : {}),
           lastSuccess: ok.at,
           lastAttempt: last?.at ?? null,
           lastError: last && last.ok === 0 ? last.error : null,

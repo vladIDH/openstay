@@ -106,7 +106,7 @@ export function createHandler(opts: ServeOptions): (req: IncomingMessage, res: S
         const job = syncEverything(db, opts.dir, config.listings, opts.io);
         refreshing = job;
         try {
-          const reports = await job;
+          const { reports } = await job;
           json(res, 200, {
             reports: reports.map((r) => ({ listing: r.listing, feed: r.feed, ok: r.ok, added: r.added, removed: r.removed, error: r.error ?? null })),
           });

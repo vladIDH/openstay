@@ -25,6 +25,10 @@ export interface Io {
   smoobuFetch?: SmoobuFetchLike;
   /** Only for tests: a fake Smoobu server instead of https://login.smoobu.com. */
   smoobuBaseUrl?: string;
+  /** Network access for the Beds24 API. Default: global fetch. */
+  beds24Fetch?: SmoobuFetchLike;
+  /** Only for tests: a fake Beds24 server instead of https://beds24.com/api/v2. */
+  beds24BaseUrl?: string;
   /** Waiting (rate limits, retries). Default: real time. */
   sleep?(ms: number): Promise<void>;
 }

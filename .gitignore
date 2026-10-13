@@ -28,5 +28,8 @@ coverage/
 # Smoobu credentials written by "fairnight smoobu collega": never commit them
 smoobu-credentials.json
 
+# Beds24 credentials written by "fairnight beds24 collega": never commit them
+beds24-credentials.json
+
 # documenti del Ministero (SES): restano fuori dal repo, mai committati
 openstay-ses-docs/

@@ -140,13 +140,13 @@ export const TOOLS: Tool[] = [
     name: "get_sync_status",
     title: "Where the data comes from",
     description:
-      "For each listing: where its bookings come from (iCal calendars of Airbnb, Booking, Vrbo… or the Smoobu API), when each source was last read successfully, and the last error if the latest read failed. Use it when the host asks whether the data is up to date.",
+      "For each listing: where its bookings come from (iCal calendars of Airbnb, Booking, Vrbo…, the Smoobu API or the Beds24 API), when each source was last read successfully, and the last error if the latest read failed. Use it when the host asks whether the data is up to date.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
     handler: (folder) => {
       const data = syncStatus(folder);
       const lines = data.listings.map((l) => {
         const parts = l.sources.map((s) => {
-          const label = s.kind === "smoobu" ? `Smoobu apartment ${s.apartmentId}` : `${s.channel} iCal`;
+          const label = s.kind === "smoobu" ? `Smoobu apartment ${s.apartmentId}` : s.kind === "beds24" ? `Beds24 room ${s.roomId}` : `${s.channel} iCal`;
           const when = s.lastSuccess ? `last read ${s.lastSuccess}` : "never read";
           return `${label}: ${when}${s.lastError ? ` (latest attempt failed: ${s.lastError})` : ""}`;
         });

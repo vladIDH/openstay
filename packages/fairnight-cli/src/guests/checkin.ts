@@ -85,13 +85,13 @@ const STYLE = `
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 main{max-width:640px;margin:0 auto;padding:16px}
 header{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
-h1{font-size:1.35rem;margin:8px 0}nav a{color:var(--accent);margin-left:10px;font-size:.9rem}nav a[aria-current]{font-weight:700;text-decoration:none;color:var(--ink)}
+h1{font-size:1.35rem;margin:8px 0}nav{display:flex;flex-wrap:wrap;gap:4px 12px}nav a{color:var(--accent);font-size:.9rem}nav a[aria-current]{font-weight:700;text-decoration:none;color:var(--ink)}
 .stay{background:#fff;border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:12px 0}
 .stay b{display:block;font-size:1.05rem}.muted{color:var(--muted);font-size:.92rem}
-fieldset{border:1px solid var(--line);border-radius:8px;background:#fff;margin:14px 0;padding:10px 14px 14px}
+fieldset{border:1px solid var(--line);border-radius:8px;background:#fff;margin:14px 0;padding:10px 14px 14px;min-width:0}
 legend{font-weight:700;padding:0 6px}
 label{display:block;margin-top:10px;font-weight:600;font-size:.95rem}
-input,select{display:block;width:100%;margin-top:4px;padding:10px;border:1px solid #aeb6bc;border-radius:6px;font:inherit;background:#fff;color:var(--ink)}
+input,select{display:block;width:100%;max-width:100%;min-width:0;margin-top:4px;padding:10px;border:1px solid #aeb6bc;border-radius:6px;font:inherit;background:#fff;color:var(--ink)}
 input[type=checkbox]{display:inline;width:auto;margin-right:8px}
 .check{font-weight:400}
 .hint{font-weight:400;color:var(--muted);font-size:.85rem}

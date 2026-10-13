@@ -18,3 +18,18 @@ path = '''(^|/)smoobu-credentials\.json$'''
 regex = '''"api(?:Key|Secret)"\s*:\s*"([^"]{8,})"'''
 secretGroup = 1
 keywords = ["apikey", "apisecret"]
+
+[[rules]]
+id = "beds24-refresh-token-env"
+description = "Beds24 refresh token written in an env file or a shell script"
+regex = '''(?m)^\s*(?:export\s+|set\s+|\$env:)?BEDS24_REFRESH_TOKEN\s*=\s*["']?([^\s"'#]{16,})'''
+secretGroup = 1
+keywords = ["beds24_refresh_token"]
+
+[[rules]]
+id = "beds24-credentials-file"
+description = "The Beds24 credentials file written by 'fairnight beds24 collega'"
+path = '''(^|/)beds24-credentials\.json$'''
+regex = '''"(?:refreshToken|token)"\s*:\s*"([^"]{8,})"'''
+secretGroup = 1
+keywords = ["refreshtoken", "token"]

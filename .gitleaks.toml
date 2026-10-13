@@ -1,6 +1,6 @@
 title = "OpenStay secret scan"
 
-# Keep every default gitleaks rule, and add the Smoobu credentials of Fairnight.
+# Keep every default gitleaks rule, and add the Smoobu, Beds24 and AirROI credentials of Fairnight.
 [extend]
 useDefault = true
 
@@ -33,3 +33,18 @@ path = '''(^|/)beds24-credentials\.json$'''
 regex = '''"(?:refreshToken|token)"\s*:\s*"([^"]{8,})"'''
 secretGroup = 1
 keywords = ["refreshtoken", "token"]
+
+[[rules]]
+id = "airroi-api-key-env"
+description = "The host's AirROI API key written in an env file or a shell script"
+regex = '''(?m)^\s*(?:export\s+|set\s+|\$env:)?AIRROI_API_KEY\s*=\s*["']?([^\s"'#]{16,})'''
+secretGroup = 1
+keywords = ["airroi_api_key"]
+
+[[rules]]
+id = "airroi-credentials-file"
+description = "The AirROI key file written by 'fairnight mercato collega'"
+path = '''(^|/)airroi-credentials\.json$'''
+regex = '''"apiKey"\s*:\s*"([^"]{8,})"'''
+secretGroup = 1
+keywords = ["apikey"]

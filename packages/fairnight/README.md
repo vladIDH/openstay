@@ -49,12 +49,13 @@ Every factor can be switched on and off. They are applied in this order:
 | 5 | **Far out** | Premium steps for nights far ahead: from 120 days +5%, from 240 days +10%. The farthest step reached applies. |
 | 6 | **Gaps** | Free stretches of up to N nights between two stays (or blocks): a discount, and a minimum stay lowered to the gap length so one booking can fill it. If a last-minute discount also applies, only the larger of the two counts. |
 | 7 | **Occupancy** | Within the next N days (default 60): if the month is booked above a threshold the price goes up, below another threshold it goes down. Only nights from today count, and blocked nights are left out. |
-| 8 | **Events** | The host's own events (CSV: date, name, impact 1–5). Each impact level has a percentage (default 0 / 5 / 12 / 25 / 40). Overlapping events do not add up: the highest impact counts. |
-| 9 | **Stale calendar** (off by default) | No new booking for N days: a discount that grows step by step up to a cap, on the next nights only. It goes back to zero as soon as a new booking arrives. Needs `lastBookingReceived` in the calendar input. |
-| 10 | **Historical floor** (off by default) | The price never goes below a share (e.g. 75%) of the average price sold in the same month a year earlier, when there are enough sold nights. Needs `priceHistory` in the calendar input. |
-| 11 | **Floor and ceiling** | The price is kept between the two. |
-| 12 | **Rounding** | To a step (1, 5, 10…), never back outside floor and ceiling. |
-| 13 | **Date overrides** | A price and/or a minimum stay set by hand for a date. They win over everything, floor and ceiling included. |
+| 8 | **Zone demand** (off by default) | Compares each night of the zone with the zone's own average, from zone data passed in `calendar.market` (the engine never fetches it). If the zone is at least 10% busier (or quieter) than usual, the price moves by **half** of that difference, at most **+15% / -10%**. Nights measured on fewer than 5 comparable listings are skipped. Weight, thresholds and caps are per listing. The explanation names the source and its attribution, and says when the occupancy is an estimate. |
+| 9 | **Events** | The host's own events (CSV: date, name, impact 1–5). Each impact level has a percentage (default 0 / 5 / 12 / 25 / 40). Overlapping events do not add up: the highest impact counts. |
+| 10 | **Stale calendar** (off by default) | No new booking for N days: a discount that grows step by step up to a cap, on the next nights only. It goes back to zero as soon as a new booking arrives. Needs `lastBookingReceived` in the calendar input. |
+| 11 | **Historical floor** (off by default) | The price never goes below a share (e.g. 75%) of the average price sold in the same month a year earlier, when there are enough sold nights. Needs `priceHistory` in the calendar input. |
+| 12 | **Floor and ceiling** | The price is kept between the two. |
+| 13 | **Rounding** | To a step (1, 5, 10…), never back outside floor and ceiling. |
+| 14 | **Date overrides** | A price and/or a minimum stay set by hand for a date. They win over everything, floor and ceiling included. |
 
 **Minimum stay** follows this precedence:
 1. the date override;
@@ -79,6 +80,13 @@ Sat 2027-02-13 · 230 EUR: base 100 → season "Carnival week" = 160 (fixed pric
 ```
 Mon 2026-11-09 · 88 EUR: base 100 → gap of 2 nights -12% = 88 (last-minute discount 4% not added)
 → within floor 60 and ceiling 260. Min stay 2 (lowered to fill the gap).
+```
+
+With zone data (invented here, from the host's own CSV):
+
+```
+Sat 2026-11-14 · 115 EUR: base 100 → zone demand "costa" +15% = 115 (zone 90% booked vs 61% average
+· capped at +15% · 25 comparable listings · your file "zona.csv" · read 2026-11-01). Min stay 2 (default).
 ```
 
 The same information is available as data: `night.steps` holds `{ factor, label, before, after, percent?, note? }` for every step.

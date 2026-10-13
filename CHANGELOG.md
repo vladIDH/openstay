@@ -4,6 +4,24 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 
 ## [0.2.0] - in development, not released
 
+### fairnight (engine)
+
+- Zone demand factor (`factors.market`), off unless switched on for a listing:
+  - each night of the zone is compared with the zone's own average;
+  - half of the difference is passed on, at most +15% or -10% (`weight`, `highPercent`, `lowPercent`, `maxRaisePercent`, `maxLowerPercent`, `withinDays`, `minComparables`);
+  - nights measured on fewer than 5 comparable listings are skipped.
+- Zone data comes in `calendar.market`, already read: the engine never fetches it. The explanation names the source and its attribution, and says when the occupancy is an estimate.
+
+### fairnight-market (new)
+
+- The host's own zone CSV: date, occupancy, average price, comparables, with headers in English, Italian or Spanish.
+- Inside Airbnb: only the files the host downloads (`calendar.csv(.gz)`, optional `listings.csv(.gz)` for comparables), read as a stream. Attribution "Inside Airbnb (insideairbnb.com), CC BY 4.0". The occupancy is marked as estimated, and listings closed on every night are left out.
+- AirROI client with the host's own key:
+  - only `GET /markets/search` and `POST /markets/metrics/all`, never price recommendations;
+  - retries on 429 and 5xx;
+  - the key never appears in an error.
+- A fake AirROI server for tests, with invented data.
+
 ### fairnight-smoobu (new)
 
 - Smoobu API client using only HMAC-SHA256 request signing: a fresh UUID v4 nonce for every request and UTC timestamps. The legacy key-only header is never sent; Smoobu stops accepting it on 31 October 2026.
@@ -37,6 +55,14 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
   - `bookingTime` drives the stale-calendar discount.
   - Stay prices are used by the historical floor only with `--usa-storico-beds24`.
 - Database schema 3: `beds24_stays`, `beds24_pushes`.
+- `fairnight mercato importa <file> --zona <name>`: zone data from the host's CSV or from Inside Airbnb files. Use `--annunci`, `--tipo`, `--camere` and `--quartiere` to keep comparables, and `--dry-run` to check first.
+- `fairnight mercato importa --fonte airroi`, `fairnight mercato collega`: AirROI with the host's own key.
+  - Off (`market.airroi.enabled: false`) until AirROI confirms its terms in writing.
+  - When on: `AIRROI_API_KEY` first, then `airroi-credentials.json` (for the current user only); data deleted after 30 days.
+- `fairnight mercato stato` and `fairnight mercato cancella [--zona] [--fonte]`.
+- Listings choose their zone with `marketArea`.
+- Database schema 4: `market_areas`, `market_days`.
+- gitleaks rules `airroi-api-key-env` and `airroi-credentials-file`, proved in CI.
 - Shared code of the connectors moved into `channel.ts`.
 - `fairnight smoobu collega`: asks for the API key and secret without echo, checks them on Smoobu, and saves them for the current user only. `SMOOBU_API_KEY` and `SMOOBU_API_SECRET` take precedence.
 - `fairnight smoobu importa`: new Smoobu apartments become listings (source `smoobu`), and bookings enter the local database.
@@ -50,11 +76,13 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 ### fairnight-mcp
 
 - New read-only tool `get_sync_status`: where each listing's data comes from (iCal, Smoobu or Beds24) and when it was last read.
+- New read-only tool `get_market_area`: the zone data a listing uses, with its attribution.
 
 ### Repository
 
 - `smoobu-credentials.json` is git-ignored.
 - `beds24-credentials.json` is git-ignored.
+- `airroi-credentials.json` is git-ignored.
 - `.gitleaks.toml` adds rules for Smoobu and Beds24 credentials, and a CI job proves on every push that they catch a committed key or token.
 
 ## [0.1.0] - not released yet

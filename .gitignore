@@ -24,3 +24,6 @@ data/
 Thumbs.db
 .vercel/
 coverage/
+
+# documenti del Ministero (SES): restano fuori dal repo, mai committati
+openstay-ses-docs/

@@ -24,7 +24,7 @@ const DOCUMENT_CODES: Record<DocumentType, string> = { dni: "D", nie: "N", passp
 const SEX_CODES: Record<Sex, string> = { female: "F", male: "M", other: "O" };
 
 /** Western European alphabet only: what fits in ISO-8859-1. */
-const LATIN1 = /^[ -~ -ÿ]*$/;
+const LATIN1 = /^[\x20-\x7e\xa0-\xff]*$/;
 
 const compact = (d: string | undefined) => (d ? d.replaceAll("-", "") : "");
 const hhmm = (t: string | undefined) => (t ? t.replace(":", "") : "0000");

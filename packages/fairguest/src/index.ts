@@ -1,7 +1,7 @@
 export * from "./types.js";
 export { ALPHA3_TO_ALPHA2, countryNames, isCountryCode } from "./countries-iso.js";
 export { addDays, addHours, addYears, ageOn, hoursBetween, isDate, isTime, localDateTime } from "./dates.js";
-export { isPaymentType, parseGuest, spainRules, validDni, validNie } from "./validate.js";
+export { guestRules, isPaymentType, parseGuest, spainRules, validDni, validNie } from "./validate.js";
 export type { ParsedGuest } from "./validate.js";
 export {
   CANCELLATION_HOURS,

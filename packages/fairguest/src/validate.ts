@@ -39,6 +39,8 @@ export function validNie(n: string): boolean {
 export interface ParsedGuest {
   guest: Guest | null;
   problems: Problem[];
+  /** The fields that could be read, also when others could not: to report every missing field at once. */
+  draft: Guest;
 }
 
 /**
@@ -49,7 +51,7 @@ export interface ParsedGuest {
 export function parseGuest(input: unknown, today: string, path = "guest"): ParsedGuest {
   const problems: Problem[] = [];
   const add = (p: string, message: string) => problems.push({ path: `${path}.${p}`, message });
-  if (!isObj(input)) return { guest: null, problems: [{ path, message: "must be an object" }] };
+  if (!isObj(input)) return { guest: null, problems: [{ path, message: "must be an object" }], draft: { givenName: "", surname1: "" } };
 
   const name = (key: "givenName" | "surname1" | "surname2", required: boolean): string | undefined => {
     const v = text(input[key]);
@@ -108,7 +110,7 @@ export function parseGuest(input: unknown, today: string, path = "guest"): Parse
     if (KINSHIPS.includes(kinship as Kinship)) guest.kinship = kinship as Kinship;
     else add("kinship", `must be one of ${KINSHIPS.join(", ")}`);
   }
-  return { guest: problems.length === 0 ? guest : null, problems };
+  return { guest: problems.length === 0 ? guest : null, problems, draft: guest };
 }
 
 function parseDocument(input: unknown, today: string, path: string, problems: Problem[]): IdentityDocument | null {
@@ -201,31 +203,38 @@ export function spainRules(stay: Stay, kind: Kind, documentFromAge: number): Pro
 
   if (stay.guests.length < stay.people) add("guests", `${stay.guests.length} of ${stay.people} guests registered`);
   if (stay.guests.length > stay.people) add("people", `${stay.guests.length} guests registered for ${stay.people} people: correct the number of people`);
-  const ages = stay.guests.map((g) => (g.birthDate ? ageOn(g.birthDate, stay.checkIn) : null));
-  stay.guests.forEach((g, i) => {
-    const p = `guests[${i}]`;
-    const age = ages[i] ?? null;
-    if (!g.givenName || !g.surname1) add(p, "name and first surname are required");
-    if (!g.birthDate) add(`${p}.birthDate`, "the date of birth is required");
-    if (!g.address?.country) add(`${p}.address.country`, "the country of residence is required");
+  stay.guests.forEach((g, i) => problems.push(...guestRules(g, i, stay.checkIn, documentFromAge)));
+  return problems;
+}
+
+/**
+ * What one guest must give at check-in. Used by spainRules and by the check-in
+ * form, which skips the INE code (a guest cannot be expected to know it: the
+ * host adds it).
+ */
+export function guestRules(g: Guest, index: number, checkIn: string, documentFromAge: number, options: { skipMunicipalityCode?: boolean } = {}): Problem[] {
+  const problems: Problem[] = [];
+  const p = `guests[${index}]`;
+  const add = (path: string, message: string) => problems.push({ path, message });
+  const age = g.birthDate ? ageOn(g.birthDate, checkIn) : null;
+  if (!g.givenName || !g.surname1) add(p, "name and first surname are required");
+  if (!g.birthDate) add(`${p}.birthDate`, "the date of birth is required");
+  if (!g.address?.country) add(`${p}.address.country`, "the country of residence is required");
+  else {
+    if (!g.address.street) add(`${p}.address.street`, "the address is required");
+    if (g.address.country === "ESP") {
+      if (!g.address.municipalityCode && !options.skipMunicipalityCode) add(`${p}.address.municipalityCode`, "the INE code of the municipality is required for an address in Spain");
+      if (!g.address.postalCode) add(`${p}.address.postalCode`, "the postal code is required for an address in Spain");
+    } else if (!g.address.locality) add(`${p}.address.locality`, "the town or city is required for an address abroad");
+  }
+  if (!g.phone && !g.phone2 && !g.email) add(p, "at least one phone number or an email is required");
+  if (age === null || age >= documentFromAge) {
+    if (!g.document) add(`${p}.document`, `the identity document is required (from ${documentFromAge} years old)`);
     else {
-      if (!g.address.street) add(`${p}.address.street`, "the address is required");
-      if (g.address.country === "ESP") {
-        if (!g.address.municipalityCode) add(`${p}.address.municipalityCode`, "the INE code of the municipality is required for an address in Spain");
-        if (!g.address.postalCode) add(`${p}.address.postalCode`, "the postal code is required for an address in Spain");
-      } else if (!g.address.locality) add(`${p}.address.locality`, "the town or city is required for an address abroad");
+      if ((g.document.type === "dni" || g.document.type === "nie") && !g.document.support) add(`${p}.document.support`, "the support number of the DNI/NIE card is required");
+      if (g.document.type === "dni" && !g.surname2) add(`${p}.surname2`, "the second surname is required with a DNI");
     }
-    if (!g.phone && !g.phone2 && !g.email) add(p, "at least one phone number or an email is required");
-    if (age === null || age >= documentFromAge) {
-      if (!g.document) add(`${p}.document`, `the identity document is required (from ${documentFromAge} years old)`);
-      else {
-        if (g.document.type === "dni" || g.document.type === "nie") {
-          if (!g.document.support) add(`${p}.document.support`, "the support number of the DNI/NIE card is required");
-        }
-        if (g.document.type === "dni" && !g.surname2) add(`${p}.surname2`, "the second surname is required with a DNI");
-      }
-    }
-    if (age !== null && age < ADULT && i > 0 && !g.kinship) add(`${p}.kinship`, "the relationship to the holder is required for a minor");
-  });
+  }
+  if (age !== null && age < ADULT && index > 0 && !g.kinship) add(`${p}.kinship`, "the relationship to the holder is required for a minor");
   return problems;
 }

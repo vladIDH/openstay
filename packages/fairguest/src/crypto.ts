@@ -92,7 +92,8 @@ export function createKeys(passphrase: string, params: ScryptParams = DEFAULT_SC
 
 /** The private key, if the passphrase is right. */
 export function unlock(record: KeyRecord, passphrase: string): KeyObject {
-  const { salt, name: _name, ...params } = record.kdf;
+  const { salt, N, r, p } = record.kdf;
+  const params = { N, r, p };
   const decipher = createDecipheriv("aes-256-gcm", deriveKek(passphrase, unb64(salt), params), unb64(record.iv));
   decipher.setAAD(Buffer.from(record.publicKey));
   decipher.setAuthTag(unb64(record.tag));

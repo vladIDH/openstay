@@ -31,5 +31,8 @@ smoobu-credentials.json
 # Beds24 credentials written by "fairnight beds24 collega": never commit them
 beds24-credentials.json
 
+# The host's AirROI key written by "fairnight mercato collega": never commit it
+airroi-credentials.json
+
 # documenti del Ministero (SES): restano fuori dal repo, mai committati
 openstay-ses-docs/

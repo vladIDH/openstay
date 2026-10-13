@@ -12,4 +12,5 @@ process.exitCode = await main(process.argv.slice(2), {
   prompt: terminalPrompt(),
   smoobuFetch: (url, init) => fetch(url, init),
   beds24Fetch: (url, init) => fetch(url, init),
+  airroiFetch: (url, init) => fetch(url, init),
 });

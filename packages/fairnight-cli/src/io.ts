@@ -17,7 +17,7 @@ export interface Io {
   err(line: string): void;
   fetch: FetchLike;
   now(): Date;
-  /** Environment variables (SMOOBU_API_KEY, SMOOBU_API_SECRET). Default: none. */
+  /** Environment variables (SMOOBU_API_KEY, SMOOBU_API_SECRET, BEDS24_REFRESH_TOKEN, AIRROI_API_KEY). Default: none. */
   env?: Record<string, string | undefined>;
   /** Ask the user for a line of text; with hidden, nothing typed is shown. */
   prompt?(question: string, options: { hidden: boolean }): Promise<string>;
@@ -29,6 +29,10 @@ export interface Io {
   beds24Fetch?: SmoobuFetchLike;
   /** Only for tests: a fake Beds24 server instead of https://beds24.com/api/v2. */
   beds24BaseUrl?: string;
+  /** Network access for the AirROI API. Default: global fetch. */
+  airroiFetch?: SmoobuFetchLike;
+  /** Only for tests: a fake AirROI server instead of https://api.airroi.com. */
+  airroiBaseUrl?: string;
   /** Waiting (rate limits, retries). Default: real time. */
   sleep?(ms: number): Promise<void>;
 }

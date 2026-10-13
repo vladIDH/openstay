@@ -11,7 +11,7 @@ import Database from "better-sqlite3";
 
 export type Db = Database.Database;
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (
@@ -113,6 +113,30 @@ CREATE TABLE IF NOT EXISTS beds24_pushes (
   mismatches INTEGER NOT NULL,
   credits    INTEGER NOT NULL,
   error      TEXT
+);
+
+-- Version 4 (zone data). One source per zone: a new import replaces the zone.
+-- expires_on is set for sources whose terms limit how long data is kept
+-- (AirROI: 30 days); expired zones are never used and are deleted.
+CREATE TABLE IF NOT EXISTS market_areas (
+  area        TEXT PRIMARY KEY,
+  source      TEXT NOT NULL,
+  attribution TEXT NOT NULL,
+  estimated   INTEGER NOT NULL DEFAULT 0,
+  read_on     TEXT NOT NULL,
+  imported_at TEXT NOT NULL,
+  expires_on  TEXT,
+  file        TEXT,
+  note        TEXT
+);
+
+CREATE TABLE IF NOT EXISTS market_days (
+  area          TEXT NOT NULL,
+  date          TEXT NOT NULL,
+  occupancy     REAL,
+  average_price REAL,
+  comparables   INTEGER,
+  PRIMARY KEY (area, date)
 );
 `;
 

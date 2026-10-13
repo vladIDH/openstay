@@ -6,7 +6,7 @@
  *
  * Price pipeline, in this order (each factor can be switched off):
  *   base → season → day of week → last minute → far out → gap → occupancy
- *   → stale calendar → event → historical floor → floor/ceiling → rounding
+ *   → zone demand (market) → stale calendar → event → historical floor → floor/ceiling → rounding
  *   → date override (wins over everything)
  *
  * Minimum stay, in this order of precedence:
@@ -18,6 +18,7 @@ import { Availability } from "./calendar.js";
 import { fromDay, toDay, weekdayOf } from "./dates.js";
 import { explainNight } from "./explain.js";
 import { dayOrNull, PriceHistory } from "./history.js";
+import { MarketIndex } from "./market.js";
 import {
   cents,
   dayOfWeekFactor,
@@ -30,6 +31,7 @@ import {
   lastMinuteFactor,
   lastMinuteStepFor,
   limitsFactor,
+  marketFactor,
   occupancyFactor,
   roundingFactor,
   seasonFactor,
@@ -48,6 +50,7 @@ const PIPELINE: readonly Factor[] = [
   farOutFactor,
   gapFactor,
   occupancyFactor,
+  marketFactor,
   staleCalendarFactor,
   eventFactor,
   historicalFloorFactor,
@@ -150,6 +153,7 @@ export function priceListing(listing: unknown, calendar: unknown, options: unkno
   const todayDay = toDay(opts.today);
   const history = new PriceHistory(cal.priceHistory);
   const lastBookingDay = dayOrNull(cal.lastBookingReceived);
+  const market = cal.market ? new MarketIndex(cal.market) : null;
 
   const nights: NightQuote[] = [];
   for (let i = 0; i < opts.days; i++) {
@@ -165,6 +169,7 @@ export function priceListing(listing: unknown, calendar: unknown, options: unkno
         todayDay,
         history,
         lastBookingDay,
+        market,
       }),
     );
   }

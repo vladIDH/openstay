@@ -5,6 +5,7 @@ export type { EventsCsvIssue, EventsCsvResult } from "./events-csv.js";
 export {
   ConfigError,
   DEFAULT_IMPACT_PERCENT,
+  DEFAULT_MARKET,
   DEFAULT_OCCUPANCY_WITHIN_DAYS,
   parseCalendar,
   parseListingConfig,

@@ -4,8 +4,9 @@
  * price before and after. Factors never read the clock, files or the network.
  */
 import { inRecurringPeriod, monthDayOf } from "./dates.js";
-import { DEFAULT_HISTORICAL_MIN_NIGHTS, DEFAULT_OCCUPANCY_WITHIN_DAYS, DEFAULT_STALE } from "./schema.js";
+import { DEFAULT_HISTORICAL_MIN_NIGHTS, DEFAULT_MARKET, DEFAULT_OCCUPANCY_WITHIN_DAYS, DEFAULT_STALE } from "./schema.js";
 import type { PriceHistory } from "./history.js";
+import type { MarketIndex } from "./market.js";
 import type { Availability } from "./calendar.js";
 import type { Weekday } from "./dates.js";
 import type { FarOutStep, HostEvent, LastMinuteStep, ListingConfig, PriceStep } from "./types.js";
@@ -22,6 +23,8 @@ export interface NightContext {
   history: PriceHistory;
   /** Day number of the most recent new booking, or null if unknown. */
   lastBookingDay: number | null;
+  /** Zone data, when the calendar has some. */
+  market: MarketIndex | null;
 }
 
 /** "1 day ahead", "5 days ahead". */
@@ -143,6 +146,48 @@ export function occupancyFactor(ctx: NightContext, price: number): PriceStep | n
     return percentStep("occupancy", "quiet month", price, -f.lowerPercent, shown);
   }
   return null;
+}
+
+const round1 = (n: number) => Math.round(n * 10) / 10;
+
+/**
+ * Zone demand: when the zone is busier (or quieter) than its own average, pass
+ * a share (weight) of that difference on to the price, within the caps.
+ * Small differences (below highPercent / lowPercent) change nothing.
+ */
+export function marketFactor(ctx: NightContext, price: number): PriceStep | null {
+  const f = ctx.config.factors.market;
+  if (!f?.enabled || ctx.market === null) return null;
+  if (ctx.leadDays > (f.withinDays ?? DEFAULT_MARKET.withinDays)) return null;
+  const r = ctx.market.reading(ctx.date, f.minComparables ?? DEFAULT_MARKET.minComparables);
+  if (!r) return null;
+  const difference = ((r.value - r.average) / r.average) * 100;
+  const weight = f.weight ?? DEFAULT_MARKET.weight;
+  let percent: number;
+  let cap: number;
+  if (difference >= (f.highPercent ?? DEFAULT_MARKET.highPercent)) {
+    cap = f.maxRaisePercent ?? DEFAULT_MARKET.maxRaisePercent;
+    percent = Math.min(cap, weight * difference);
+  } else if (difference <= -(f.lowPercent ?? DEFAULT_MARKET.lowPercent)) {
+    cap = f.maxLowerPercent ?? DEFAULT_MARKET.maxLowerPercent;
+    percent = -Math.min(cap, weight * -difference);
+  } else {
+    return null;
+  }
+  percent = cents(percent);
+  if (percent === 0) return null;
+  const data = ctx.market.data;
+  const measured =
+    r.signal === "occupancy"
+      ? `zone ${round1(r.value)}% booked vs ${round1(r.average)}% average`
+      : `zone price ${cents(r.value)} vs ${cents(r.average)} average`;
+  const parts = [measured];
+  if (Math.abs(percent) === cap) parts.push(`capped at ${percent > 0 ? "+" : "-"}${cap}%`);
+  if (r.comparables !== undefined) parts.push(`${r.comparables} comparable listing${r.comparables === 1 ? "" : "s"}`);
+  parts.push(data.attribution + (r.signal === "occupancy" && data.estimated ? ", occupancy estimated" : ""));
+  if (data.readOn) parts.push(`read ${data.readOn}`);
+  const label = data.area ? `zone demand "${data.area}"` : "zone demand";
+  return percentStep("market", label, price, percent, parts.join(" · "));
 }
 
 /** Events on this night; the list is sorted by date, then by impact (highest first). */

@@ -4,7 +4,7 @@
  * dates: no recurrence, no time zones (a night is a calendar date).
  */
 import { createHash } from "node:crypto";
-import type { CalendarSource, TreatAs } from "./config.js";
+import type { IcalSource, TreatAs } from "./config.js";
 
 export interface IcalEvent {
   uid: string;
@@ -147,7 +147,7 @@ function toEvent(props: Property[]): IcalEvent | string | null {
  *
  * A calendar can force one reading with `treatAs` in the config.
  */
-export function classify(summary: string, source: CalendarSource, treatAs: TreatAs = "auto"): "reservation" | "blocked" {
+export function classify(summary: string, source: IcalSource, treatAs: TreatAs = "auto"): "reservation" | "blocked" {
   if (treatAs !== "auto") return treatAs;
   const s = summary.toLowerCase();
   switch (source) {

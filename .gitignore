@@ -25,5 +25,8 @@ Thumbs.db
 .vercel/
 coverage/
 
+# Smoobu credentials written by "fairnight smoobu collega": never commit them
+smoobu-credentials.json
+
 # documenti del Ministero (SES): restano fuori dal repo, mai committati
 openstay-ses-docs/

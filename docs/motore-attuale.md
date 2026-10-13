@@ -48,3 +48,13 @@ Della fase 1 il motore attuale copre solo prezzo di partenza, pavimento e tetto,
 Delle fasi 2 e 3 non c'è nulla: gruppi, profili, connettori, avvisi, analisi, mercato.
 
 **In sintesi:** dal motore attuale si recuperano circa mezza giornata di lavoro (il parser CSV) e l'impostazione. Il resto di Fairnight è codice nuovo.
+
+## Aggiornamento 0.2.0: la data delle prenotazioni per il calendario fermo
+
+Lo sconto per calendario fermo ha bisogno del giorno in cui è arrivata l'ultima prenotazione nuova. Il motore lo riceve come `lastBookingReceived`; la CLI lo calcola così:
+
+- **Sorgente Smoobu:** usa il `created-at` di Smoobu, cioè il giorno vero in cui la prenotazione è stata fatta (colonna `booked_at`).
+- **Sorgente iCal:** i calendari non dicono quando una prenotazione è stata fatta. Resta la stima di prima: il giorno in cui `fairnight sync` l'ha vista per la prima volta. Subito dopo il primo sync tutte le prenotazioni sembrano nuove, e lo sconto aspetta.
+- **Annuncio con tutte e due le sorgenti:** vale la data più recente fra le due.
+
+Le date bloccate (anche quelle di Smoobu) non contano mai come prenotazioni: non spostano questa data, non entrano nell'occupazione e non entrano nello storico prezzi.

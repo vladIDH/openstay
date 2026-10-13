@@ -40,7 +40,7 @@ describe("host config", () => {
       "config.extra: unknown field (allowed: listings)",
       'listings[0].name: must be a short name with lowercase letters, digits and dashes (like "seaview-loft"), got "Seaview Loft"',
       'listings[0].calendars[0].url: must be an https:// or webcal:// link, got "file:///C:/cal.ics"',
-      'listings[0].calendars[1].source: must be one of airbnb, booking, vrbo, other, got "expedia"',
+      'listings[0].calendars[1].source: must be one of airbnb, booking, vrbo, other, smoobu, got "expedia"',
       "listings[0].pricing.factors.limits: floorPrice (999) is higher than ceilingPrice (260)",
       'listings[2].name: "garden-studio" is used by another listing',
       'listings[2].calendars[0].treatAs: must be one of auto, reservation, blocked, got "maybe"',

@@ -17,7 +17,7 @@ import { openDb } from "./db.js";
 import { dbPath, localToday, type Io } from "./io.js";
 import { renderPage } from "./page.js";
 import { lastSync, priceOne } from "./price.js";
-import { syncListings } from "./sync.js";
+import { syncEverything } from "./sync-all.js";
 
 export interface ServeOptions {
   dir: string;
@@ -103,7 +103,7 @@ export function createHandler(opts: ServeOptions): (req: IncomingMessage, res: S
         }
         const config = loadHostConfig(opts.dir);
         const db = openDb(dbPath(opts.dir));
-        const job = syncListings(db, config.listings, { fetch: opts.io.fetch, now: opts.io.now() });
+        const job = syncEverything(db, opts.dir, config.listings, opts.io);
         refreshing = job;
         try {
           const reports = await job;

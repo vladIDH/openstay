@@ -16,6 +16,7 @@ This is a read-only [MCP](https://modelcontextprotocol.io) server. It runs on yo
 | `explain_night(listing, date)` | Why one night costs what it costs: every factor, with the price before and after. |
 | `occupancy(listing, month)` | Nights reserved, blocked and free in a month, the occupancy, and the average price still for sale. |
 | `next_gaps(listing, days, maxNights)` | Short free stretches between two stays: the nights that are hardest to sell. |
+| `get_sync_status` | Where each listing's data comes from (iCal calendars or Smoobu) and when it was last read, with the latest error if any. |
 
 **Nothing writes.** Every tool is declared read-only, and the database is opened in SQLite's read-only mode, so it cannot change prices, calendars or bookings. The server never goes on the internet. It never shows your iCal links, because those work like passwords. To change a price, edit `fairnight.config.json`. To refresh the calendars, run `fairnight sync` or press *Recalculate* on the calendar page.
 
@@ -50,7 +51,7 @@ Until the package is on npm, run it from a clone of this repository after `npm i
 }
 ```
 
-3. Restart Claude Desktop. The five tools appear under *fairnight*.
+3. Restart Claude Desktop. The six tools appear under *fairnight*.
 
 The folder can also be given with the `FAIRNIGHT_DIR` environment variable instead of `--dir`.
 

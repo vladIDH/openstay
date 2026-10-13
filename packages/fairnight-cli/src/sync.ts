@@ -9,7 +9,7 @@
  * - If a calendar cannot be read (network error, not iCal), nothing is changed.
  */
 import { classify, IcalError, parseIcal } from "./ical.js";
-import { feedKeys, type HostListing } from "./config.js";
+import { feedKeys, isSmoobu, type HostListing } from "./config.js";
 import type { Db } from "./db.js";
 import type { FetchLike } from "./io.js";
 
@@ -91,6 +91,7 @@ export async function syncListings(db: Db, listings: HostListing[], opts: SyncOp
   for (const listing of listings) {
     const keys = feedKeys(listing);
     for (const [i, calendar] of listing.calendars.entries()) {
+      if (isSmoobu(calendar)) continue; // read through the Smoobu API, see smoobu.ts
       const feed = keys[i] as string;
       const report: FeedReport = { listing: listing.name, feed, ok: false, seen: 0, added: 0, changed: 0, removed: 0, restored: 0, skipped: [] };
       try {

@@ -9,16 +9,35 @@ import { ConfigError, validateListingConfig } from "fairnight";
 import type { ConfigIssue, ListingConfig, ValidationResult } from "fairnight";
 import { CONFIG_FILE, configPath, stripBom } from "./io.js";
 
-export const SOURCES = ["airbnb", "booking", "vrbo", "other"] as const;
+export const ICAL_SOURCES = ["airbnb", "booking", "vrbo", "other"] as const;
+export const SOURCES = [...ICAL_SOURCES, "smoobu"] as const;
+export type IcalSource = (typeof ICAL_SOURCES)[number];
 export type CalendarSource = (typeof SOURCES)[number];
 export const TREAT_AS = ["auto", "reservation", "blocked"] as const;
 export type TreatAs = (typeof TREAT_AS)[number];
 
-export interface CalendarLink {
-  source: CalendarSource;
+/** A calendar read through its iCal export link. */
+export interface IcalLink {
+  source: IcalSource;
   url: string;
   /** How to read the events of this calendar. Default "auto": see ical.ts. */
   treatAs?: TreatAs;
+}
+
+/** A Smoobu apartment, read (and written) through the Smoobu API. */
+export interface SmoobuLink {
+  source: "smoobu";
+  apartmentId: number;
+}
+
+export type CalendarLink = IcalLink | SmoobuLink;
+
+export const isSmoobu = (c: CalendarLink): c is SmoobuLink => c.source === "smoobu";
+
+/** The Smoobu apartment of a listing, if it has one. */
+export function smoobuApartment(listing: HostListing): number | null {
+  const link = listing.calendars.find(isSmoobu);
+  return link ? link.apartmentId : null;
 }
 
 export interface HostListing {
@@ -62,16 +81,25 @@ function checkCalendars(v: unknown, path: string, issues: ConfigIssue[]): void {
     return;
   }
   const seen = new Set<string>();
+  let smoobu = 0;
   v.forEach((c, j) => {
     const cp = `${path}[${j}]`;
     if (!isObj(c)) {
       issues.push({ path: cp, message: "must be an object with source and url" });
       return;
     }
-    unknownFields(c, cp, ["source", "url", "treatAs"], issues);
     if (!SOURCES.includes(c.source as CalendarSource)) {
       issues.push({ path: `${cp}.source`, message: `must be one of ${SOURCES.join(", ")}, got ${JSON.stringify(c.source)}` });
     }
+    if (c.source === "smoobu") {
+      unknownFields(c, cp, ["source", "apartmentId"], issues);
+      if (typeof c.apartmentId !== "number" || !Number.isInteger(c.apartmentId) || c.apartmentId <= 0) {
+        issues.push({ path: `${cp}.apartmentId`, message: `must be the number of the Smoobu apartment, got ${JSON.stringify(c.apartmentId)}` });
+      }
+      if (++smoobu > 1) issues.push({ path: cp, message: "a listing can be linked to one Smoobu apartment only" });
+      return;
+    }
+    unknownFields(c, cp, ["source", "url", "treatAs"], issues);
     if (typeof c.url !== "string" || normaliseCalendarUrl(c.url) === null) {
       issues.push({ path: `${cp}.url`, message: `must be an https:// or webcal:// link, got ${JSON.stringify(c.url)}` });
     } else {
@@ -123,8 +151,9 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
     if (!r.ok) {
       for (const issue of r.issues) issues.push({ path: issue.path.replace(/^listing/, `${lp}.pricing`), message: issue.message });
     } else if (issues.length === 0) {
-      const calendars = (l.calendars as CalendarLink[]).map((c) => {
-        const link: CalendarLink = { source: c.source, url: normaliseCalendarUrl(c.url) as string };
+      const calendars = (l.calendars as CalendarLink[]).map((c): CalendarLink => {
+        if (isSmoobu(c)) return { source: "smoobu", apartmentId: c.apartmentId };
+        const link: IcalLink = { source: c.source, url: normaliseCalendarUrl(c.url) as string };
         if (c.treatAs !== undefined) link.treatAs = c.treatAs;
         return link;
       });
@@ -132,6 +161,14 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
     }
   });
 
+  const byApartment = new Map<number, string>();
+  for (const l of listings) {
+    const apt = smoobuApartment(l);
+    if (apt === null) continue;
+    const other = byApartment.get(apt);
+    if (other) issues.push({ path: `listings (${l.name})`, message: `Smoobu apartment ${apt} is already linked to "${other}"` });
+    byApartment.set(apt, l.name);
+  }
   if (issues.length > 0) return { ok: false, issues };
   return { ok: true, value: { listings } };
 }

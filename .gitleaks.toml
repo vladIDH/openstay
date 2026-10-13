@@ -1,0 +1,20 @@
+title = "OpenStay secret scan"
+
+# Keep every default gitleaks rule, and add the Smoobu credentials of Fairnight.
+[extend]
+useDefault = true
+
+[[rules]]
+id = "smoobu-api-credential-env"
+description = "Smoobu API key or secret written in an env file or a shell script"
+regex = '''(?m)^\s*(?:export\s+|set\s+|\$env:)?SMOOBU_API_(?:KEY|SECRET)\s*=\s*["']?([^\s"'#]{16,})'''
+secretGroup = 1
+keywords = ["smoobu_api_key", "smoobu_api_secret"]
+
+[[rules]]
+id = "smoobu-credentials-file"
+description = "The Smoobu credentials file written by 'fairnight smoobu collega'"
+path = '''(^|/)smoobu-credentials\.json$'''
+regex = '''"api(?:Key|Secret)"\s*:\s*"([^"]{8,})"'''
+secretGroup = 1
+keywords = ["apikey", "apisecret"]

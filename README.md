@@ -28,7 +28,7 @@ It is free and open source (AGPL-3.0). It has no account, no monthly fee per lis
 - **Exports a CSV** (date, price, minimum stay) to upload where you need it.
 - **Answers questions in Claude** through an optional read-only MCP server: "which gaps do I have before Christmas?"
 
-What it does **not** do (yet): it does not change prices on Airbnb or Booking.com by itself. You copy the prices, or upload the CSV. Connectors for channel managers (Smoobu first) come in phase 2.
+What it does **not** do (yet): it does not change prices on Airbnb or Booking.com by itself. You copy the prices or upload the CSV, or, with Smoobu, confirm and let Fairnight write them (0.2.0, see below). More channel managers come in phase 2.
 
 ## Five-minute setup
 
@@ -60,6 +60,18 @@ Details, with where to find the iCal links on each channel, are in [fairnight-cl
 | `fairnight export` | A CSV with date, price and minimum stay. |
 | `fairnight import prices.csv --listing <name>` | Last year's prices, for the historical floor. |
 
+## Smoobu
+
+If you use [Smoobu](https://www.smoobu.com), Fairnight can read your apartments and bookings straight from it, and write prices and minimum stays back. It writes only after you have seen the differences and confirmed. *In development for 0.2.0.*
+
+```
+fairnight smoobu collega          # asks for your Smoobu API key and secret (never shown, never in the shell history)
+fairnight smoobu importa          # your Smoobu apartments become listings, bookings come in
+fairnight smoobu spingi           # shows what would change; add --applica to write it to Smoobu
+```
+
+The connector uses only Smoobu's HMAC request signing: create the API key **with its secret** in *Settings → Advanced → API Keys*. The old key-only login stops working on 31 October 2026 and is not used. After `importa`, `fairnight sync` reads Smoobu too.
+
 ## Fairnight today and PriceLabs
 
 PriceLabs is a mature, paid service with market data from millions of listings. Fairnight is a first version that works only with **your** data. This is where it stands, compared with PriceLabs' public feature pages:
@@ -81,7 +93,7 @@ PriceLabs is a mature, paid service with market data from millions of listings. 
 | AI assistant connection (MCP) | ✓ | ✓ read-only, local | write access with confirmation: phase 2 |
 | Rules per group / portfolio, reusable rule sets | ✓ | — | phase 2 |
 | Length-of-stay discounts, extra-guest fees, check-in days | ✓ | — | phase 2 |
-| Pushing prices to channel managers | ✓ 160+ | — (CSV export) | Smoobu, then Beds24: phase 2 |
+| Pushing prices to channel managers | ✓ 160+ | CSV export; Smoobu in 0.2.0, with confirmation | Beds24: phase 2 |
 | Alerts, portfolio reports, pacing vs last year | ✓ | — | phase 2 |
 | Try the rules on last year first (backtest) | preview of new rules only | — | phase 2 |
 | Market data: neighbourhood prices, comp sets | ✓ | — | phase 3, optional, with your own data key |

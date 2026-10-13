@@ -1,12 +1,15 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
+const src = (p: string) => fileURLToPath(new URL(p, import.meta.url));
+
 export default defineConfig({
   resolve: {
-    // Test against the engine source, so the engine does not need to be built first.
-    alias: {
-      "fairnight": fileURLToPath(new URL("../fairnight/src/engine/index.ts", import.meta.url)),
-    },
+    // Test against the sources of the other packages, so nothing needs to be built first.
+    alias: [
+      { find: /^fairnight$/, replacement: src("../fairnight/src/engine/index.ts") },
+      { find: /^fairnight-smoobu$/, replacement: src("../fairnight-smoobu/src/index.ts") },
+    ],
   },
   test: {
     include: ["test/**/*.test.ts"],

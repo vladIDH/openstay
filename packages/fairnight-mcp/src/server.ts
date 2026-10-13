@@ -7,7 +7,7 @@
  */
 import { McpServer, fromJsonSchema, type JsonSchemaType } from "@modelcontextprotocol/server";
 import { ConfigError, formatAmount } from "fairnight";
-import { explainNight, getPrices, listListings, nextGaps, occupancy, ToolError, type Folder } from "./data.js";
+import { explainNight, getPrices, listListings, nextGaps, occupancy, syncStatus, ToolError, type Folder } from "./data.js";
 
 export const VERSION = "0.1.0";
 
@@ -134,6 +134,25 @@ export const TOOLS: Tool[] = [
         ? `${d.listing}: ${d.gaps.length} gap${d.gaps.length === 1 ? "" : "s"} of up to ${d.maxNights} nights between ${d.from} and ${d.to}:\n${lines.join("\n")}`
         : `${d.listing}: no gaps of up to ${d.maxNights} nights between ${d.from} and ${d.to}.`;
       return { text, data: d };
+    },
+  },
+  {
+    name: "get_sync_status",
+    title: "Where the data comes from",
+    description:
+      "For each listing: where its bookings come from (iCal calendars of Airbnb, Booking, Vrbo… or the Smoobu API), when each source was last read successfully, and the last error if the latest read failed. Use it when the host asks whether the data is up to date.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+    handler: (folder) => {
+      const data = syncStatus(folder);
+      const lines = data.listings.map((l) => {
+        const parts = l.sources.map((s) => {
+          const label = s.kind === "smoobu" ? `Smoobu apartment ${s.apartmentId}` : `${s.channel} iCal`;
+          const when = s.lastSuccess ? `last read ${s.lastSuccess}` : "never read";
+          return `${label}: ${when}${s.lastError ? ` (latest attempt failed: ${s.lastError})` : ""}`;
+        });
+        return `- ${l.listing} (data from ${l.dataFrom}): ${parts.join("; ") || "no sources"}`;
+      });
+      return { text: lines.join("\n"), data };
     },
   },
 ];

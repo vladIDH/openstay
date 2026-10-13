@@ -17,7 +17,22 @@ export interface Io {
   err(line: string): void;
   fetch: FetchLike;
   now(): Date;
+  /** Environment variables (SMOOBU_API_KEY, SMOOBU_API_SECRET). Default: none. */
+  env?: Record<string, string | undefined>;
+  /** Ask the user for a line of text; with hidden, nothing typed is shown. */
+  prompt?(question: string, options: { hidden: boolean }): Promise<string>;
+  /** Network access for the Smoobu API (method, headers, body). Default: global fetch. */
+  smoobuFetch?: SmoobuFetchLike;
+  /** Only for tests: a fake Smoobu server instead of https://login.smoobu.com. */
+  smoobuBaseUrl?: string;
+  /** Waiting (rate limits, retries). Default: real time. */
+  sleep?(ms: number): Promise<void>;
 }
+
+export type SmoobuFetchLike = (
+  url: string,
+  init: { method: string; headers: Record<string, string>; body?: string; signal?: AbortSignal },
+) => Promise<{ status: number; headers: { get(name: string): string | null }; text(): Promise<string> }>;
 
 export const CONFIG_FILE = "fairnight.config.json";
 export const DATA_DIR = "data";

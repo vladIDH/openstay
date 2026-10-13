@@ -24,3 +24,6 @@ data/
 Thumbs.db
 .vercel/
 coverage/
+
+# Smoobu credentials written by "fairnight smoobu collega": never commit them
+smoobu-credentials.json

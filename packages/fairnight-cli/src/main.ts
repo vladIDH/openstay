@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { ConfigError } from "fairnight";
+import { SmoobuError } from "fairnight-smoobu";
 import { loadHostConfig, selectListings, SetupError, type HostListing } from "./config.js";
 import { openDb } from "./db.js";
 import { importPrices } from "./import.js";
@@ -14,7 +15,8 @@ import { dbPath, localToday, stripBom, type Io } from "./io.js";
 import { defaultExportPath, EXPORT_FORMATS, toCsv, writeExport } from "./export.js";
 import { formatTable, lastSync, priceOne } from "./price.js";
 import { startServer } from "./serve.js";
-import { syncListings } from "./sync.js";
+import { connect, importFromSmoobu, push } from "./smoobu.js";
+import { formatFeedReport, syncEverything } from "./sync-all.js";
 
 export const USAGE = `Fairnight: dynamic prices for short-term rentals, on your own computer.
 
@@ -25,6 +27,9 @@ Usage:
   fairnight price [--listing <name>]               price every night [--days 365] [--today YYYY-MM-DD] [--explain] [--json]
   fairnight export [--listing <name>]              write date, price and minimum stay to CSV [--days 365] [--format csv] [--out <file>]
   fairnight serve                                  open the calendar page [--port 4321] [--lan to open it from a phone]
+  fairnight smoobu collega                         save your Smoobu API key and secret (asked, never shown)
+  fairnight smoobu importa                         Smoobu apartments become listings; bookings into the local database
+  fairnight smoobu spingi                          compare with Smoobu; writes only with --applica [--da DATE] [--a DATE] [--alloggio ID]
 
 Every command works in the current folder; use --dir <folder> to point at another one.`;
 
@@ -42,6 +47,11 @@ const OPTIONS = {
   out: { type: "string" },
   port: { type: "string" },
   lan: { type: "boolean" },
+  applica: { type: "boolean" },
+  da: { type: "string" },
+  a: { type: "string" },
+  alloggio: { type: "string" },
+  "usa-storico-smoobu": { type: "boolean" },
   help: { type: "boolean", short: "h" },
 } as const;
 
@@ -83,6 +93,8 @@ export async function main(argv: string[], io: Io): Promise<number> {
         return runExport(dir, values, rest, io);
       case "serve":
         return await runServe(dir, values, rest, io);
+      case "smoobu":
+        return await runSmoobu(dir, values, rest, io);
       default:
         throw new UsageError(`Unknown command "${command}".`);
     }
@@ -92,7 +104,7 @@ export async function main(argv: string[], io: Io): Promise<number> {
       io.err(USAGE);
       return 2;
     }
-    if (e instanceof ConfigError || e instanceof SetupError) {
+    if (e instanceof ConfigError || e instanceof SetupError || e instanceof SmoobuError) {
       io.err(e.message);
       return 1;
     }
@@ -120,18 +132,11 @@ async function runSync(dir: string, listing: string | undefined, rest: string[],
   const listings = selectListings(config, listing);
   const db = openDb(dbPath(dir));
   try {
-    const reports = await syncListings(db, listings, { fetch: io.fetch, now: io.now() });
+    const reports = await syncEverything(db, dir, listings, io);
     let failed = 0;
     for (const r of reports) {
-      if (!r.ok) {
-        failed++;
-        io.out(`${r.listing} · ${r.feed}: NOT READ — ${r.error}. Nothing was changed for this calendar.`);
-        continue;
-      }
-      io.out(
-        `${r.listing} · ${r.feed}: ${r.seen} events · ${r.added} new · ${r.changed} changed · ${r.removed} removed · ${r.restored} back`,
-      );
-      for (const s of r.skipped) io.out(`    skipped: ${s}`);
+      if (!r.ok) failed++;
+      for (const line of formatFeedReport(r)) io.out(line);
     }
     if (reports.length === 0) io.out("No calendars in the config: add iCal links under \"calendars\".");
     return failed > 0 ? 1 : 0;
@@ -169,7 +174,7 @@ function runImport(dir: string, listing: string | undefined, rest: string[], dry
 
 function runPrice(
   dir: string,
-  values: { listing?: string; days?: string; today?: string; explain?: boolean; json?: boolean },
+  values: { listing?: string; days?: string; today?: string; explain?: boolean; json?: boolean; "usa-storico-smoobu"?: boolean },
   rest: string[],
   io: Io,
 ): number {
@@ -180,7 +185,10 @@ function runPrice(
   const listings = selectListings(config, values.listing);
   const db = openDb(dbPath(dir));
   try {
-    const results = listings.map((l) => ({ listing: l, result: priceOne(db, l, today, days) }));
+    const results = listings.map((l) => ({
+      listing: l,
+      result: priceOne(db, l, today, days, { useSmoobuHistory: values["usa-storico-smoobu"] ?? false }),
+    }));
     if (values.json) {
       io.out(JSON.stringify(results.map((r) => ({ listing: r.listing.name, ...r.result })), null, 2));
       return 0;
@@ -250,4 +258,56 @@ async function runServe(dir: string, values: { port?: string; lan?: boolean; day
     throw e;
   }
   return 0; // the open server keeps the process running until Ctrl+C
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+async function runSmoobu(
+  dir: string,
+  values: { applica?: boolean; da?: string; a?: string; alloggio?: string; "usa-storico-smoobu"?: boolean },
+  rest: string[],
+  io: Io,
+): Promise<number> {
+  const [sub, ...extra] = rest;
+  noExtra(extra);
+  switch (sub) {
+    case "collega":
+    case "connect":
+      return connect(dir, io);
+    case "importa":
+    case "import": {
+      const summary = await importFromSmoobu(dir, io);
+      for (const a of summary.added) {
+        io.out(`Added listing "${a.name}" for Smoobu apartment ${a.apartmentId} (${a.title}): base price ${a.basePrice} ${a.currency}, from the prices set in Smoobu. Check its rules in fairnight.config.json.`);
+      }
+      if (summary.added.length > 0) io.out("The previous config is kept as fairnight.config.json.bak.");
+      let failed = 0;
+      for (const r of summary.reports) {
+        if (!r.ok) failed++;
+        for (const line of formatFeedReport(r)) io.out(line);
+      }
+      if (summary.reports.length === 0) io.out("No Smoobu apartment found.");
+      return failed > 0 ? 1 : 0;
+    }
+    case "spingi":
+    case "push": {
+      for (const [flag, v] of [["da", values.da], ["a", values.a]] as const) {
+        if (v !== undefined && !ISO_DATE.test(v)) throw new UsageError(`--${flag} must be a date like 2026-11-01, got "${v}"`);
+      }
+      let apartment: number | undefined;
+      if (values.alloggio !== undefined) {
+        apartment = Number(values.alloggio);
+        if (!Number.isInteger(apartment) || apartment <= 0) throw new UsageError(`--alloggio must be a Smoobu apartment number, got "${values.alloggio}"`);
+      }
+      return push(dir, io, {
+        apply: values.applica ?? false,
+        ...(values.da !== undefined ? { from: values.da } : {}),
+        ...(values.a !== undefined ? { to: values.a } : {}),
+        ...(apartment !== undefined ? { apartment } : {}),
+        useSmoobuHistory: values["usa-storico-smoobu"] ?? false,
+      });
+    }
+    default:
+      throw new UsageError(sub === undefined ? "Which Smoobu command? collega, importa or spingi." : `Unknown Smoobu command "${sub}". Use collega, importa or spingi.`);
+  }
 }

@@ -33,6 +33,13 @@ export interface Words {
   contactMissing: string;
   fix: string;
   privacy: string;
+  /** The three steps shown at the top: the guest's details, the document, the confirmation. */
+  steps: { data: string; document: string; confirm: string };
+  stepLabel: (n: number) => string;
+  /** One line on what happens to the data, shown at the top. Only what the form really does. */
+  privacyShort: string;
+  /** A message for each kind of field, saying the rule it did not meet. */
+  invalidFor: Record<string, string>;
   notFound: string;
   notFoundText: string;
   forbidden: string;
@@ -121,6 +128,29 @@ const es: Words = {
   notFound: "Enlace no válido",
   notFoundText: "Este enlace de registro no existe o ha caducado. Pida uno nuevo al anfitrión.",
   forbidden: "Solo en la red local",
+  steps: { data: "Sus datos", document: "Documento", confirm: "Confirmación" },
+  stepLabel: (n) => `Paso ${n} de 3`,
+  privacyShort: "Sus datos se guardan cifrados en el ordenador del anfitrión, solo se envían a la policía y se borran solos cuando la ley lo permite.",
+  invalidFor: {
+    givenName: "Solo letras, espacios, apóstrofos, puntos y guiones; hasta 50 caracteres.",
+    surname1: "Solo letras, espacios, apóstrofos, puntos y guiones; hasta 50 caracteres.",
+    surname2: "Solo letras, espacios, apóstrofos, puntos y guiones; hasta 50 caracteres.",
+    birthDate: "Revise la fecha: no puede ser futura ni de hace más de 120 años.",
+    docIssued: "Revise la fecha de expedición: no puede ser futura.",
+    docNumber: "Revise el número: de 3 a 20 letras y cifras; en DNI y NIE también cuenta la letra final.",
+    docSupport: "El número de soporte tiene exactamente 9 letras y cifras.",
+    postalCode: "Revise el código postal: en España son 5 cifras.",
+    street: "Hasta 100 caracteres.",
+    locality: "Hasta 100 caracteres.",
+    phone: "Solo cifras, espacios, + y guiones, de 6 a 20 caracteres.",
+    email: "Escriba una dirección completa, como nombre@ejemplo.es.",
+    sex: "Elija una opción de la lista.",
+    nationality: "Elija un país de la lista.",
+    country: "Elija un país de la lista.",
+    docType: "Elija un tipo de documento de la lista.",
+    kinship: "Elija una opción de la lista.",
+    payment: "Elija una opción de la lista.",
+  },
   forbiddenText: "Este formulario se abre solo desde la red del alojamiento.",
   tooMany: "Demasiados intentos. Espere unos minutos.",
 };
@@ -206,6 +236,29 @@ const en: Words = {
   notFound: "Link not valid",
   notFoundText: "This registration link does not exist or has expired. Ask the host for a new one.",
   forbidden: "Local network only",
+  steps: { data: "Your details", document: "Document", confirm: "Confirmation" },
+  stepLabel: (n) => `Step ${n} of 3`,
+  privacyShort: "Your data is kept encrypted on the host's computer, sent only to the police and erased by itself as soon as the law allows.",
+  invalidFor: {
+    givenName: "Only letters, spaces, apostrophes, dots and dashes; up to 50 characters.",
+    surname1: "Only letters, spaces, apostrophes, dots and dashes; up to 50 characters.",
+    surname2: "Only letters, spaces, apostrophes, dots and dashes; up to 50 characters.",
+    birthDate: "Check the date: it cannot be in the future or more than 120 years ago.",
+    docIssued: "Check the date of issue: it cannot be in the future.",
+    docNumber: "Check the number: 3 to 20 letters and digits; for a DNI or NIE the final letter counts too.",
+    docSupport: "The support number has exactly 9 letters and digits.",
+    postalCode: "Check the postal code: in Spain it has 5 digits.",
+    street: "Up to 100 characters.",
+    locality: "Up to 100 characters.",
+    phone: "Only digits, spaces, + and dashes, 6 to 20 characters.",
+    email: "Write a full address, like name@example.com.",
+    sex: "Choose one from the list.",
+    nationality: "Choose a country from the list.",
+    country: "Choose a country from the list.",
+    docType: "Choose a type of document from the list.",
+    kinship: "Choose one from the list.",
+    payment: "Choose one from the list.",
+  },
   forbiddenText: "This form opens only from the accommodation's network.",
   tooMany: "Too many attempts. Please wait a few minutes.",
 };
@@ -291,6 +344,29 @@ const it: Words = {
   notFound: "Link non valido",
   notFoundText: "Questo link di registrazione non esiste o è scaduto. Chiedine uno nuovo all'host.",
   forbidden: "Solo dalla rete locale",
+  steps: { data: "I tuoi dati", document: "Documento", confirm: "Conferma" },
+  stepLabel: (n) => `Passo ${n} di 3`,
+  privacyShort: "I tuoi dati restano cifrati sul computer dell'host, vanno solo alla polizia e si cancellano da soli appena la legge lo permette.",
+  invalidFor: {
+    givenName: "Solo lettere, spazi, apostrofi, punti e trattini; fino a 50 caratteri.",
+    surname1: "Solo lettere, spazi, apostrofi, punti e trattini; fino a 50 caratteri.",
+    surname2: "Solo lettere, spazi, apostrofi, punti e trattini; fino a 50 caratteri.",
+    birthDate: "Controlla la data: non può essere nel futuro né di più di 120 anni fa.",
+    docIssued: "Controlla la data di rilascio: non può essere nel futuro.",
+    docNumber: "Controlla il numero: da 3 a 20 lettere e cifre; per DNI e NIE conta anche la lettera finale.",
+    docSupport: "Il numero di supporto ha esattamente 9 lettere e cifre.",
+    postalCode: "Controlla il CAP: in Spagna sono 5 cifre.",
+    street: "Al massimo 100 caratteri.",
+    locality: "Al massimo 100 caratteri.",
+    phone: "Solo cifre, spazi, + e trattini, da 6 a 20 caratteri.",
+    email: "Scrivi un indirizzo completo, come nome@esempio.it.",
+    sex: "Scegli una voce dall'elenco.",
+    nationality: "Scegli un paese dall'elenco.",
+    country: "Scegli un paese dall'elenco.",
+    docType: "Scegli un tipo di documento dall'elenco.",
+    kinship: "Scegli una voce dall'elenco.",
+    payment: "Scegli una voce dall'elenco.",
+  },
   forbiddenText: "Questo modulo si apre solo dalla rete dell'alloggio.",
   tooMany: "Troppi tentativi. Aspetta qualche minuto.",
 };

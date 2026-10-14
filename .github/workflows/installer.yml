@@ -108,7 +108,7 @@ jobs:
         shell: pwsh
         run: |
           Copy-Item (Join-Path $env:FOLDER 'fairnight.config.json') before.json
-          cmd /c "Installa Fairnight.cmd" -Cartella "$env:FOLDER" -SenzaDomande -NonAprire -SenzaCollegamenti > again.txt
+          & ".\Installa Fairnight.cmd" -Cartella "$env:FOLDER" -SenzaDomande -NonAprire -SenzaCollegamenti > again.txt
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - name: Running the installer again (Mac)

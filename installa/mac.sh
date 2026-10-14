@@ -35,8 +35,9 @@ PROGETTO="$(dirname "$QUI")"
 PROGRAMMA="$CARTELLA/programma"
 LOG="$CARTELLA/installazione.log"
 # Node.js dall'installer ufficiale sta in /usr/local/bin, quello di Homebrew in /opt/homebrew/bin:
-# una finestra aperta da Finder non sempre li ha nel PATH.
-export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
+# una finestra aperta da Finder non sempre li ha nel PATH. In fondo, così vince il Node che l'host
+# usa già: i file da doppio clic lo cercano nello stesso ordine e trovano lo stesso.
+export PATH="$PATH:/usr/local/bin:/opt/homebrew/bin"
 
 scrivi() { printf '%s\n' "$1"; }
 titolo() { printf '\033[36m%s\033[0m\n' "$1"; }
@@ -110,7 +111,7 @@ if [ ! -x "$NPM" ]; then
     "Ho trovato Node.js ($NODE) ma non npm, che di solito arriva insieme." \
     "Reinstalla Node.js dalla pagina ufficiale ($PAGINA_NODE), poi rilancia «Installa Fairnight»."
 fi
-export PATH="$(dirname "$NODE"):$PATH"
+PATH="$(dirname "$NODE"):$PATH" # gli script di npm usano lo stesso Node
 fatto "Node.js $VERSIONE"
 
 # 2. Il programma
@@ -154,7 +155,7 @@ avvio() {
   cat > "$CARTELLA/$1" <<EOF
 #!/bin/bash
 # $2
-export PATH="/usr/local/bin:/opt/homebrew/bin:\$PATH"
+export PATH="\$PATH:/usr/local/bin:/opt/homebrew/bin"
 cd "\$(dirname "\$0")"
 node "programma/node_modules/fairnight-cli/bin/fairnight.js" $3 --dir .
 $4

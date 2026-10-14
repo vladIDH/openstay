@@ -9,94 +9,131 @@
 import { PAGE_TEXTS } from "./page-texts.js";
 
 const STYLE = `
+/* Dark by default ("Notte"), light when the system asks for it. Text contrast
+   is at least 4.5:1 on its background in both themes. */
 :root {
-  --bg: #0e1013; --surface: #161a20; --surface-2: #1c2128; --line: #262c35;
-  --text: #e7e9ec; --muted: #8b939f; --faint: #5d6570;
-  --accent: #8cc8ff; --up: #e2b35f; --down: #5fc7b0;
-  --reserved: #232a33; --blocked: #191c21;
   color-scheme: dark;
+  --bg: #0f1318; --card: #171c23; --card-2: #1c222a; --raised: #1d232c; --line: #28303a; --track: #262d37;
+  --text: #eef1f4; --muted: #a3adb8; --faint: #7f8a96;
+  --accent: #7cc4ff; --on-accent: #08131d;
+  --up: #f2b35b; --down: #4fd1b5;
+  --up-tint: rgba(242, 179, 91, .20); --up-tint-2: rgba(242, 179, 91, .05);
+  --down-tint: rgba(79, 209, 181, .20); --down-tint-2: rgba(79, 209, 181, .05);
+  --reserved: #2a323d; --blocked-a: #1a1f26; --blocked-b: #242b34;
+  --shadow: 0 -12px 32px rgba(0, 0, 0, .45);
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --bg: #f3f5f8; --card: #ffffff; --card-2: #edf1f6; --raised: #ffffff; --line: #dde3ea; --track: #e6ebf0;
+    --text: #141b22; --muted: #55606c; --faint: #6b7682;
+    --accent: #1d5f99; --on-accent: #ffffff;
+    --up: #a2580d; --down: #0d7462;
+    --up-tint: rgba(214, 140, 40, .22); --up-tint-2: rgba(214, 140, 40, .05);
+    --down-tint: rgba(28, 160, 135, .20); --down-tint-2: rgba(28, 160, 135, .04);
+    --reserved: #e3e8ee; --blocked-a: #eef1f5; --blocked-b: #e1e6ec;
+    --shadow: 0 -10px 28px rgba(20, 27, 34, .16);
+  }
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; background: var(--bg); color: var(--text); }
-body { font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+html, body { margin: 0; background: var(--bg); color: var(--text); overflow-x: hidden; }
+body { font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
 button, select { font: inherit; color: inherit; }
-.wrap { max-width: 1080px; margin: 0 auto; padding: 20px 16px 48px; transition: margin .18s ease; }
-@media (min-width: 1100px) { body.panel-open .wrap { margin-right: 440px; } }
-html, body { overflow-x: hidden; }
-header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 18px; }
-.brand { font-weight: 650; letter-spacing: .02em; margin-right: auto; }
-.brand span { color: var(--muted); font-weight: 400; }
-select, .btn { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
-select { max-width: 220px; }
-select.lang { padding: 7px 6px; font-size: 12px; color: var(--muted); }
+.wrap { max-width: 1100px; margin: 0 auto; padding: 22px 20px 48px; transition: margin .18s ease; }
+@media (min-width: 1160px) { body.panel-open .wrap { margin-right: 440px; } }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px; }
+.brand { font-weight: 700; font-size: 17px; margin-right: auto; letter-spacing: .01em; }
+.brand span { color: var(--muted); font-weight: 400; font-size: 14px; }
+select, .btn { background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; }
+select { max-width: 240px; }
+select.lang { padding: 8px 10px; font-size: 13px; color: var(--muted); }
+.btn { cursor: pointer; }
+.btn:hover { border-color: var(--faint); }
+.btn:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; }
+.status { color: var(--muted); font-size: 13px; margin: -4px 0 14px; min-height: 18px; }
+.status.error { color: #f0a0a0; }
+@media (prefers-color-scheme: light) { .status.error { color: #b42318; } }
+.summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 24px; padding: 14px 18px; margin-bottom: 18px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+.summary b { display: block; font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.summary span { color: var(--muted); font-size: 13px; }
+.monthbar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.monthbar h2 { font-size: 22px; font-weight: 650; margin: 0 auto 0 0; }
+.monthbar .btn { width: 38px; height: 38px; padding: 0; display: grid; place-items: center; }
+.grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+.dow { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; padding: 0 6px 4px; }
+.dow.we { color: var(--accent); }
+.cell { position: relative; min-width: 0; overflow: hidden; min-height: 84px; background: var(--card); border: 1px solid transparent; border-radius: 10px;
+  padding: 7px 9px 8px; display: flex; flex-direction: column; text-align: left; cursor: pointer; }
+.cell.we { background: var(--card-2); }
+.cell:hover { border-color: var(--faint); }
+.cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.cell.empty { background: transparent; cursor: default; }
+.cell.past { opacity: .4; cursor: default; }
+.cell.up { background: linear-gradient(0deg, var(--up-tint), var(--up-tint-2)); }
+.cell.down { background: linear-gradient(0deg, var(--down-tint), var(--down-tint-2)); }
+.cell.reserved { background: var(--reserved); }
+.cell.blocked { background: repeating-linear-gradient(135deg, var(--blocked-a) 0 7px, var(--blocked-b) 7px 14px); }
+.cell.today { border-color: var(--accent); }
+.cell.today .day { color: var(--accent); font-weight: 700; }
+.cell.selected { border-color: var(--text); }
+.day { font-size: 13px; color: var(--muted); }
+.price { font-size: 23px; font-weight: 700; margin-top: auto; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.min { font-size: 12px; color: var(--muted); }
+.cell.reserved .price, .cell.blocked .price { font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--muted); font-size: 13px; margin-top: 12px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; }
+.legend .l-res { background: var(--reserved); }
+.legend .l-blk { background: repeating-linear-gradient(135deg, var(--blocked-a) 0 3px, var(--faint) 3px 4px); }
+.legend .l-up { background: var(--up); opacity: .7; } .legend .l-down { background: var(--down); opacity: .7; }
+.legend .l-today { border: 1.5px solid var(--accent); }
+.panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(420px, 100%); background: var(--raised);
+  border-left: 1px solid var(--line); padding: 22px 22px 28px; overflow-y: auto; transform: translateX(100%);
+  transition: transform .18s ease; box-shadow: -12px 0 32px rgba(0, 0, 0, .3); }
+.panel.open { transform: none; }
+.panel .close { float: right; width: 38px; height: 38px; padding: 0; }
+.panel h3 { margin: 6px 0 2px; font-size: 15px; font-weight: 500; color: var(--muted); }
+.panel .big { font-size: 46px; font-weight: 750; margin: 8px 0 2px; font-variant-numeric: tabular-nums; letter-spacing: -.02em; line-height: 1.1; }
+.panel .sub { color: var(--muted); margin-bottom: 6px; }
+.steps { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 14px; }
+.steps li { display: grid; grid-template-columns: 1fr auto; gap: 3px 12px; }
+.steps .lbl { font-weight: 550; }
+.steps .val { text-align: right; font-weight: 650; font-variant-numeric: tabular-nums; }
+.steps .track { grid-column: 1 / -1; height: 8px; border-radius: 4px; background: var(--track); position: relative; overflow: hidden; }
+.steps .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--faint); }
+.steps li.neg .fill { background: var(--down); } .steps li.pos .fill { background: var(--up); } .steps li.final .fill { background: var(--accent); }
+.steps .chg { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.steps .chg.neg { color: var(--down); } .steps .chg.pos { color: var(--up); }
+.steps .note { color: var(--muted); font-size: 13px; text-align: right; }
+.panel .raw { margin-top: 18px; color: var(--faint); font-size: 12px; }
 .panel details.raw summary { cursor: pointer; }
 .panel details.raw div { margin-top: 6px; }
-.btn { cursor: pointer; }
-.btn:hover { border-color: #3a4350; }
-.btn:disabled { opacity: .5; cursor: default; }
-.btn.primary { border-color: #34506a; color: var(--accent); }
-.monthbar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.monthbar h2 { font-size: 18px; font-weight: 600; margin: 0 8px; min-width: 150px; text-align: center; }
-.monthbar .stats { margin-left: auto; color: var(--muted); font-size: 13px; }
-.status { color: var(--muted); font-size: 12px; margin: -8px 0 14px; min-height: 16px; }
-.grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
-.dow { color: var(--faint); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; padding: 0 6px 4px; }
-.cell { position: relative; min-width: 0; overflow: hidden; min-height: 78px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
-  padding: 6px 7px 10px; display: flex; flex-direction: column; text-align: left; cursor: pointer; }
-.cell:hover { border-color: #3a4350; }
-.cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.cell.empty { background: transparent; border-color: transparent; cursor: default; }
-.cell.past { opacity: .35; cursor: default; }
-.cell.selected { border-color: var(--accent); }
-.day { font-size: 12px; color: var(--muted); }
-.price { font-size: 17px; font-weight: 600; margin-top: auto; font-variant-numeric: tabular-nums; }
-.min { font-size: 11px; color: var(--faint); }
-.cell.reserved { background: var(--reserved); }
-.cell.blocked { background: var(--blocked);
-  background-image: repeating-linear-gradient(135deg, transparent 0 6px, rgba(255,255,255,.03) 6px 12px); }
-.cell.reserved .price, .cell.blocked .price { font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cell .bar { position: absolute; left: 7px; right: 7px; bottom: 4px; height: 2px; border-radius: 2px; }
-.bar.up { background: var(--up); opacity: .8; }
-.bar.down { background: var(--down); opacity: .8; }
-.legend { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); font-size: 12px; margin-top: 12px; }
-.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 6px; border: 1px solid var(--line); }
-.legend .l-res { background: var(--reserved); } .legend .l-blk { background: var(--blocked); }
-.legend .l-up { background: var(--up); border: 0; height: 3px; } .legend .l-down { background: var(--down); border: 0; height: 3px; }
-.panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(420px, 100%); background: var(--surface-2);
-  border-left: 1px solid var(--line); padding: 20px; overflow-y: auto; transform: translateX(100%);
-  transition: transform .18s ease; box-shadow: -12px 0 32px rgba(0,0,0,.35); }
-.panel.open { transform: none; }
-.panel .close { float: right; }
-.panel h3 { margin: 4px 0 2px; font-size: 18px; }
-.panel .big { font-size: 28px; font-weight: 650; margin: 10px 0 2px; font-variant-numeric: tabular-nums; }
-.panel .sub { color: var(--muted); margin-bottom: 16px; }
-.steps { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
-.steps li { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
-.steps .lbl { font-weight: 500; }
-.steps .val { text-align: right; font-variant-numeric: tabular-nums; }
-.steps .chg { color: var(--muted); font-size: 12px; text-align: right; }
-.steps .note { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
-.chg.neg { color: var(--down); } .chg.pos { color: var(--up); }
-.panel .raw { margin-top: 16px; color: var(--faint); font-size: 12px; }
-.error { color: #f0a0a0; }
-@media (max-width: 640px) {
+@media (max-width: 600px) {
   .wrap { padding: 14px 10px 40px; }
   header { gap: 8px; }
   .brand { width: 100%; }
   select { flex: 1; max-width: none; }
   select.lang { flex: 0 0 auto; }
-  .monthbar h2 { font-size: 16px; min-width: 0; flex: 1; }
-  .monthbar .stats { display: none; }
+  .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 12px 14px; }
+  .summary b { font-size: 22px; }
+  .monthbar h2 { font-size: 18px; }
   .grid { gap: 3px; }
-  .cell { min-height: 58px; padding: 4px 5px 8px; border-radius: 6px; }
-  .cell .bar { left: 5px; right: 5px; bottom: 3px; }
-  .price { font-size: 14px; }
+  .dow { padding: 0 2px 4px; font-size: 11px; letter-spacing: .02em; text-align: center; }
+  .cell { min-height: 62px; padding: 4px 5px 5px; border-radius: 8px; }
+  .day { font-size: 11px; }
+  .price { font-size: 16px; }
   .min { font-size: 10px; }
-  .cell.reserved .price, .cell.blocked .price { font-size: 9px; letter-spacing: -.01em; }
-  .steps li { padding: 8px 0; }
-  .panel { top: auto; width: 100%; max-height: 78vh; border-left: 0; border-top: 1px solid var(--line);
-    border-radius: 14px 14px 0 0; transform: translateY(100%); }
+  /* No room for the word on a phone: the colour says it, the legend explains it, screen readers read the label. */
+  .cell.reserved .price, .cell.blocked .price { visibility: hidden; }
+  .legend { font-size: 12px; gap: 6px 12px; }
+  .panel { top: auto; width: 100%; max-height: 85vh; border-left: 0; border-top: 1px solid var(--line);
+    border-radius: 18px 18px 0 0; transform: translateY(100%); box-shadow: var(--shadow); padding: 18px 18px 26px; }
+  .panel::before { content: ""; display: block; width: 40px; height: 4px; border-radius: 2px; background: var(--line); margin: -6px auto 10px; }
+  .panel .big { font-size: 38px; }
 }
+@media (prefers-reduced-motion: reduce) { .panel, .wrap { transition: none; } }
 `;
 
 const SCRIPT = `
@@ -233,12 +270,14 @@ function render() {
   const lead = (first.getUTCDay() + 6) % 7; // Monday first
 
   const grid = $("#grid");
-  const cells = [0, 1, 2, 3, 4, 5, 6].map((i) => el("div", "dow", weekdayName(i, "short")));
+  const cells = [0, 1, 2, 3, 4, 5, 6].map((i) => el("div", i >= 5 ? "dow we" : "dow", weekdayName(i, "short")));
   for (let i = 0; i < lead; i++) cells.push(el("div", "cell empty"));
   for (let d = 1; d <= daysIn; d++) {
     const iso = state.month + "-" + String(d).padStart(2, "0");
     const n = byDate.get(iso);
     const c = el(n ? "button" : "div", "cell");
+    if ((lead + d - 1) % 7 >= 5) c.classList.add("we");
+    if (iso === state.data.today) c.classList.add("today");
     c.append(el("div", "day", num(d)));
     if (!n) { c.classList.add("past"); cells.push(c); continue; }
     c.type = "button";
@@ -250,8 +289,9 @@ function render() {
     } else {
       c.append(el("div", "price", num(n.price)));
       c.append(el("div", "min", t("cell_min", { n: n.minStay })));
-      const bar = n.price > l.basePrice ? "up" : n.price < l.basePrice ? "down" : null;
-      if (bar) c.append(el("div", "bar " + bar));
+      // Above or below the base price: the cell is tinted warm or cool.
+      if (n.price > l.basePrice) c.classList.add("up");
+      else if (n.price < l.basePrice) c.classList.add("down");
       c.setAttribute("aria-label", tn("aria_night_for_sale", n.minStay, { date: dayTitle(iso), price: money(n.price, l.currency) }));
     }
     // A room type of a small hotel: how many rooms are still free that night.
@@ -262,10 +302,15 @@ function render() {
   }
   grid.replaceChildren(...cells);
 
+  // The month at a glance, from today on: blocked nights are neither for sale nor booked.
   const forSale = nights.filter((n) => n.price != null);
   const reserved = nights.filter((n) => n.status === "reserved").length;
   const avg = forSale.length ? forSale.reduce((a, n) => a + n.price, 0) / forSale.length : null;
-  $("#stats").textContent = t("stats", { forSale: forSale.length, reserved: reserved }) + (avg == null ? "" : " · " + t("stats_average", { price: money(Math.round(avg), l.currency) }));
+  const sellable = forSale.length + reserved;
+  $("#sum-for-sale").textContent = num(forSale.length);
+  $("#sum-reserved").textContent = num(reserved);
+  $("#sum-average").textContent = avg == null ? "—" : money(Math.round(avg), l.currency);
+  $("#sum-occupancy").textContent = sellable === 0 ? "—" : new Intl.NumberFormat(state.lang, { style: "percent" }).format(reserved / sellable);
   if (message) setStatus(t(message.key, message.vars), message.isError);
   else setStatus(l.lastSync ? t("status_read", { when: new Intl.DateTimeFormat(state.lang, { dateStyle: "medium", timeStyle: "short" }).format(new Date(l.lastSync)) }) : t("status_not_read"));
 }
@@ -288,21 +333,27 @@ function openNight(iso) {
     parts.push(el("div", "big", money(n.price, l.currency)));
     parts.push(el("div", "sub", tn("min_stay", n.minStay, { why: t("min_" + n.minStaySource) })));
     if (rooms) parts.push(rooms);
+    // A small ladder from the base price to the final one: one bar per step, as long as its price.
     const list = el("ul", "steps");
-    for (const s of n.steps) {
+    const top = Math.max(...n.steps.map((s) => Math.max(s.before, s.after))) * 1.08;
+    n.steps.forEach((s, i) => {
       const text = stepText(s, l.currency);
-      const li = el("li");
+      const li = el("li", i === n.steps.length - 1 ? "final" : s.after < s.before ? "neg" : s.after > s.before ? "pos" : null);
       li.append(el("div", "lbl", text.label));
       li.append(el("div", "val", money(s.after, l.currency)));
+      const track = el("div", "track");
+      const fill = el("div", "fill");
+      fill.style.width = Math.max(2, Math.min(100, (s.after / top) * 100)).toFixed(1) + "%";
+      track.append(fill);
+      li.append(track);
       let change = "";
       if (s.percent != null) change = (s.percent >= 0 ? "+" : "−") + num(Math.abs(s.percent)) + "%";
       else if (s.before !== s.after) change = (s.after > s.before ? "+" : "−") + num(Math.abs(Math.round((s.after - s.before) * 100) / 100));
       const chg = el("div", "chg", change);
       if (s.after < s.before) chg.classList.add("neg"); else if (s.after > s.before) chg.classList.add("pos");
-      li.append(el("div"), chg);
-      if (text.note) li.append(el("div", "note", text.note));
+      li.append(chg, el("div", "note", text.note || ""));
       list.append(li);
-    }
+    });
     parts.push(list);
   }
   // The engine's own sentence, in English: handy in a screenshot sent for help.
@@ -405,11 +456,16 @@ export function renderPage(nonce: string): string {
     <button class="btn primary" id="refresh" type="button" data-t="recalculate">${PAGE_TEXTS.en.recalculate}</button>
   </header>
   <div class="status" id="status" role="status"></div>
+  <section class="summary" aria-live="polite">
+    <div><b id="sum-for-sale">—</b><span data-t="summary_for_sale">${PAGE_TEXTS.en.summary_for_sale}</span></div>
+    <div><b id="sum-reserved">—</b><span data-t="summary_reserved">${PAGE_TEXTS.en.summary_reserved}</span></div>
+    <div><b id="sum-average">—</b><span data-t="summary_average">${PAGE_TEXTS.en.summary_average}</span></div>
+    <div><b id="sum-occupancy">—</b><span data-t="summary_occupancy">${PAGE_TEXTS.en.summary_occupancy}</span></div>
+  </section>
   <div class="monthbar">
     <button class="btn" id="prev" type="button" data-t-label="previous_month" aria-label="${PAGE_TEXTS.en.previous_month}">‹</button>
     <h2 id="month"></h2>
     <button class="btn" id="next" type="button" data-t-label="next_month" aria-label="${PAGE_TEXTS.en.next_month}">›</button>
-    <div class="stats" id="stats"></div>
   </div>
   <div class="grid" id="grid"></div>
   <div class="legend">
@@ -417,6 +473,7 @@ export function renderPage(nonce: string): string {
     <span><i class="l-blk"></i><span data-t="legend_blocked">${PAGE_TEXTS.en.legend_blocked}</span></span>
     <span><i class="l-up"></i><span data-t="legend_above">${PAGE_TEXTS.en.legend_above}</span></span>
     <span><i class="l-down"></i><span data-t="legend_below">${PAGE_TEXTS.en.legend_below}</span></span>
+    <span><i class="l-today"></i><span data-t="legend_today">${PAGE_TEXTS.en.legend_today}</span></span>
     <span data-t="legend_hint">${PAGE_TEXTS.en.legend_hint}</span>
   </div>
 </div>

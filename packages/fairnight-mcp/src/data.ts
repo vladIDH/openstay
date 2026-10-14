@@ -4,7 +4,7 @@
  * (that is `fairnight sync`'s job).
  */
 import { existsSync } from "node:fs";
-import { formatAmount, type NightQuote } from "fairnight";
+import { Availability, formatAmount, type NightQuote } from "fairnight";
 import {
   dbPath,
   feedKeys,
@@ -20,6 +20,7 @@ import {
   priceOne,
   selectListings,
   SetupError,
+  unitsOf,
   type Db,
   type HostListing,
 } from "fairnight-cli";
@@ -81,6 +82,7 @@ export function listListings(folder: Folder) {
       title: l.pricing.name ?? l.name,
       currency: l.pricing.currency,
       basePrice: l.pricing.basePrice,
+      ...(unitsOf(l) > 1 ? { units: unitsOf(l) } : {}),
       defaultMinStay: l.pricing.defaultMinStay,
       calendars: l.calendars.map((c) => c.source), // never the links: they work like passwords
       lastSync: lastSync(db, l.name),
@@ -88,8 +90,10 @@ export function listListings(folder: Folder) {
   }));
 }
 
+/** A night; for a room type with several units also how many are free ("3 of 6"). */
 function nightSummary(n: NightQuote) {
-  return { date: n.date, weekday: n.weekday, status: n.status, price: n.price, minStay: n.minStay };
+  const night = { date: n.date, weekday: n.weekday, status: n.status, price: n.price, minStay: n.minStay };
+  return n.units ? { ...night, units: n.units.total, unitsFree: n.units.free } : night;
 }
 
 /** Price the nights from today up to `to` and keep [from, to]. */
@@ -139,16 +143,9 @@ export function explainNight(folder: Folder, args: { listing: string; date: stri
   );
 }
 
-type Status = "available" | "reserved" | "blocked";
-
-function statusMap(db: Db, listing: HostListing): (day: number) => Status {
-  const nights = new Map<number, Status>();
-  for (const s of loadStays(db, listing)) {
-    for (let d = toDay(s.checkIn); d < toDay(s.checkOut); d++) {
-      if (s.kind === "reservation" || !nights.has(d)) nights.set(d, s.kind === "blocked" ? "blocked" : "reserved");
-    }
-  }
-  return (day) => nights.get(day) ?? "available";
+/** The engine's own count of the nights (and of the units of a room type): one rule for prices and for these tools. */
+function availabilityOf(db: Db, listing: HostListing): Availability {
+  return new Availability({ stays: loadStays(db, listing) }, unitsOf(listing));
 }
 
 export function occupancy(folder: Folder, args: { listing: string; month: string }) {
@@ -163,16 +160,23 @@ export function occupancy(folder: Folder, args: { listing: string; month: string
     folder,
     (db, listings) => {
       const listing = only(listings);
-      const status = statusMap(db, listing);
+      const availability = availabilityOf(db, listing);
+      // Nights: reserved or blocked when no unit is left. Room-nights: every unit of every night.
       let reserved = 0;
       let blocked = 0;
+      const rooms = { total: 0, reserved: 0, blocked: 0, free: 0 };
       for (let d = first; d <= last; d++) {
-        const s = status(d);
+        const s = availability.status(d);
         if (s === "reserved") reserved++;
         else if (s === "blocked") blocked++;
+        const n = availability.night(d);
+        rooms.total += n.total;
+        rooms.reserved += n.reserved;
+        rooms.blocked += n.blocked;
+        rooms.free += n.free;
       }
       const nights = last - first + 1;
-      const sellable = nights - blocked;
+      const sellable = rooms.total - rooms.blocked;
       // Average price of the nights still for sale, from today on.
       const start = Math.max(first, toDay(today));
       let average: number | null = null;
@@ -189,10 +193,11 @@ export function occupancy(folder: Folder, args: { listing: string; month: string
         reserved,
         blocked,
         free: nights - reserved - blocked,
-        occupancyPercent: sellable === 0 ? null : Math.round((reserved / sellable) * 1000) / 10,
+        occupancyPercent: sellable === 0 ? null : Math.round((rooms.reserved / sellable) * 1000) / 10,
         stillForSale: forSale,
         averagePriceForSale: average,
         currency: listing.pricing.currency,
+        ...(availability.units > 1 ? { units: availability.units, roomNights: rooms } : {}),
       };
     },
     args.listing,
@@ -209,11 +214,13 @@ export function nextGaps(folder: Folder, args: { listing: string; days?: number;
     folder,
     (db, listings) => {
       const listing = only(listings);
-      const status = statusMap(db, listing);
+      const availability = availabilityOf(db, listing);
+      // A gap is a short stretch with something free between two nights where nothing is (sold out, for a room type).
+      const status = (day: number) => availability.status(day);
       const start = toDay(today);
       const end = start + days - 1;
       const priced = new Map(priceOne(db, listing, today, days + maxNights).nights.map((n) => [n.date, n]));
-      const gaps: { from: string; to: string; nights: number; prices: (number | null)[]; minStay: number | null }[] = [];
+      const gaps: { from: string; to: string; nights: number; prices: (number | null)[]; minStay: number | null; unitsFree?: number[] }[] = [];
       let d = start;
       while (d <= end) {
         if (status(d) !== "available") {
@@ -232,11 +239,20 @@ export function nextGaps(folder: Folder, args: { listing: string; days?: number;
             nights: length,
             prices: nights.map((n) => n?.price ?? null),
             minStay: nights[0]?.minStay ?? null,
+            ...(availability.units > 1 ? { unitsFree: Array.from({ length }, (_, i) => availability.night(d + i).free) } : {}),
           });
         }
         d = e + 1;
       }
-      return { listing: listing.name, currency: listing.pricing.currency, from: today, to: fromDay(end), maxNights, gaps };
+      return {
+        listing: listing.name,
+        currency: listing.pricing.currency,
+        from: today,
+        to: fromDay(end),
+        maxNights,
+        ...(availability.units > 1 ? { units: availability.units } : {}),
+        gaps,
+      };
     },
     args.listing,
   );

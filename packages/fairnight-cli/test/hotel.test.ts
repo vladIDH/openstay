@@ -8,7 +8,9 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { startFakeBeds24, TEST_REFRESH, type FakeBeds24, type FakeBooking as Beds24Booking } from "../../fairnight-beds24/test/fake-beds24.js";
 import { startFakeSmoobu, TEST_CREDENTIALS, type FakeBooking as SmoobuBooking, type FakeSmoobu } from "../../fairnight-smoobu/test/fake-smoobu.js";
-import { validateHostConfig, type HostListing } from "../src/config.js";
+import { loadHostConfig, validateHostConfig, type HostListing } from "../src/config.js";
+import { renderPage } from "../src/page.js";
+import { pricesPayload } from "../src/serve.js";
 import { openDb, type Db } from "../src/db.js";
 import { main } from "../src/main.js";
 import { priceOne } from "../src/price.js";
@@ -208,6 +210,13 @@ describe("Beds24: rooms with several units", () => {
       "2026-11-05  thu       95    2  6/6 free",
       "3 for sale · 0 reserved · 0 blocked · average 95, from 95 to 95",
     ]);
+    // The local page gets the rooms of each night, and says them in Italian.
+    const doppia = pricesPayload(dir, loadHostConfig(dir), "2026-11-03", 2).listings.find((l) => l.name === "doppia");
+    expect(doppia?.nights.map((n) => n.units)).toEqual([
+      { total: 6, free: 4, reserved: 2, blocked: 0 },
+      { total: 6, free: 3, reserved: 3, blocked: 0 },
+    ]);
+    expect(renderPage("nonce-0000")).toContain('" camere libere"');
   });
 
   it("warns when the number of units changes on Beds24", async () => {

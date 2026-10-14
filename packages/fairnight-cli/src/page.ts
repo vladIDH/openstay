@@ -160,6 +160,8 @@ function render() {
       const bar = n.price > l.basePrice ? "up" : n.price < l.basePrice ? "down" : null;
       if (bar) c.append(el("div", "bar " + bar));
     }
+    // A room type of a small hotel: how many rooms are still free that night.
+    if (n.units) c.append(el("div", "min", n.units.free + "/" + n.units.total));
     if (state.selected === iso) c.classList.add("selected");
     c.setAttribute("aria-label", iso + (n.price == null ? ", " + n.status : ", " + fmt(n.price) + " " + l.currency + ", minimum " + n.minStay + " nights"));
     c.addEventListener("click", () => openNight(iso));
@@ -183,13 +185,16 @@ function openNight(iso) {
   const p = $("#panel");
   const body = $("#panel-body");
   const parts = [el("h3", null, dayTitle(iso))];
+  const rooms = n.units ? el("div", "sub", n.units.free + (n.units.free === 1 ? " camera libera" : " camere libere") + " su " + n.units.total) : null;
   if (n.price == null) {
     parts.push(el("div", "big", n.status === "reserved" ? "Reserved" : "Blocked"));
     parts.push(el("div", "sub", "Not for sale: no price."));
+    if (rooms) parts.push(rooms);
   } else {
     parts.push(el("div", "big", fmt(n.price) + " " + l.currency));
     const rule = { override: "date override", farOut: "far out", lastMinute: "last minute", default: "default", gap: "lowered to fill the gap" }[n.minStaySource];
     parts.push(el("div", "sub", "Minimum stay " + n.minStay + " night" + (n.minStay === 1 ? "" : "s") + " (" + rule + ")"));
+    if (rooms) parts.push(rooms);
     const list = el("ul", "steps");
     for (const s of n.steps) {
       const li = el("li");

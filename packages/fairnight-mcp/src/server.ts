@@ -47,7 +47,7 @@ export const TOOLS: Tool[] = [
       const data = listListings(folder);
       const lines = data.listings.map(
         (l) =>
-          `- ${l.name} (${l.title}): base ${fmt(l.basePrice)} ${l.currency}, minimum ${l.defaultMinStay} nights, calendars: ${l.calendars.join(", ") || "none"}, last read: ${l.lastSync ?? "never"}`,
+          `- ${l.name} (${l.title}): ${"units" in l ? `room type of ${l.units} identical units, ` : ""}base ${fmt(l.basePrice)} ${l.currency}, minimum ${l.defaultMinStay} nights, calendars: ${l.calendars.join(", ") || "none"}, last read: ${l.lastSync ?? "never"}`,
       );
       return { text: `Today is ${data.today}.\n${lines.join("\n")}`, data };
     },
@@ -56,7 +56,7 @@ export const TOOLS: Tool[] = [
     name: "get_prices",
     title: "Get nightly prices",
     description:
-      "Price and minimum stay of each night of a listing between two dates (both included). Reserved and blocked nights have no price. Dates are YYYY-MM-DD, from today on; default: the next 14 nights. At most 366 days from today.",
+      "Price and minimum stay of each night of a listing between two dates (both included). Reserved and blocked nights have no price. A room type of a small hotel (units > 1) has one price for all its units and also returns how many are free each night. Dates are YYYY-MM-DD, from today on; default: the next 14 nights. At most 366 days from today.",
     inputSchema: {
       type: "object",
       properties: {
@@ -69,8 +69,9 @@ export const TOOLS: Tool[] = [
     },
     handler: (folder, args) => {
       const data = getPrices(folder, args);
+      const free = (n: (typeof data.nights)[number]) => ("units" in n ? `, ${n.unitsFree} of ${n.units} rooms free` : "");
       const lines = data.nights.map((n) =>
-        n.price === null ? `${n.date} ${n.weekday}: ${n.status}` : `${n.date} ${n.weekday}: ${fmt(n.price)} ${data.currency}, minimum ${n.minStay}`,
+        n.price === null ? `${n.date} ${n.weekday}: ${n.status}${free(n)}` : `${n.date} ${n.weekday}: ${fmt(n.price)} ${data.currency}, minimum ${n.minStay}${free(n)}`,
       );
       return { text: `${data.listing}, ${data.from} → ${data.to}:\n${lines.join("\n")}`, data };
     },
@@ -79,7 +80,7 @@ export const TOOLS: Tool[] = [
     name: "explain_night",
     title: "Explain one night",
     description:
-      "Why a night of a listing has its price and minimum stay: every factor applied (season, weekday, last minute, gaps, occupancy, events, floors…) with the price before and after it. Use it when the host asks why a price is what it is.",
+      "Why a night of a listing has its price and minimum stay: every factor applied (season, weekday, last minute, gaps, occupancy, events, floors…) with the price before and after it. For a room type with several units it also says how many rooms are free and which rule weighed most. Use it when the host asks why a price is what it is.",
     inputSchema: {
       type: "object",
       properties: { listing: LISTING, date: { type: "string", description: "The night, YYYY-MM-DD, from today on." } },
@@ -95,7 +96,7 @@ export const TOOLS: Tool[] = [
     name: "occupancy",
     title: "Occupancy of a month",
     description:
-      "For one listing and one calendar month: nights reserved, blocked and free, the occupancy (reserved nights out of the nights not blocked), and the average price of the nights still for sale.",
+      "For one listing and one calendar month: nights reserved, blocked and free, the occupancy (reserved nights out of the nights not blocked), and the average price of the nights still for sale. For a room type with several units the occupancy counts room-nights (4 of 6 rooms booked = 4 of 6), a night is reserved or blocked only when no room is left, and roomNights gives the totals.",
     inputSchema: {
       type: "object",
       properties: { listing: LISTING, month: { type: "string", description: "The month, YYYY-MM." } },
@@ -104,8 +105,11 @@ export const TOOLS: Tool[] = [
     },
     handler: (folder, args) => {
       const d = occupancy(folder, args);
+      const rooms = d.roomNights
+        ? `${d.listing}, ${d.month}, ${d.units} rooms: ${d.roomNights.reserved} of ${d.roomNights.total} room-nights reserved, ${d.roomNights.blocked} blocked, ${d.roomNights.free} free; ${d.reserved} nights sold out, ${d.blocked} closed`
+        : null;
       const text =
-        `${d.listing}, ${d.month}: ${d.reserved} of ${d.nights} nights reserved, ${d.blocked} blocked, ${d.free} free` +
+        (rooms ?? `${d.listing}, ${d.month}: ${d.reserved} of ${d.nights} nights reserved, ${d.blocked} blocked, ${d.free} free`) +
         (d.occupancyPercent === null ? "" : ` (occupancy ${d.occupancyPercent}%)`) +
         (d.averagePriceForSale === null ? "." : `. ${d.stillForSale} nights still for sale, average ${fmt(d.averagePriceForSale)} ${d.currency}.`);
       return { text, data: d };
@@ -115,7 +119,7 @@ export const TOOLS: Tool[] = [
     name: "next_gaps",
     title: "Next gaps between stays",
     description:
-      "Short free stretches between two stays (or blocked dates) in the coming days: the nights that are hardest to sell. Returns each gap with its dates, length, prices and minimum stay.",
+      "Short free stretches between two stays (or blocked dates) in the coming days: the nights that are hardest to sell. Returns each gap with its dates, length, prices and minimum stay. For a room type with several units a gap lies between two sold-out nights, and unitsFree says how many rooms are free on each of its nights.",
     inputSchema: {
       type: "object",
       properties: {
@@ -129,7 +133,9 @@ export const TOOLS: Tool[] = [
     handler: (folder, args) => {
       const d = nextGaps(folder, args);
       const lines = d.gaps.map(
-        (g) => `- ${g.from} → ${g.to} (${g.nights} night${g.nights === 1 ? "" : "s"}): ${g.prices.map(fmt).join(", ")} ${d.currency}, minimum ${g.minStay ?? "—"}`,
+        (g) =>
+          `- ${g.from} → ${g.to} (${g.nights} night${g.nights === 1 ? "" : "s"}): ${g.prices.map(fmt).join(", ")} ${d.currency}, minimum ${g.minStay ?? "—"}` +
+          (g.unitsFree ? `, rooms free ${g.unitsFree.join(", ")} of ${d.units}` : ""),
       );
       const text = d.gaps.length
         ? `${d.listing}: ${d.gaps.length} gap${d.gaps.length === 1 ? "" : "s"} of up to ${d.maxNights} nights between ${d.from} and ${d.to}:\n${lines.join("\n")}`

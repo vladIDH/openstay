@@ -2,3 +2,10 @@
 *.json text eol=lf
 *.csv text eol=lf
 *.ics -text
+# Installer: Windows reads .cmd and .ps1 with CRLF; the Mac scripts need LF
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+*.command text eol=lf
+*.sh text eol=lf
+*.ico binary
+*.png binary

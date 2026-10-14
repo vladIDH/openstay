@@ -36,3 +36,4 @@ airroi-credentials.json
 
 # documenti del Ministero (SES): restano fuori dal repo, mai committati
 openstay-ses-docs/
+installa/pacchetto/

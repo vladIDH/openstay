@@ -17,4 +17,8 @@ export default tseslint.config(
     files: ["**/bin/*.js"],
     languageOptions: { globals: { process: "readonly", URL: "readonly" } },
   },
+  {
+    files: ["installa/**/*.mjs"],
+    languageOptions: { globals: { process: "readonly", URL: "readonly", Buffer: "readonly" } },
+  },
 );

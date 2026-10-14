@@ -1,0 +1,122 @@
+name: Installer
+
+# The installer for hosts, tried for real on Windows and on a Mac: from a copy of
+# the project into a clean folder, with fake iCal calendars, up to the calendar page.
+# Only on pull requests that touch the installer or the command line (macOS minutes cost more).
+on:
+  pull_request:
+    paths:
+      - "installa/**"
+      - "Installa Fairnight.cmd"
+      - "Installa Fairnight.command"
+      - "packages/fairnight-cli/**"
+      - ".github/workflows/installer.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell scripts pass shellcheck
+        run: shellcheck installa/mac.sh "Installa Fairnight.command"
+      - name: Executable mark kept in git for the Mac files
+        run: |
+          test "$(git ls-files -s installa/mac.sh | cut -c1-6)" = 100755
+          test "$(git ls-files -s 'Installa Fairnight.command' | cut -c1-6)" = 100755
+
+  install:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+        node: [22, 24]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      FOLDER: ${{ runner.temp }}/Fairnight prova
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Fake iCal calendars
+        run: |
+          node installa/prova/calendari-finti.mjs 8765 &
+          for i in 1 2 3 4 5 6 7 8 9 10; do curl -sf http://127.0.0.1:8765/airbnb.ics > /dev/null && exit 0; sleep 1; done
+          exit 1
+
+      - name: Install (Windows, through the double-click file)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: call "Installa Fairnight.cmd" -Cartella "%FOLDER%" -SenzaDomande -NonAprire
+
+      - name: Install (Mac, through the double-click file)
+        if: runner.os == 'macOS'
+        run: ./"Installa Fairnight.command" --cartella="$FOLDER" --senza-domande --non-aprire
+
+      - name: Installed from the precompiled better-sqlite3, no compiler used
+        run: |
+          cat "$FOLDER/installazione.log"
+          test -f "$FOLDER/programma/node_modules/better-sqlite3/build/Release/better_sqlite3.node"
+          test ! -f "$FOLDER/programma/node_modules/better-sqlite3/build/config.gypi"
+          grep -q "better-sqlite3: binario precompilato" "$FOLDER/installazione.log"
+
+      - name: Double-click files and icons are there
+        run: |
+          if [ "$RUNNER_OS" = Windows ]; then
+            test -f "$FOLDER/Fairnight.cmd" && test -f "$FOLDER/Cambia impostazioni.cmd"
+            test -f "$(powershell -NoProfile -Command "[Environment]::GetFolderPath('Desktop')" | tr -d '\r')/Fairnight.lnk"
+          else
+            test -x "$FOLDER/Fairnight.command" && test -x "$FOLDER/Cambia impostazioni.command"
+            test -d "$HOME/Applications/Fairnight.app" && test -L "$HOME/Desktop/Fairnight.app"
+            test -s "$HOME/Applications/Fairnight.app/Contents/Resources/applet.icns"
+            codesign --verify --deep "$HOME/Applications/Fairnight.app"
+          fi
+
+      - name: Guided setup with answers typed in, then prices
+        run: |
+          FN="$FOLDER/programma/node_modules/fairnight-cli/bin/fairnight.js"
+          printf '%s\n' "Casa Prova" "Palermo" "http://127.0.0.1:8765/airbnb.ics" "http://127.0.0.1:8765/booking.ics" "" "90" "" "" "s" "" \
+            | node "$FN" configura --dir "$FOLDER" | tee setup.txt
+          grep -q "✓ Letto: 3 prenotazioni, 1 periodo bloccato." setup.txt
+          grep -q "Luglio e agosto · dal 1 lug al 31 ago · +25%" setup.txt
+          node "$FN" price --dir "$FOLDER" --days 30 | tee price.txt
+          grep -q "casa-prova" price.txt
+
+      - name: The calendar page answers
+        run: |
+          FN="$FOLDER/programma/node_modules/fairnight-cli/bin/fairnight.js"
+          node "$FN" apri --dir "$FOLDER" --senza-browser > apri.txt 2>&1 &
+          for i in $(seq 1 20); do curl -sf http://127.0.0.1:4321/api/ping > ping.json && break; sleep 1; done
+          cat apri.txt
+          grep -q '"app":"fairnight"' ping.json
+          curl -sf http://127.0.0.1:4321/api/data | grep -q '"name":"casa-prova"'
+          curl -sf http://127.0.0.1:4321/ | grep -q "<title>Fairnight"
+          # A second "apri" finds the first one instead of starting another
+          node "$FN" apri --dir "$FOLDER" --senza-browser | tee second.txt
+          grep -q "Fairnight è già acceso: http://localhost:4321" second.txt
+
+      - name: Running the installer again (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          copy "%FOLDER%\fairnight.config.json" before.json
+          call "Installa Fairnight.cmd" -Cartella "%FOLDER%" -SenzaDomande -NonAprire -SenzaCollegamenti > again.txt
+
+      - name: Running the installer again (Mac)
+        if: runner.os == 'macOS'
+        run: |
+          cp "$FOLDER/fairnight.config.json" before.json
+          ./"Installa Fairnight.command" --cartella="$FOLDER" --senza-domande --non-aprire --senza-collegamenti > again.txt
+
+      - name: The second run updated the program and kept the settings
+        run: |
+          cat again.txt
+          grep -q "aggiornato" again.txt
+          cmp before.json "$FOLDER/fairnight.config.json"

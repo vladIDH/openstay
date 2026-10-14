@@ -12,6 +12,8 @@ import { openDb } from "./db.js";
 import { importPrices } from "./import.js";
 import { UsageError } from "./errors.js";
 import { initFolder } from "./init.js";
+import { apri } from "./apri.js";
+import { configura } from "./configura.js";
 import { dbPath, localToday, stripBom, type Io } from "./io.js";
 import { defaultExportPath, EXPORT_FORMATS, toCsv, writeExport } from "./export.js";
 import { formatTable, lastSync, priceOne } from "./price.js";
@@ -27,6 +29,8 @@ import { GUEST_USAGE, runGuests } from "./guests/commands.js";
 export const USAGE = `Fairnight: dynamic prices for short-term rentals, on your own computer.
 
 Usage:
+  fairnight configura                              guided setup in Italian: houses, iCal links, prices, seasons (run again to change them)
+  fairnight apri                                   read the calendars, start the calendar page and open it in the browser [--senza-browser]
   fairnight init [folder]                          create a folder with an example config and an empty database
   fairnight sync [--listing <name>]                read the iCal calendars written in the config
   fairnight import <file.csv> --listing <name>     store past nightly prices (columns: date, price) [--dry-run]
@@ -64,6 +68,7 @@ const OPTIONS = {
   out: { type: "string" },
   port: { type: "string" },
   lan: { type: "boolean" },
+  "senza-browser": { type: "boolean" },
   applica: { type: "boolean" },
   da: { type: "string" },
   a: { type: "string" },
@@ -109,6 +114,17 @@ export async function main(argv: string[], io: Io): Promise<number> {
     switch (command) {
       case "init":
         return runInit(rest, io);
+      case "configura":
+      case "setup":
+        noExtra(rest);
+        return await configura(dir, io);
+      case "apri":
+      case "open": {
+        noExtra(rest);
+        const port = values.port === undefined ? 4321 : Number(values.port);
+        if (!Number.isInteger(port) || port < 1 || port > 65525) throw new UsageError(`--port must be a number from 1 to 65525, got "${values.port}"`);
+        return (await apri(dir, io, { port, days: positiveInt(values.days, 365, "days"), browser: !(values["senza-browser"] ?? false) })).code;
+      }
       case "sync":
         return await runSync(dir, values.listing, rest, io);
       case "import":

@@ -19,6 +19,15 @@ describe("host config", () => {
     expect(exampleFile).toEqual(JSON.parse(JSON.stringify(EXAMPLE_CONFIG)));
   });
 
+  it("keeps the town of a listing and refuses an empty one", () => {
+    const input = structuredClone(exampleFile);
+    input.listings[0].city = "Costa Adeje";
+    const r = validateHostConfig(input);
+    expect(r.ok && r.value.listings[0]?.city).toBe("Costa Adeje");
+    input.listings[1].city = " ";
+    expect(issuesOf(input)).toEqual(['listings[1].city: must be the name of a town, up to 100 characters, got " "']);
+  });
+
   it("fills in the listing id from the name", () => {
     const input = structuredClone(exampleFile);
     delete input.listings[0].pricing.listingId;

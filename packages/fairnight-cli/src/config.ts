@@ -69,6 +69,8 @@ export interface HostListing {
   fairguest?: GuestSettings;
   /** The zone whose data (imported with `fairnight mercato importa --zona`) the market factor uses. */
   marketArea?: string;
+  /** Where the listing is, as the host wrote it. `fairnight configura` uses it to propose the seasons. */
+  city?: string;
 }
 
 /** Where AirROI should look for one zone, and which listings count as comparable. */
@@ -236,7 +238,10 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
       issues.push({ path: lp, message: "must be an object with name, calendars and pricing" });
       return;
     }
-    unknownFields(l, lp, ["name", "calendars", "pricing", "marketArea", "fairguest"], issues);
+    unknownFields(l, lp, ["name", "calendars", "pricing", "marketArea", "fairguest", "city"], issues);
+    if (l.city !== undefined && (typeof l.city !== "string" || l.city.trim() === "" || l.city.length > 100)) {
+      issues.push({ path: `${lp}.city`, message: `must be the name of a town, up to 100 characters, got ${JSON.stringify(l.city)}` });
+    }
     if (l.marketArea !== undefined && !isAreaName(l.marketArea)) {
       issues.push({ path: `${lp}.marketArea`, message: `must be a zone name with lowercase letters, digits and dashes (like "adeje"), got ${JSON.stringify(l.marketArea)}` });
     }
@@ -273,6 +278,7 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
       });
       const listing: HostListing = { name: l.name as string, calendars, pricing: r.value };
       if (typeof l.marketArea === "string") listing.marketArea = l.marketArea;
+      if (typeof l.city === "string") listing.city = l.city;
       if (fairguest) listing.fairguest = fairguest;
       listings.push(listing);
     }

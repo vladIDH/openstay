@@ -40,4 +40,17 @@ describe("terminal prompt", () => {
     ended.stdin.end("partial");
     expect(await c).toBe("partial");
   });
+
+  it("keeps the answers that arrive together for the next questions (answers piped in at once)", async () => {
+    const t = terminal(false);
+    const ask = terminalPrompt(t.stdin, t.stdout);
+    t.stdin.write("Casa Limone\r\nAdeje\n\n90");
+    t.stdin.end();
+    expect(await ask("Nome: ", { hidden: false })).toBe("Casa Limone");
+    expect(await ask("Città: ", { hidden: false })).toBe("Adeje");
+    expect(await ask("Link: ", { hidden: false })).toBe("");
+    expect(await ask("Prezzo: ", { hidden: false })).toBe("90");
+    expect(await ask("Altro: ", { hidden: false })).toBe("");
+    expect(t.shown()).toBe("Nome: \nCittà: \nLink: \nPrezzo: \nAltro: \n");
+  });
 });

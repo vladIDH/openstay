@@ -38,7 +38,7 @@ const EXAMPLE_HOST = "calendar.example.com";
 /** Calendars bigger than this are refused: a real one is a few tens of kB. */
 const MAX_BYTES = 5_000_000;
 
-async function download(url: string, opts: SyncOptions): Promise<string> {
+export async function download(url: string, opts: SyncOptions): Promise<string> {
   const res = await opts.fetch(url, {
     signal: AbortSignal.timeout(opts.timeoutMs ?? 20_000),
     headers: { accept: "text/calendar, text/plain;q=0.9" },

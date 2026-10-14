@@ -24,6 +24,14 @@ OpenStay è il contenitore; Fairnight è il modulo dei prezzi. **Fairguest** è 
 
 ---
 
+## Il modulo che vede l'ospite
+
+Il modulo di check-in (`/checkin/<codice>`) è pensato prima di tutto per il telefono e segue il tema chiaro o scuro del telefono dell'ospite. Ha tre passi sullo schermo (i tuoi dati, documento, conferma), un messaggio accanto a ogni campo da correggere e una riga in alto su cosa succede ai dati: cifrati sul computer dell'host, inviati solo alla polizia, cancellati da soli quando la legge lo permette. Schermate con dati inventati, in italiano e spagnolo, computer e telefono: [images/visivo](images/visivo).
+
+| Passo 1 | Passo 2 | Da correggere | Conferma |
+|---|---|---|---|
+| ![Passo 1](images/visivo/checkin-it-telefono-1-dati.png) | ![Passo 2](images/visivo/checkin-it-telefono-2-documento.png) | ![Errori](images/visivo/checkin-it-telefono-errori.png) | ![Conferma](images/visivo/checkin-it-telefono-3-conferma.png) |
+
 ## 1. Spagna: SES.HOSPEDAJES
 
 Norma: Real Decreto 933/2021 ([BOE, testo consolidato](https://www.boe.es/buscar/act.php?id=BOE-A-2021-17461)).

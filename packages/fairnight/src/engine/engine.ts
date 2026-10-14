@@ -6,7 +6,7 @@
  *
  * Price pipeline, in this order (each factor can be switched off):
  *   base → season → day of week → last minute → far out → gap → occupancy
- *   → zone demand (market) → stale calendar → event → historical floor → floor/ceiling → rounding
+ *   → few rooms left (scarcity, hotels only) → zone demand (market) → stale calendar → event → historical floor → floor/ceiling → rounding
  *   → date override (wins over everything)
  *
  * Minimum stay, in this order of precedence:
@@ -34,6 +34,7 @@ import {
   marketFactor,
   occupancyFactor,
   roundingFactor,
+  scarcityFactor,
   seasonFactor,
   staleCalendarFactor,
   type NightContext,
@@ -50,6 +51,7 @@ const PIPELINE: readonly Factor[] = [
   farOutFactor,
   gapFactor,
   occupancyFactor,
+  scarcityFactor,
   marketFactor,
   staleCalendarFactor,
   eventFactor,
@@ -88,10 +90,16 @@ function overrideFor(ctx: NightContext) {
   return f.dates.find((o) => o.date === ctx.date);
 }
 
+/** The units of the night, only for a listing with more than one. */
+function withUnits(ctx: NightContext, quote: NightQuote): NightQuote {
+  if (ctx.availability.units > 1) quote.units = { ...ctx.availability.night(ctx.day) };
+  return quote;
+}
+
 function priceNight(ctx: NightContext): NightQuote {
   const status = ctx.availability.status(ctx.day);
   if (status !== "available") {
-    const quote: NightQuote = {
+    const quote: NightQuote = withUnits(ctx, {
       date: ctx.date,
       weekday: ctx.weekday,
       status,
@@ -100,7 +108,7 @@ function priceNight(ctx: NightContext): NightQuote {
       minStaySource: null,
       steps: [],
       explanation: "",
-    };
+    });
     quote.explanation = explainNight(quote, ctx.config.currency);
     return quote;
   }
@@ -125,7 +133,7 @@ function priceNight(ctx: NightContext): NightQuote {
   }
 
   const { minStay, source } = resolveMinStay(ctx);
-  const quote: NightQuote = {
+  const quote: NightQuote = withUnits(ctx, {
     date: ctx.date,
     weekday: ctx.weekday,
     status,
@@ -134,7 +142,7 @@ function priceNight(ctx: NightContext): NightQuote {
     minStaySource: source,
     steps,
     explanation: "",
-  };
+  });
   quote.explanation = explainNight(quote, ctx.config.currency);
   return quote;
 }
@@ -149,7 +157,7 @@ export function priceListing(listing: unknown, calendar: unknown, options: unkno
   const config = parseListingConfig(listing);
   const cal = parseCalendar(calendar);
   const opts = parsePricingOptions(options);
-  const availability = new Availability(cal);
+  const availability = new Availability(cal, config.units ?? 1);
   const todayDay = toDay(opts.today);
   const history = new PriceHistory(cal.priceHistory);
   const lastBookingDay = dayOrNull(cal.lastBookingReceived);

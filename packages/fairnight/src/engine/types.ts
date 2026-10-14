@@ -31,6 +31,12 @@ export interface FarOutStep {
   minStay?: number;
 }
 
+export interface ScarcityStep {
+  /** Applies when at least this share of the units of the night is taken (booked or closed), 1–100. */
+  takenPercent: number;
+  raisePercent: number;
+}
+
 export interface HostEvent {
   /** ISO date of the night affected. */
   date: string;
@@ -54,6 +60,12 @@ export interface ListingConfig {
   currency: string;
   basePrice: number;
   defaultMinStay: number;
+  /**
+   * Identical units sold at this one price: 1 (default) for a home, N for a
+   * room type of a small hotel ("Double", 6 rooms). Occupancy, gaps and the
+   * other rules then look at how many units are still free.
+   */
+  units?: number;
   factors: {
     limits?: { enabled: boolean; floorPrice: number; ceilingPrice: number };
     seasons?: { enabled: boolean; periods: SeasonPeriod[] };
@@ -104,6 +116,16 @@ export interface ListingConfig {
       /** Ignore months with fewer sold nights than this (default 3). */
       minNights?: number;
     };
+    scarcity?: {
+      enabled: boolean;
+      /**
+       * Raise the price as the units of a night run out: the highest step whose
+       * takenPercent is reached applies. Only with units > 1.
+       */
+      steps: ScarcityStep[];
+      /** Never raise by more than this, whatever the steps say (default 20). */
+      maxRaisePercent?: number;
+    };
     market?: {
       enabled: boolean;
       /** Share of the zone's difference from its average passed on to the price, 0–1 (default 0.5). */
@@ -139,6 +161,13 @@ export interface Stay {
   checkOut: string;
   /** "reservation" (default) or "blocked" (owner use, maintenance…). */
   kind?: "reservation" | "blocked";
+  /**
+   * The unit (room) this stay is on, e.g. "101", when it is known. Stays of the
+   * same unit are merged, so two calendars of one room never count it twice.
+   */
+  unit?: string;
+  /** Units taken by a stay without `unit` (default 1), e.g. one booking of 2 rooms. */
+  units?: number;
 }
 
 /** What the zone looked like on one night, from a market source. */
@@ -196,6 +225,7 @@ export type FactorId =
   | "farOut"
   | "gap"
   | "occupancy"
+  | "scarcity"
   | "event"
   | "market"
   | "limits"
@@ -229,6 +259,18 @@ export interface NightQuote {
   steps: PriceStep[];
   /** One-line explanation of how price and minimum stay were decided. */
   explanation: string;
+  /** Units of the night: only for listings with more than one unit. */
+  units?: NightUnits;
+}
+
+/** How the units of one night are taken. `free + reserved + blocked = total`. */
+export interface NightUnits {
+  total: number;
+  free: number;
+  reserved: number;
+  blocked: number;
+  /** Units taken beyond the total (an overbooking on the channel), when there are any. */
+  overbooked?: number;
 }
 
 export interface PricingResult {

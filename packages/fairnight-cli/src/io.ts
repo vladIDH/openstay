@@ -34,6 +34,8 @@ export interface Io {
   airroiFetch?: SmoobuFetchLike;
   /** Only for tests: a fake AirROI server instead of https://api.airroi.com. */
   airroiBaseUrl?: string;
+  /** Open a link in the default browser (`fairnight apri`). Default: nothing is opened. */
+  openUrl?(url: string): void;
   /** Waiting (rate limits, retries). Default: real time. */
   sleep?(ms: number): Promise<void>;
   /** Only for tests: a cheaper scrypt for the Fairguest passphrase. */

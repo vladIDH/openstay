@@ -10,6 +10,7 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
+import { SetupError } from "./config.js";
 
 export type Db = Database.Database;
 
@@ -239,9 +240,25 @@ export function openDbReadOnly(file: string): Db {
   return new Database(file, { readonly: true, fileMustExist: true });
 }
 
+/**
+ * better-sqlite3 is a compiled module: after Node.js is updated to a new major
+ * version it no longer loads. Tell the host how to fix it instead of a stack trace.
+ */
+function newDatabase(file: string): Db {
+  try {
+    return new Database(file);
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== "ERR_DLOPEN_FAILED") throw e;
+    throw new SetupError(
+      `Fairnight non parte con questa versione di Node.js (${process.version}): rilancia «Installa Fairnight» per adattarlo, i tuoi dati restano dove sono.\n` +
+        `(better-sqlite3 was built for another Node.js version: run the installer again, or "npm rebuild better-sqlite3".)`,
+    );
+  }
+}
+
 export function openDb(file: string): Db {
   mkdirSync(path.dirname(file), { recursive: true });
-  const db = new Database(file);
+  const db = newDatabase(file);
   db.exec(SCHEMA);
   // A new database starts at version 1 and goes through every migration.
   db.prepare("INSERT OR IGNORE INTO meta (key, value) VALUES ('schema_version', '1')").run();

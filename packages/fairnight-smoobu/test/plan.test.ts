@@ -1,7 +1,7 @@
 import type { NightQuote } from "fairnight";
 import { describe, expect, it } from "vitest";
 import { mapBookings } from "../src/mapping.js";
-import { buildOperations, chunks, planPush, probePair, type DiffRow } from "../src/plan.js";
+import { buildOperations, chunks, groupByApartments, planPush, planTypePush, probePair, type DiffRow } from "../src/plan.js";
 
 function night(date: string, price: number | null, minStay: number | null, status: NightQuote["status"] = "available"): NightQuote {
   return { date, weekday: "mon", status, price, minStay, minStaySource: minStay === null ? null : "default", steps: [], explanation: "" };
@@ -32,6 +32,52 @@ describe("push plan", () => {
       unchanged: 1,
       unavailableOnSmoobu: ["2026-11-07"],
     });
+  });
+});
+
+describe("push plan for a room type made of several apartments", () => {
+  // An invented aparthotel: "Studio" = apartments 501, 502, 503.
+  const units = (free: number) => ({ total: 3, free, reserved: 3 - free, blocked: 0 });
+  const rate = (price: number | null, available = 1) => ({ price, min_length_of_stay: price === null ? null : 2, available });
+
+  it("writes one price to every free apartment, and skips nights where the free counts differ", () => {
+    const quotes = [
+      { ...night("2026-11-03", 80, 2), units: units(3) },
+      { ...night("2026-11-04", 80, 2), units: units(2) },
+      { ...night("2026-11-05", 80, 2), units: units(2) },
+      { ...night("2026-11-06", 80, 2), units: units(1) },
+    ];
+    const current = {
+      "501": { "2026-11-03": rate(70), "2026-11-04": rate(70, 0), "2026-11-05": rate(80), "2026-11-06": rate(80) },
+      "502": { "2026-11-03": rate(70), "2026-11-04": rate(70), "2026-11-05": rate(80, 0), "2026-11-06": rate(80) },
+      "503": { "2026-11-03": rate(80), "2026-11-04": rate(80), "2026-11-05": rate(80), "2026-11-06": rate(80) },
+    };
+    const plan = planTypePush(quotes, current, [501, 502, 503]);
+    expect(plan).toEqual({
+      changes: [
+        { date: "2026-11-03", currentPrice: 70, currentMinStay: 2, newPrice: 80, newMinStay: 2, apartments: [501, 502] },
+        { date: "2026-11-04", currentPrice: 70, currentMinStay: 2, newPrice: 80, newMinStay: 2, apartments: [502] },
+      ],
+      unchanged: 1,
+      unavailableOnSmoobu: ["2026-11-06"],
+    });
+    expect(groupByApartments(plan.changes).map((g) => [g.apartments, g.rows.map((r) => r.date)])).toEqual([
+      [[501, 502], ["2026-11-03"]],
+      [[502], ["2026-11-04"]],
+    ]);
+  });
+
+  it("with one apartment it plans what planPush plans", () => {
+    const quotes = [night("2026-11-03", 95, 2), night("2026-11-04", 100, 3), night("2026-11-05", null, null, "reserved"), night("2026-11-07", 120, 3)];
+    const current = {
+      "2026-11-03": { price: 100, min_length_of_stay: 3, available: 1 },
+      "2026-11-04": { price: 100, min_length_of_stay: 3, available: 1 },
+      "2026-11-07": { price: 90, min_length_of_stay: 2, available: 0 },
+    };
+    const single = planPush(quotes, current);
+    const typed = planTypePush(quotes, { "398": current }, [398]);
+    expect({ ...typed, changes: typed.changes.map(({ apartments: _, ...r }) => r) }).toEqual(single);
+    expect(typed.changes.every((r) => r.apartments.join() === "398")).toBe(true);
   });
 });
 

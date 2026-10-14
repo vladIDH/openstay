@@ -5,6 +5,10 @@
  * - black: blocked dates (unavailable, never a booking)
  * - cancelled: removed, also if imported before
  * - inquiry: ignored (not asked for)
+ *
+ * Room types with several units (small hotels): a booking on a unit (unitId
+ * from 1) takes that room; a booking not assigned to a unit yet takes roomQty
+ * rooms of the type (1 when missing).
  */
 import type { Beds24Booking } from "./client.js";
 
@@ -23,6 +27,10 @@ export interface ImportedStay {
   stayPrice: { total: number; nights: number; perNight: number } | null;
   /** Holder, number of guests and reference, for guest registration only. Null for blocks. */
   guests: BookingGuests | null;
+  /** The unit (room) of the booking, from unitId, when Beds24 has assigned one. */
+  unit?: string;
+  /** Rooms taken by a booking without a unit, when more than one (roomQty). */
+  units?: number;
 }
 
 export interface MappingResult {
@@ -56,6 +64,20 @@ function guestCount(adults: unknown, children: unknown): number | null {
   const a = countOrNull(adults);
   const c = countOrNull(children);
   return a === null && c === null ? null : (a ?? 0) + (c ?? 0);
+}
+
+/**
+ * The room of a booking, or how many rooms it takes when it has none.
+ * Da verificare su un account vero: the Beds24 spec does not say what unitId is
+ * while a booking is unassigned (0 or missing are read as "no unit"), nor
+ * whether a booking of several rooms comes as one booking with roomQty > 1 or
+ * as one booking per room. Here roomQty counts only when there is no unitId.
+ */
+export function unitOf(b: Pick<Beds24Booking, "unitId" | "roomQty">): { unit?: string; units?: number } {
+  const unitId = Number(b.unitId);
+  if (Number.isInteger(unitId) && unitId > 0) return { unit: String(unitId) };
+  const qty = Number(b.roomQty);
+  return Number.isInteger(qty) && qty > 1 ? { units: qty } : {};
 }
 
 const nights = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
@@ -93,6 +115,7 @@ export function mapBookings(bookings: readonly Beds24Booking[]): MappingResult {
       guests: blocked
         ? null
         : { firstName: textOrNull(b.firstName), lastName: textOrNull(b.lastName), guests: guestCount(b.numAdult, b.numChild), reference: textOrNull(b.apiReference) },
+      ...unitOf(b),
     });
   }
   const cancelled = new Set(result.cancelled);

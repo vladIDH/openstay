@@ -84,6 +84,10 @@ export interface StayToStore {
   kind: "reservation" | "blocked";
   bookedAt: string | null;
   stayPrice: { total: number; nights: number; perNight: number } | null;
+  /** The room (unit) the stay is on, when the channel says it. */
+  unit?: string | null;
+  /** Rooms taken by a stay without a unit, when more than one. */
+  units?: number | null;
 }
 
 interface Row {
@@ -93,6 +97,8 @@ interface Row {
   kind: string;
   booked_at: string | null;
   removed_at: string | null;
+  unit: string | null;
+  units: number | null;
 }
 
 /**
@@ -105,13 +111,13 @@ export function storeStays(
   args: { listing: string; feed: string; priceTable: "smoobu_stays" | "beds24_stays"; stays: readonly StayToStore[]; from: string; at: string; report: FeedReport },
 ): void {
   const { listing, feed, at, report: r } = args;
-  const select = db.prepare("SELECT uid, check_in, check_out, kind, booked_at, removed_at FROM calendar_events WHERE listing = ? AND feed = ?");
+  const select = db.prepare("SELECT uid, check_in, check_out, kind, booked_at, removed_at, unit, units FROM calendar_events WHERE listing = ? AND feed = ?");
   const insert = db.prepare(
-    `INSERT INTO calendar_events (listing, feed, uid, check_in, check_out, kind, first_seen_at, last_seen_at, booked_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO calendar_events (listing, feed, uid, check_in, check_out, kind, first_seen_at, last_seen_at, booked_at, unit, units)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const update = db.prepare(
-    `UPDATE calendar_events SET check_in = ?, check_out = ?, kind = ?, booked_at = ?, last_seen_at = ?, removed_at = NULL
+    `UPDATE calendar_events SET check_in = ?, check_out = ?, kind = ?, booked_at = ?, unit = ?, units = ?, last_seen_at = ?, removed_at = NULL
      WHERE listing = ? AND feed = ? AND uid = ?`,
   );
   const markRemoved = db.prepare("UPDATE calendar_events SET removed_at = ? WHERE listing = ? AND feed = ? AND uid = ?");
@@ -128,13 +134,23 @@ export function storeStays(
     for (const s of args.stays) {
       present.add(s.uid);
       const row = existing.get(s.uid);
+      const unit = s.unit ?? null;
+      const units = s.units ?? null;
       if (!row) {
-        insert.run(listing, feed, s.uid, s.checkIn, s.checkOut, s.kind, at, at, s.bookedAt);
+        insert.run(listing, feed, s.uid, s.checkIn, s.checkOut, s.kind, at, at, s.bookedAt, unit, units);
         r.added++;
       } else {
         if (row.removed_at !== null) r.restored++;
-        else if (row.check_in !== s.checkIn || row.check_out !== s.checkOut || row.kind !== s.kind || row.booked_at !== s.bookedAt) r.changed++;
-        update.run(s.checkIn, s.checkOut, s.kind, s.bookedAt, at, listing, feed, s.uid);
+        else if (
+          row.check_in !== s.checkIn ||
+          row.check_out !== s.checkOut ||
+          row.kind !== s.kind ||
+          row.booked_at !== s.bookedAt ||
+          row.unit !== unit ||
+          row.units !== units
+        )
+          r.changed++;
+        update.run(s.checkIn, s.checkOut, s.kind, s.bookedAt, unit, units, at, listing, feed, s.uid);
       }
       if (s.stayPrice) upsertPrice.run(listing, s.uid, s.checkIn, s.checkOut, s.stayPrice.nights, s.stayPrice.total, s.stayPrice.perNight, at);
       else dropPrice.run(listing, s.uid);

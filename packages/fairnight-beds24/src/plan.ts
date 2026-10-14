@@ -18,6 +18,11 @@ export interface PushPlan {
   unchanged: number;
   /** Free for Fairnight but unavailable on Beds24 (no unit left, blackout): left alone. */
   unavailableOnBeds24: string[];
+  /**
+   * Room types with several units: nights where Beds24 has a different number
+   * of units free (numAvail) than Fairnight sees. Left alone: re-import first.
+   */
+  unitsMismatch?: { date: string; free: number; numAvail: number }[];
 }
 
 /** How Beds24 reads the end ("to") of a written range. Unknown until checked once on a real account. */
@@ -32,6 +37,11 @@ export function planPush(quotes: readonly NightQuote[], current: Record<string, 
     const now = current[q.date];
     if (now && !now.available) {
       plan.unavailableOnBeds24.push(q.date);
+      continue;
+    }
+    // One price for the whole room type: write it only where Beds24 agrees on how many units are free.
+    if (q.units && typeof now?.numAvail === "number" && now.numAvail !== q.units.free) {
+      (plan.unitsMismatch ??= []).push({ date: q.date, free: q.units.free, numAvail: now.numAvail });
       continue;
     }
     const currentPrice = now?.price ?? null;

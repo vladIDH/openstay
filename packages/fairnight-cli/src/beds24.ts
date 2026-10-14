@@ -2,15 +2,17 @@
  * The Beds24 commands: `fairnight beds24 collega | importa | spingi`, and the
  * import of Beds24 bookings that `fairnight sync` also runs.
  *
- * One Fairnight listing = one Beds24 room (roomId). Rooms with more than one
- * identical unit are not handled in this version: the engine prices one home.
+ * One Fairnight listing = one Beds24 room (roomId). A room with several
+ * identical units (qty > 1, a small hotel's "Double") becomes one listing with
+ * pricing.units = qty: its bookings are read unit by unit and it gets one
+ * price for all its units.
  * Writing: the chosen price field and minStay only, ONLY with --applica.
  */
 import { existsSync } from "node:fs";
 import { Beds24Client, Beds24Error, buildWrites, mapBookings, nightsOf, planPush, probePair, type CreditState, type RangeEnd, type Room } from "fairnight-beds24";
 import { noteChannelGuests } from "./guests/store.js";
 import { addDays, appendListings, daysBetween, diffTable, emptyReport, HISTORY_DAYS, recordRun, slugify, storeStays } from "./channel.js";
-import { beds24Room, isBeds24, loadHostConfig, SetupError, type HostListing } from "./config.js";
+import { beds24Room, isBeds24, loadHostConfig, SetupError, unitsOf, type HostListing } from "./config.js";
 import { BEDS24_CREDENTIALS_FILE, loadBeds24Credentials, saveBeds24Credentials, saveBeds24Token } from "./beds24-credentials.js";
 import { getMeta, openDb, setMeta, type Db } from "./db.js";
 import { CONFIG_FILE, configPath, dbPath, localToday, type Io } from "./io.js";
@@ -117,8 +119,9 @@ export async function importBookings(db: Db, listings: HostListing[], client: Be
 // ---------------------------------------------------------------- importa
 
 export interface ImportSummary {
-  added: { name: string; roomId: number; title: string; basePrice: number; currency: string }[];
-  skipped: Room[];
+  added: { name: string; roomId: number; title: string; basePrice: number; currency: string; units: number }[];
+  /** Linked rooms whose number of units on Beds24 is not the listing's pricing.units any more. */
+  unitsChanged: { name: string; room: Room; units: number }[];
   reports: FeedReport[];
   credits: CreditState;
 }
@@ -130,12 +133,12 @@ export async function importFromBeds24(dir: string, io: Io): Promise<ImportSumma
   const linked = new Set(config.listings.map((l) => beds24Room(l)?.roomId).filter((x): x is number => x !== undefined));
   const taken = new Set(config.listings.map((l) => l.name));
   const added: ImportSummary["added"] = [];
-  const skipped: Room[] = [];
+  const unitsChanged: ImportSummary["unitsChanged"] = [];
   const newListings: unknown[] = [];
   for (const room of rooms) {
-    if (linked.has(room.roomId)) continue;
-    if (room.qty > 1) {
-      skipped.push(room);
+    if (linked.has(room.roomId)) {
+      const listing = config.listings.find((l) => beds24Room(l)?.roomId === room.roomId) as HostListing;
+      if (unitsOf(listing) !== room.qty) unitsChanged.push({ name: listing.name, room, units: unitsOf(listing) });
       continue;
     }
     const base = Math.round(room.rackRate ?? (room.minPrice !== null ? room.minPrice * 1.5 : 100));
@@ -150,19 +153,20 @@ export async function importFromBeds24(dir: string, io: Io): Promise<ImportSumma
         currency,
         basePrice: base,
         defaultMinStay: 2,
+        ...(room.qty > 1 ? { units: room.qty } : {}),
         factors: {
           limits: { enabled: true, floorPrice: floor, ceilingPrice: Math.round(base * 2.5) },
           rounding: { enabled: true, step: 1 },
         },
       },
     });
-    added.push({ name, roomId: room.roomId, title: `${room.propertyName} · ${room.name}`, basePrice: base, currency });
+    added.push({ name, roomId: room.roomId, title: `${room.propertyName} · ${room.name}`, basePrice: base, currency, units: room.qty });
   }
   appendListings(dir, newListings);
   const fresh = loadHostConfig(dir);
   const db = openDb(dbPath(dir));
   try {
-    return { added, skipped, reports: await importBookings(db, fresh.listings, client, io.now()), credits: client.credits };
+    return { added, unitsChanged, reports: await importBookings(db, fresh.listings, client, io.now()), credits: client.credits };
   } finally {
     db.close();
   }
@@ -216,14 +220,19 @@ export async function push(dir: string, io: Io, opts: PushOptions): Promise<numb
         continue;
       }
       const plan = planPush(quotes, current);
-      io.out(`${listing.name} → Beds24 room ${roomId} (${priceField}) · ${from} → ${to} · prices in ${listing.pricing.currency}`);
+      const units = unitsOf(listing) > 1 ? `, ${unitsOf(listing)} units, one price` : "";
+      io.out(`${listing.name} → Beds24 room ${roomId} (${priceField}${units}) · ${from} → ${to} · prices in ${listing.pricing.currency}`);
       if (plan.changes.length > 0) for (const line of diffTable(plan.changes, "Beds24")) io.out(line);
       io.out(
         `${plan.changes.length} night${plan.changes.length === 1 ? "" : "s"} to change · ${plan.unchanged} already right` +
           (plan.unavailableOnBeds24.length > 0
             ? ` · ${plan.unavailableOnBeds24.length} free here but unavailable on Beds24, left alone (run "fairnight beds24 importa")`
+            : "") +
+          (plan.unitsMismatch
+            ? ` · ${plan.unitsMismatch.length} with a different number of units free on Beds24, left alone (run "fairnight beds24 importa")`
             : ""),
       );
+      for (const m of plan.unitsMismatch ?? []) io.out(`  ${m.date}: ${m.free} free here, ${m.numAvail} free on Beds24`);
       total += plan.changes.length;
       if (!opts.apply || plan.changes.length === 0) {
         io.out("");

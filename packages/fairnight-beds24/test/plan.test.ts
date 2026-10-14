@@ -1,7 +1,7 @@
 import type { NightQuote } from "fairnight";
 import { describe, expect, it } from "vitest";
 import type { Beds24Booking } from "../src/client.js";
-import { mapBookings } from "../src/mapping.js";
+import { mapBookings, unitOf } from "../src/mapping.js";
 import { buildWrites, nightsOf, planPush, probePair, type DiffRow } from "../src/plan.js";
 
 const night = (date: string, price: number | null, minStay: number | null): NightQuote => ({
@@ -28,6 +28,40 @@ describe("push plan", () => {
       unchanged: 1,
       unavailableOnBeds24: ["2026-11-06"],
     });
+  });
+});
+
+describe("room types with several units", () => {
+  const units = (free: number) => ({ total: 6, free, reserved: 6 - free, blocked: 0 });
+
+  it("writes one price per room type, only where Beds24 has as many units free as Fairnight", () => {
+    const plan = planPush(
+      [
+        { ...night("2026-11-03", 95, 2), units: units(2) },
+        { ...night("2026-11-04", 95, 2), units: units(2) },
+        { ...night("2026-11-05", 95, 2), units: units(6) },
+      ],
+      {
+        "2026-11-03": { price: 90, minStay: 2, available: true, numAvail: 2 },
+        "2026-11-04": { price: 90, minStay: 2, available: true, numAvail: 3 },
+        "2026-11-05": { price: 95, minStay: 2, available: true, numAvail: 6 },
+      },
+    );
+    expect(plan).toEqual({
+      changes: [{ date: "2026-11-03", currentPrice: 90, currentMinStay: 2, newPrice: 95, newMinStay: 2 }],
+      unchanged: 1,
+      unavailableOnBeds24: [],
+      unitsMismatch: [{ date: "2026-11-04", free: 2, numAvail: 3 }],
+    });
+  });
+
+  it("a booking takes its unit; without one it takes roomQty rooms (to check on a real account)", () => {
+    expect(unitOf({ unitId: 3, roomQty: 2 })).toEqual({ unit: "3" });
+    expect(unitOf({ unitId: 0, roomQty: 2 })).toEqual({ units: 2 });
+    expect(unitOf({ unitId: null, roomQty: "1" })).toEqual({});
+    expect(unitOf({})).toEqual({});
+    const [stay] = mapBookings([{ id: 7, roomId: 102, status: "confirmed", arrival: "2026-11-03", departure: "2026-11-05", unitId: 4 }]).stays;
+    expect(stay).toMatchObject({ roomId: 102, unit: "4" });
   });
 });
 

@@ -379,10 +379,11 @@ async function runBeds24(
     case "import": {
       const summary = await importFromBeds24(dir, io);
       for (const a of summary.added) {
-        io.out(`Added listing "${a.name}" for Beds24 room ${a.roomId} (${a.title}): base price ${a.basePrice} ${a.currency}, from the prices set in Beds24. Check its rules in fairnight.config.json.`);
+        const units = a.units > 1 ? `, ${a.units} identical units at one price` : "";
+        io.out(`Added listing "${a.name}" for Beds24 room ${a.roomId} (${a.title}${units}): base price ${a.basePrice} ${a.currency}, from the prices set in Beds24. Check its rules in fairnight.config.json.`);
       }
-      for (const s of summary.skipped) {
-        io.out(`Room "${s.name}" (Beds24 room ${s.roomId}, ${s.propertyName}): ${s.qty} identical units, not handled in this version.`);
+      for (const c of summary.unitsChanged) {
+        io.out(`Beds24 room ${c.room.roomId} (${c.room.name}) now has ${c.room.qty} unit${c.room.qty === 1 ? "" : "s"}, listing "${c.name}" says ${c.units}: change pricing.units in fairnight.config.json.`);
       }
       if (summary.added.length > 0) io.out("The previous config is kept as fairnight.config.json.bak.");
       let failed = 0;

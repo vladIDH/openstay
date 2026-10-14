@@ -198,7 +198,7 @@ async function askLinks(a: Asker, io: Io, calendars: Obj[]): Promise<Obj[]> {
         : "    Premi Invio per tenere quello di adesso, scrivi - per toglierlo, oppure incolla quello nuovo.",
     );
     for (let attempt = 0; ; attempt++) {
-      const raw = (await a.text("   ", current)).trim();
+      const raw = (await a.text("    Link", current)).trim();
       if (raw === "" || (current !== undefined && raw === current)) break;
       if (raw === "-") {
         if (index >= 0) result.splice(index, 1);

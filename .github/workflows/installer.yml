@@ -37,13 +37,14 @@ jobs:
     defaults:
       run:
         shell: bash
-    env:
-      FOLDER: ${{ runner.temp }}/Fairnight prova
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
+
+      - name: A clean folder with a space in its name, like many Windows user names
+        run: echo "FOLDER=$RUNNER_TEMP/Fairnight prova" >> "$GITHUB_ENV"
 
       - name: Fake iCal calendars
         run: |
@@ -104,10 +105,11 @@ jobs:
 
       - name: Running the installer again (Windows)
         if: runner.os == 'Windows'
-        shell: cmd
+        shell: pwsh
         run: |
-          copy "%FOLDER%\fairnight.config.json" before.json
-          call "Installa Fairnight.cmd" -Cartella "%FOLDER%" -SenzaDomande -NonAprire -SenzaCollegamenti > again.txt
+          Copy-Item (Join-Path $env:FOLDER 'fairnight.config.json') before.json
+          cmd /c "Installa Fairnight.cmd" -Cartella "$env:FOLDER" -SenzaDomande -NonAprire -SenzaCollegamenti > again.txt
+          if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - name: Running the installer again (Mac)
         if: runner.os == 'macOS'

@@ -53,4 +53,14 @@ describe("terminal prompt", () => {
     expect(await ask("Altro: ", { hidden: false })).toBe("");
     expect(t.shown()).toBe("Nome: \nCittà: \nLink: \nPrezzo: \nAltro: \n");
   });
+
+  it("adds no empty line after a visible answer typed in a terminal, which shows the Enter itself", async () => {
+    const t = terminal(true);
+    const answer = terminalPrompt(t.stdin, t.stdout)("Nome: ", { hidden: false });
+    t.stdin.write("Casa");
+    t.stdin.write(String.fromCharCode(13));
+    expect(await answer).toBe("Casa");
+    expect(t.shown()).toBe("Nome: ");
+    expect(t.stdin.rawModes).toEqual([]);
+  });
 });

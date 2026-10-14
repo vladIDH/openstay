@@ -51,6 +51,11 @@ function Fermati([string[]]$righe, [string]$apri = '') {
 }
 
 function TrovaNode {
+  # Per le prove: FAIRNIGHT_NODE dice quale node.exe usare (un percorso che non esiste = Node mancante).
+  if ($env:FAIRNIGHT_NODE) {
+    if (Test-Path $env:FAIRNIGHT_NODE) { return $env:FAIRNIGHT_NODE }
+    return $null
+  }
   $comando = Get-Command node.exe -ErrorAction SilentlyContinue
   if ($comando) { return $comando.Source }
   # Appena installato, Node.js può non essere ancora nel PATH di questa finestra.
@@ -74,6 +79,7 @@ function Esegui([string]$dove, [string]$argomenti) {
       Remove-Item -Force $f
     }
   }
+  $Host.UI.RawUI.WindowTitle = 'Installa Fairnight' # npm cambia il titolo della finestra
   return $p.ExitCode
 }
 
@@ -213,5 +219,6 @@ if ($NonAprire -or -not (Test-Path $config)) { exit 0 }
 Scrivi ''
 Scrivi 'Fatto! Da adesso apri Fairnight con l''icona Fairnight sul desktop.' 'Green'
 Scrivi ''
+$Host.UI.RawUI.WindowTitle = 'Fairnight'
 & $node $fairnight apri --dir $Cartella
 if ($LASTEXITCODE -ne 0 -and -not $SenzaDomande) { Read-Host 'Premi Invio per chiudere' | Out-Null }

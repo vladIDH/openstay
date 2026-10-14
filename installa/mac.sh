@@ -80,7 +80,13 @@ titolo "Fairnight: i prezzi delle tue notti, calcolati sul tuo computer"
 titolo "---------------------------------------------------------------"
 
 # 1. Node.js
-NODE="$(command -v node || true)"
+# Per le prove: FAIRNIGHT_NODE dice quale node usare (un percorso che non esiste = Node mancante).
+if [ -n "${FAIRNIGHT_NODE:-}" ]; then
+  NODE=""
+  [ -x "$FAIRNIGHT_NODE" ] && NODE="$FAIRNIGHT_NODE"
+else
+  NODE="$(command -v node || true)"
+fi
 if [ -z "$NODE" ]; then
   fermati "$PAGINA_NODE" \
     "Per far funzionare Fairnight serve Node.js, un programma gratuito (versione 22 o più recente)." \

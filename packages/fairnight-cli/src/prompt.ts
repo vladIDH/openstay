@@ -25,7 +25,8 @@ export function terminalPrompt(
         stdin.off("end", onEnd);
         if (rawOn) stdin.setRawMode(false);
         stdin.pause();
-        stdout.write("\n");
+        // A terminal echoing what is typed has already moved to the next line with the Enter key.
+        if (!(stdin.isTTY && !hidden)) stdout.write("\n");
         if (error) reject(error);
         else resolve(answer);
       };

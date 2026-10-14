@@ -43,6 +43,8 @@ Se non sai se ce l'hai, vai pure al passo 3: se manca, l'installazione si ferma 
 
 Se hai già Node.js ma è vecchio (prima della 22), il messaggio te lo dice: installa la LTS sopra quella vecchia.
 
+![Messaggio quando Node.js è vecchio: la LTS prende il posto di quella vecchia](images/installa/02-node-vecchio.png)
+
 ## 3. Installa
 
 ### Su Windows

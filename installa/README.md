@@ -53,7 +53,7 @@ La CI prova gli script su macOS, ma non il Finder, Gatekeeper e il Dock. Su un M
 
 1. Scarica lo zip da GitHub (Code › Download ZIP) con Safari e aprilo dal Finder. Verifica che `Installa Fairnight.command` sia ancora eseguibile: un doppio clic deve portare all'avviso di Gatekeeper, non a «non hai i permessi».
 2. Doppio clic: Gatekeeper lo blocca. Poi tasto destro › Apri › Apri: deve partire. **Fai le due schermate per la guida** (menu con «Apri» e finestra di conferma). Su macOS 15 e successivi il tasto destro › Apri potrebbe non bastare più: in quel caso serve Impostazioni di Sistema › Privacy e sicurezza › «Apri comunque». Annota quale dei due e correggi la guida.
-3. Senza Node: deve comparire il messaggio in italiano e Invio deve aprire nodejs.org/it/download. Installa il `.pkg` LTS e rilancia.
+3. Senza Node: deve comparire il messaggio in italiano e Invio deve aprire nodejs.org/it/download. Installa il `.pkg` LTS e rilancia. Se puoi, prova prima anche con un Node vecchio (per esempio 20): deve comparire il messaggio «Node vecchio» della guida, e la LTS installata sopra deve prenderne il posto.
 4. Installazione: le domande nel Terminale, gli accenti, i simboli ✓ e «», l'incolla con Cmd+V, il calendario che si apre nel browser predefinito (anche Safari).
 5. `~/Applications/Fairnight.app`: ha l'icona di Fairnight? Si apre con doppio clic senza avvisi? Apre il Terminale con «Fairnight è acceso»? Verifica anche la prima apertura, quando macOS potrebbe chiedere il permesso di aprire il Terminale.
 6. L'alias `Fairnight.app` sulla Scrivania: icona giusta, doppio clic funziona. Se la Scrivania è su iCloud Drive, l'alias si sincronizza senza danni?

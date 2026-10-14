@@ -82,7 +82,7 @@ Documenti in `docs/`, repo locale, licenza.
 | **Prova su un anno passato** (backtest) | 2 |
 | API locale e MCP con scrittura, sempre con conferma | 1 |
 
-**Pezzo futuro del motore: stanze con più unità identiche.** Beds24 (e altri gestionali) hanno stanze con `qty` > 1, cioè più unità uguali con un solo prezzo. Il motore oggi ragiona su una casa singola: servirà un'occupazione per notte calcolata come unità prenotate diviso `qty`, con buchi e date bloccate per unità. È un pezzo **del motore**, non del connettore; fino ad allora il connettore Beds24 salta queste stanze e lo dice.
+**Stanze con più unità identiche: fatto (ramo `hotel`, 14 ottobre 2026).** Il motore conta le camere di ogni notte (`units` nell'annuncio), l'occupazione è in camere-notte, i buchi stanno fra notti tutto esaurito, e c'è il fattore «poche camere rimaste» (spento di default, tetto +20%). Beds24 importa le stanze con `qty` > 1, Smoobu unisce più appartamenti in una tipologia, l'iCal va per camera. Vedi [piccoli-hotel.md](piccoli-hotel.md). Resta fuori: i buchi di una sola camera (spostare gli ospiti fra le camere è il lavoro del gestionale).
 
 ### Fase 3: mercato e analisi (circa 18 giorni, dopo le risposte scritte dei fornitori)
 

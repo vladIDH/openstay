@@ -32,7 +32,9 @@ What it does **not** do (yet): it does not change prices on Airbnb or Booking.co
 
 ## Five-minute setup
 
-You need [Node.js](https://nodejs.org) 20 or newer (free; the installer takes a minute).
+Never opened a terminal? There is a double-click installer for Windows and Mac with a guided setup in Italian: [docs/installa.md](docs/installa.md).
+
+You need [Node.js](https://nodejs.org) 22 or newer on Windows and Mac, where the SQLite module comes precompiled only from Node 22 on (20 works where a C++ compiler is installed). It is free and its installer takes a minute.
 
 ```
 npm install -g fairnight-cli

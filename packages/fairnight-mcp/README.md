@@ -12,10 +12,10 @@ This is a read-only [MCP](https://modelcontextprotocol.io) server. It runs on yo
 | Tool | What it answers |
 |---|---|
 | `list_listings` | Your listings: name, currency, base price, default minimum stay, channels, when the calendars were last read. |
-| `get_prices(listing, from, to)` | Price and minimum stay of each night between two dates. Reserved and blocked nights are marked. |
-| `explain_night(listing, date)` | Why one night costs what it costs: every factor, with the price before and after. |
-| `occupancy(listing, month)` | Nights reserved, blocked and free in a month, the occupancy, and the average price still for sale. |
-| `next_gaps(listing, days, maxNights)` | Short free stretches between two stays: the nights that are hardest to sell. |
+| `get_prices(listing, from, to)` | Price and minimum stay of each night between two dates. Reserved and blocked nights are marked. For a room type of a small hotel, also how many rooms are free. |
+| `explain_night(listing, date)` | Why one night costs what it costs: every factor, with the price before and after. For a room type, the rooms free and the rule that weighed most. |
+| `occupancy(listing, month)` | Nights reserved, blocked and free in a month, the occupancy, and the average price still for sale. For a room type, in room-nights. |
+| `next_gaps(listing, days, maxNights)` | Short free stretches between two stays: the nights that are hardest to sell. For a room type, between two sold-out nights, with the rooms free. |
 | `get_sync_status` | Where each listing's data comes from (iCal calendars, Smoobu or Beds24) and when it was last read, with the latest error if any. |
 | `get_market_area(listing, from, to)` | The zone data behind the zone demand factor: source and attribution, when it was read, how long it is kept, whether the occupancy is an estimate, the zone's average and its figures night by night. |
 | `get_guest_deadlines(includeDone)` | Guest registration (Fairguest): the communications to the police still due for each stay, with their 24-hour deadline and whether they are late. Only dates and states: guests' details are encrypted, and this server never asks for the passphrase. |

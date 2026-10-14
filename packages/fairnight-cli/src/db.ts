@@ -14,7 +14,7 @@ import { SetupError } from "./config.js";
 
 export type Db = Database.Database;
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (
@@ -205,6 +205,13 @@ const MIGRATIONS: { to: number; run(db: Database.Database): void }[] = [
   { to: 3, run: () => {} }, // Beds24: new tables only
   { to: 4, run: () => {} }, // zone data: new tables only
   { to: 5, run: () => {} }, // Fairguest: new tables only
+  {
+    to: 6, // small hotels: the room of a stay (unit) or how many rooms it takes (units), from Smoobu or Beds24
+    run: (db) => {
+      if (!hasColumn(db, "calendar_events", "unit")) db.exec("ALTER TABLE calendar_events ADD COLUMN unit TEXT");
+      if (!hasColumn(db, "calendar_events", "units")) db.exec("ALTER TABLE calendar_events ADD COLUMN units INTEGER");
+    },
+  },
 ];
 
 function upgrade(db: Database.Database): void {

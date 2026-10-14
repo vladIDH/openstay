@@ -52,6 +52,12 @@ Guest registration for Spain (Real Decreto 933/2021). Everything runs on the hos
 
 ### fairnight (engine)
 
+- Small hotels: a listing can be a room type with `units` identical rooms sold at one price (default 1, up to 99). See docs/piccoli-hotel.md.
+  - Each night counts the rooms reserved, blocked and free. Stays of the same room (`unit`) are merged; a stay without one takes `units` rooms (default 1); overbookings are reported, never below 0 free.
+  - A night is for sale while one room is free. Occupancy counts room-nights. Gaps are free stretches between two sold-out nights.
+  - New factor `scarcity` (few rooms left), off by default: steps by share of rooms taken, capped by `maxRaisePercent` (default 20). Only with more than one unit.
+  - `NightQuote.units` and the explanation ("3 of 6 rooms free", "Weighed most: …") only for room types: with one unit every output is the same as before.
+  - `Availability` is exported, so other tools count nights with the engine's own rule.
 - Zone demand factor (`factors.market`), off unless switched on for a listing:
   - each night of the zone is compared with the zone's own average;
   - half of the difference is passed on, at most +15% or -10% (`weight`, `highPercent`, `lowPercent`, `maxRaisePercent`, `maxLowerPercent`, `withinDays`, `minComparables`);
@@ -77,6 +83,7 @@ Guest registration for Spain (Real Decreto 933/2021). Everything runs on the hos
   - Validation errors (HTTP 500 with a `detail`) and other errors: stop and explain.
 - Reads apartments, bookings (cancellations and blocked dates included) and rates. Writes price and minimum stay together.
 - Single-night operations until Smoobu's handling of a range end is checked; ranges of at most 7 nights after that.
+- Room types made of several apartments (Smoobu has none of its own): `planTypePush` writes the same price to the apartments still free and skips nights whose free counts differ; `groupByApartments` gives one POST per set of apartments.
 
 ### fairnight-beds24 (new)
 
@@ -88,6 +95,7 @@ Guest registration for Spain (Real Decreto 933/2021). Everything runs on the hos
 - Reads rooms (with their number of units), bookings and the calendar, expanding runs night by night.
 - Writes only the chosen price field (`price1`…`price16`) and `minStay`, one element per night, in one request per room. Answers are checked element by element.
 - Single nights until Beds24's handling of the range end is checked; ranges of at most 7 nights after that.
+- Rooms with several units: bookings carry their `unitId` (or `roomQty` rooms while unassigned, to check on a real account); the calendar gives `numAvail`; nights where it differs from Fairnight's free rooms are not written (`unitsMismatch`).
 
 ### fairnight-cli
 
@@ -118,11 +126,13 @@ Guest registration for Spain (Real Decreto 933/2021). Everything runs on the hos
 - Smoobu stay prices are stored (total, nights, average per night). The historical floor uses them only with `--usa-storico-smoobu`, because they are an average per stay, not per night.
 - Smoobu blocked dates are unavailable nights, never bookings: they do not count in occupancy or in the price history.
 - Database schema 2: `booked_at`, `smoobu_stays`, `smoobu_pushes`. Older databases are upgraded on first use.
+- Small hotels: `beds24 importa` imports rooms with `qty` > 1 as a room type (`units`) and warns when `qty` changes; a listing with `units` can list up to that many Smoobu apartments; an iCal calendar of a room type names its room (`unit`), and calendars of a whole room type are refused. `fairnight price` and the calendar page show the rooms free. Database schema 6: `unit` and `units` of each stored stay.
 
 ### fairnight-mcp
 
 - New read-only tool `get_sync_status`: where each listing's data comes from (iCal, Smoobu or Beds24) and when it was last read.
 - New read-only tool `get_market_area`: the zone data a listing uses, with its attribution.
+- Room types of small hotels: `get_prices`, `explain_night`, `occupancy` (room-nights) and `next_gaps` show the units and the rooms free. `occupancy` and `next_gaps` use the engine's availability.
 
 ### Repository
 

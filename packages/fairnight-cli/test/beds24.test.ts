@@ -139,15 +139,16 @@ describe("fairnight beds24 importa", () => {
     booking(7, 201, "2026-11-10", "2026-11-12", { price: 150 }),
   ];
 
-  it("adds a listing for each new single-unit room, skips rooms with several units, and imports bookings", async () => {
+  it("adds a listing for each new room, a room type with several units at one price, and imports bookings", async () => {
     const { dir } = await setUp(BOOKINGS);
     const t = io(dir);
     expect(await main(["beds24", "importa"], t)).toBe(0);
     expect(t.lines).toEqual([
+      'Added listing "dorm" for Beds24 room 102 (Seaside House · Dorm, 4 identical units at one price): base price 100 EUR, from the prices set in Beds24. Check its rules in fairnight.config.json.',
       'Added listing "studio" for Beds24 room 201 (Garden · Studio): base price 85 EUR, from the prices set in Beds24. Check its rules in fairnight.config.json.',
-      'Room "Dorm" (Beds24 room 102, Seaside House): 4 identical units, not handled in this version.',
       "The previous config is kept as fairnight.config.json.bak.",
       "loft · beds24: 4 bookings · 4 new · 0 changed · 0 removed · 0 back",
+      "dorm · beds24: 0 bookings · 0 new · 0 changed · 0 removed · 0 back",
       "studio · beds24: 1 bookings · 1 new · 0 changed · 0 removed · 0 back",
       "Beds24 credits: 3 used in this run · 97 left of 100 in this 5-minute window.",
     ]);

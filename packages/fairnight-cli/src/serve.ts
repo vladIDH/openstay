@@ -76,6 +76,7 @@ export function pricesPayload(dir: string, config: HostConfig, today: string, da
             minStaySource: n.minStaySource,
             steps: n.steps,
             explanation: n.explanation,
+            ...(n.units ? { units: n.units } : {}),
           })),
         };
       }),

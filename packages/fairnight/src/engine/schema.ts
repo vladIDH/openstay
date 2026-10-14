@@ -17,6 +17,7 @@ import type {
   ListingConfig,
   MarketData,
   PricingOptions,
+  ScarcityStep,
   Stay,
 } from "./types.js";
 
@@ -47,6 +48,10 @@ export const DEFAULT_IMPACT_PERCENT: Record<`${Impact}`, number> = {
 export const DEFAULT_OCCUPANCY_WITHIN_DAYS = 60;
 export const DEFAULT_STALE = { everyDays: 7, withinDays: 30 } as const;
 export const DEFAULT_HISTORICAL_MIN_NIGHTS = 3;
+/** A small hotel has at most a few tens of rooms per type; Beds24 allows up to 99. */
+export const MAX_UNITS = 99;
+/** The few-units-left raise never goes above this unless the host says otherwise. */
+export const DEFAULT_SCARCITY_MAX_RAISE = 20;
 /** Prudent on purpose: the zone moves the price by half its own swing, at most +15% or -10%. */
 export const DEFAULT_MARKET = {
   weight: 0.5,
@@ -260,6 +265,7 @@ const FACTOR_KEYS = [
   "farOut",
   "gaps",
   "occupancy",
+  "scarcity",
   "events",
   "staleCalendar",
   "historicalFloor",
@@ -280,6 +286,24 @@ function validateMarket(c: Checker, v: unknown, path: string): void {
   if (v.maxLowerPercent !== undefined) c.number(v.maxLowerPercent, `${path}.maxLowerPercent`, DISCOUNT);
   if (v.withinDays !== undefined) c.number(v.withinDays, `${path}.withinDays`, { integer: true, min: 0, max: 1096 });
   if (v.minComparables !== undefined) c.number(v.minComparables, `${path}.minComparables`, { integer: true, min: 0, max: 100000 });
+}
+
+function validateScarcity(c: Checker, v: unknown, path: string): void {
+  if (!c.object(v, path, ["enabled", "steps", "maxRaisePercent"])) return;
+  c.bool(v.enabled, `${path}.enabled`);
+  if (v.maxRaisePercent !== undefined) c.number(v.maxRaisePercent, `${path}.maxRaisePercent`, { min: 0, max: 100 });
+  if (!c.list(v.steps, `${path}.steps`)) return;
+  const seen = new Set<number>();
+  v.steps.forEach((s, i) => {
+    const sp = `${path}.steps[${i}]`;
+    if (!c.object(s, sp, ["takenPercent", "raisePercent"])) return;
+    if (c.number(s.takenPercent, `${sp}.takenPercent`, { min: 1, max: 100 })) {
+      const t = s.takenPercent as number;
+      if (seen.has(t)) c.fail(`${sp}.takenPercent`, `${t} is used by another step`);
+      seen.add(t);
+    }
+    c.number(s.raisePercent, `${sp}.raisePercent`, { min: 0, max: 100 });
+  });
 }
 
 function validateMarketData(c: Checker, v: unknown, path: string): void {
@@ -306,7 +330,7 @@ function validateMarketData(c: Checker, v: unknown, path: string): void {
 }
 
 function checkListing(c: Checker, input: unknown): void {
-  if (!c.object(input, "listing", ["listingId", "name", "currency", "basePrice", "defaultMinStay", "factors"])) {
+  if (!c.object(input, "listing", ["listingId", "name", "currency", "basePrice", "defaultMinStay", "units", "factors"])) {
     return;
   }
   c.string(input.listingId, "listing.listingId");
@@ -316,6 +340,7 @@ function checkListing(c: Checker, input: unknown): void {
   }
   c.number(input.basePrice, "listing.basePrice", { positive: true });
   c.minStay(input.defaultMinStay, "listing.defaultMinStay");
+  if (input.units !== undefined) c.number(input.units, "listing.units", { integer: true, min: 1, max: MAX_UNITS });
 
   const f = input.factors;
   if (!c.object(f, "listing.factors", FACTOR_KEYS)) return;
@@ -399,6 +424,7 @@ function checkListing(c: Checker, input: unknown): void {
       c.number(f.historicalFloor.minNights, `${p}.historicalFloor.minNights`, { integer: true, min: 1, max: 31 });
     }
   }
+  if (f.scarcity !== undefined) validateScarcity(c, f.scarcity, `${p}.scarcity`);
   if (f.market !== undefined) validateMarket(c, f.market, `${p}.market`);
   if (f.rounding !== undefined && c.object(f.rounding, `${p}.rounding`, ["enabled", "step"])) {
     c.bool(f.rounding.enabled, `${p}.rounding.enabled`);
@@ -442,6 +468,10 @@ function normalise(cfg: ListingConfig): ListingConfig {
   }
   if (f.historicalFloor) f.historicalFloor.minNights ??= DEFAULT_HISTORICAL_MIN_NIGHTS;
   if (f.market) f.market = { ...DEFAULT_MARKET, ...f.market };
+  if (f.scarcity) {
+    f.scarcity.steps.sort((a: ScarcityStep, b: ScarcityStep) => a.takenPercent - b.takenPercent);
+    f.scarcity.maxRaisePercent ??= DEFAULT_SCARCITY_MAX_RAISE;
+  }
   if (f.overrides) f.overrides.dates.sort((a: DateOverride, b: DateOverride) => a.date.localeCompare(b.date));
   return copy;
 }
@@ -465,7 +495,7 @@ export function validateCalendar(input: unknown): ValidationResult<ListingCalend
   if (c.list(input.stays, "calendar.stays")) {
     input.stays.forEach((s, i) => {
       const sp = `calendar.stays[${i}]`;
-      if (!c.object(s, sp, ["checkIn", "checkOut", "kind"])) return;
+      if (!c.object(s, sp, ["checkIn", "checkOut", "kind", "unit", "units"])) return;
       const okIn = c.isoDate(s.checkIn, `${sp}.checkIn`);
       const okOut = c.isoDate(s.checkOut, `${sp}.checkOut`);
       if (okIn && okOut && (s.checkOut as string) <= (s.checkIn as string)) {
@@ -474,6 +504,11 @@ export function validateCalendar(input: unknown): ValidationResult<ListingCalend
       if (s.kind !== undefined && s.kind !== "reservation" && s.kind !== "blocked") {
         c.fail(`${sp}.kind`, `must be "reservation" or "blocked", got ${describe(s.kind)}`);
       }
+      if (s.unit !== undefined && c.string(s.unit, `${sp}.unit`) && s.unit.length > 64) {
+        c.fail(`${sp}.unit`, "must be at most 64 characters");
+      }
+      if (s.units !== undefined) c.number(s.units, `${sp}.units`, { integer: true, min: 1, max: MAX_UNITS });
+      if (s.unit !== undefined && s.units !== undefined) c.fail(sp, "set unit (the room it is on) or units (how many rooms it takes), not both");
     });
   }
   if (c.issues.length > 0) return { ok: false, issues: c.issues };

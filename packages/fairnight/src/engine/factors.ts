@@ -4,7 +4,13 @@
  * price before and after. Factors never read the clock, files or the network.
  */
 import { inRecurringPeriod, monthDayOf } from "./dates.js";
-import { DEFAULT_HISTORICAL_MIN_NIGHTS, DEFAULT_MARKET, DEFAULT_OCCUPANCY_WITHIN_DAYS, DEFAULT_STALE } from "./schema.js";
+import {
+  DEFAULT_HISTORICAL_MIN_NIGHTS,
+  DEFAULT_MARKET,
+  DEFAULT_OCCUPANCY_WITHIN_DAYS,
+  DEFAULT_SCARCITY_MAX_RAISE,
+  DEFAULT_STALE,
+} from "./schema.js";
 import type { PriceHistory } from "./history.js";
 import type { MarketIndex } from "./market.js";
 import type { Availability } from "./calendar.js";
@@ -146,6 +152,32 @@ export function occupancyFactor(ctx: NightContext, price: number): PriceStep | n
     return percentStep("occupancy", "quiet month", price, -f.lowerPercent, shown);
   }
   return null;
+}
+
+/** "3 of 6 rooms free": how the explanations show the units of a night. */
+export function unitsFree(free: number, total: number): string {
+  return `${free} of ${total} rooms free`;
+}
+
+/**
+ * Few units left (small hotels): as the units of a night are taken, raise the
+ * price by the highest step reached, never above maxRaisePercent. A home (one
+ * unit) is either free or taken, so this never applies to it.
+ */
+export function scarcityFactor(ctx: NightContext, price: number): PriceStep | null {
+  const f = ctx.config.factors.scarcity;
+  if (!f?.enabled || ctx.availability.units <= 1) return null;
+  const n = ctx.availability.night(ctx.day);
+  const takenPercent = ((n.total - n.free) / n.total) * 100;
+  let step: (typeof f.steps)[number] | undefined;
+  for (const s of f.steps) if (takenPercent >= s.takenPercent) step = s;
+  if (!step) return null;
+  const cap = f.maxRaisePercent ?? DEFAULT_SCARCITY_MAX_RAISE;
+  const percent = Math.min(step.raisePercent, cap);
+  if (percent === 0) return null;
+  const parts = [unitsFree(n.free, n.total), `${Math.round(takenPercent)}% taken`];
+  if (percent < step.raisePercent) parts.push(`capped at +${cap}%`);
+  return percentStep("scarcity", `few rooms left (≥${step.takenPercent}% taken)`, price, percent, parts.join(" · "));
 }
 
 const round1 = (n: number) => Math.round(n * 10) / 10;

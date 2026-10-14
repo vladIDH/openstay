@@ -23,6 +23,12 @@ export interface IcalLink {
   url: string;
   /** How to read the events of this calendar. Default "auto": see ical.ts. */
   treatAs?: TreatAs;
+  /**
+   * The room this calendar belongs to, on a room type with more than one unit
+   * (pricing.units > 1), e.g. "101". Two calendars of the same room (Airbnb and
+   * Booking) share it, so the room is never counted twice.
+   */
+  unit?: string;
 }
 
 /** A Smoobu apartment, read (and written) through the Smoobu API. */
@@ -54,11 +60,22 @@ export function beds24Room(listing: HostListing): { roomId: number; priceField: 
   return link ? { roomId: link.roomId, priceField: link.priceField ?? "price1" } : null;
 }
 
-/** The Smoobu apartment of a listing, if it has one. */
+/** The Smoobu apartment of a listing, if it has one (the first one, for a room type made of several). */
 export function smoobuApartment(listing: HostListing): number | null {
   const link = listing.calendars.find(isSmoobu);
   return link ? link.apartmentId : null;
 }
+
+/**
+ * Every Smoobu apartment of a listing: one for a home, up to `units` for a room
+ * type made of identical apartments (Smoobu has no room types: we join them).
+ */
+export function smoobuApartments(listing: HostListing): number[] {
+  return listing.calendars.filter(isSmoobu).map((c) => c.apartmentId);
+}
+
+/** Identical units sold at one price: 1 for a home. */
+export const unitsOf = (listing: HostListing): number => listing.pricing.units ?? 1;
 
 export interface HostListing {
   /** Short name used on the command line: lowercase letters, digits and dashes. */
@@ -169,13 +186,18 @@ export function normaliseCalendarUrl(raw: string): string | null {
   return url.href;
 }
 
-function checkCalendars(v: unknown, path: string, issues: ConfigIssue[]): void {
+/** A room name in a calendar's "unit": short text, no line breaks. */
+const isUnitName = (v: unknown): v is string => typeof v === "string" && v.trim() !== "" && v.length <= 64 && !/\p{Cc}/u.test(v);
+
+function checkCalendars(v: unknown, path: string, issues: ConfigIssue[], units: number): void {
   if (!Array.isArray(v)) {
     issues.push({ path, message: "must be a list of calendars (it can be empty)" });
     return;
   }
   const seen = new Set<string>();
-  let channels = 0;
+  let smoobu = 0;
+  let beds24 = 0;
+  const oneChannel = "a listing can be linked to one channel manager only (one Smoobu apartment or one Beds24 room)";
   v.forEach((c, j) => {
     const cp = `${path}[${j}]`;
     if (!isObj(c)) {
@@ -190,7 +212,9 @@ function checkCalendars(v: unknown, path: string, issues: ConfigIssue[]): void {
       if (typeof c.apartmentId !== "number" || !Number.isInteger(c.apartmentId) || c.apartmentId <= 0) {
         issues.push({ path: `${cp}.apartmentId`, message: `must be the number of the Smoobu apartment, got ${JSON.stringify(c.apartmentId)}` });
       }
-      if (++channels > 1) issues.push({ path: cp, message: "a listing can be linked to one channel manager only (one Smoobu apartment or one Beds24 room)" });
+      smoobu++;
+      if (beds24 > 0 || (units === 1 && smoobu > 1)) issues.push({ path: cp, message: oneChannel });
+      else if (smoobu > units) issues.push({ path: cp, message: `a room type with ${units} units can be linked to at most ${units} Smoobu apartments` });
       return;
     }
     if (c.source === "beds24") {
@@ -201,10 +225,20 @@ function checkCalendars(v: unknown, path: string, issues: ConfigIssue[]): void {
       if (c.priceField !== undefined && !BEDS24_PRICE_FIELDS.includes(c.priceField as string)) {
         issues.push({ path: `${cp}.priceField`, message: `must be one of price1 … price16, got ${JSON.stringify(c.priceField)}` });
       }
-      if (++channels > 1) issues.push({ path: cp, message: "a listing can be linked to one channel manager only (one Smoobu apartment or one Beds24 room)" });
+      if (smoobu > 0 || ++beds24 > 1) issues.push({ path: cp, message: oneChannel });
       return;
     }
-    unknownFields(c, cp, ["source", "url", "treatAs"], issues);
+    unknownFields(c, cp, ["source", "url", "treatAs", "unit"], issues);
+    if (c.unit !== undefined && !isUnitName(c.unit)) {
+      issues.push({ path: `${cp}.unit`, message: `must be the name of a room, up to 64 characters (like "101"), got ${JSON.stringify(c.unit)}` });
+    } else if (c.unit !== undefined && units === 1) {
+      issues.push({ path: `${cp}.unit`, message: "is only for a room type with more than one unit: set pricing.units, or remove it" });
+    } else if (c.unit === undefined && units > 1) {
+      issues.push({
+        path: `${cp}.unit`,
+        message: `missing: on a room type with ${units} units each calendar belongs to one room, say which (like "101"). A calendar of the whole room type is not supported`,
+      });
+    }
     if (typeof c.url !== "string" || normaliseCalendarUrl(c.url) === null) {
       issues.push({ path: `${cp}.url`, message: `must be an https:// or webcal:// link, got ${JSON.stringify(c.url)}` });
     } else {
@@ -255,7 +289,8 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
     } else {
       names.add(l.name);
     }
-    checkCalendars(l.calendars, `${lp}.calendars`, issues);
+    const units = isObj(l.pricing) && typeof l.pricing.units === "number" && Number.isInteger(l.pricing.units) && l.pricing.units > 1 ? l.pricing.units : 1;
+    checkCalendars(l.calendars, `${lp}.calendars`, issues, units);
     let fairguest: GuestSettings | undefined;
     if (l.fairguest !== undefined) {
       const g = validateGuestSettings(l.fairguest, `${lp}.fairguest`);
@@ -274,6 +309,7 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
         if (isBeds24(c)) return c.priceField !== undefined ? { source: "beds24", roomId: c.roomId, priceField: c.priceField } : { source: "beds24", roomId: c.roomId };
         const link: IcalLink = { source: c.source, url: normaliseCalendarUrl(c.url) as string };
         if (c.treatAs !== undefined) link.treatAs = c.treatAs;
+        if (c.unit !== undefined) link.unit = c.unit;
         return link;
       });
       const listing: HostListing = { name: l.name as string, calendars, pricing: r.value };
@@ -286,11 +322,15 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
 
   const byApartment = new Map<number, string>();
   for (const l of listings) {
-    const apt = smoobuApartment(l);
-    if (apt === null) continue;
-    const other = byApartment.get(apt);
-    if (other) issues.push({ path: `listings (${l.name})`, message: `Smoobu apartment ${apt} is already linked to "${other}"` });
-    byApartment.set(apt, l.name);
+    for (const apt of smoobuApartments(l)) {
+      const other = byApartment.get(apt);
+      if (other) issues.push({ path: `listings (${l.name})`, message: other === l.name ? `Smoobu apartment ${apt} is listed twice` : `Smoobu apartment ${apt} is already linked to "${other}"` });
+      byApartment.set(apt, l.name);
+    }
+    const rooms = new Set([...l.calendars.filter(isIcal).map((c) => c.unit), ...smoobuApartments(l).map(String)].filter((u) => u !== undefined));
+    if (rooms.size > unitsOf(l)) {
+      issues.push({ path: `listings (${l.name})`, message: `the calendars name ${rooms.size} different rooms, but pricing.units is ${unitsOf(l)}` });
+    }
   }
   const byRoom = new Map<number, string>();
   for (const l of listings) {

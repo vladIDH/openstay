@@ -42,7 +42,7 @@ describe("listing configuration", () => {
       'listing.currency: must be a 3-letter code like EUR, got "euro"',
       "listing.basePrice: must be greater than 0, got -5",
       "listing.defaultMinStay: must be a whole number, got 1.5",
-      "listing.factors.celing: unknown field (allowed: limits, seasons, dayOfWeek, lastMinute, farOut, gaps, occupancy, events, staleCalendar, historicalFloor, market, rounding, overrides)",
+      "listing.factors.celing: unknown field (allowed: limits, seasons, dayOfWeek, lastMinute, farOut, gaps, occupancy, scarcity, events, staleCalendar, historicalFloor, market, rounding, overrides)",
       "listing.factors.limits: floorPrice (300) is higher than ceilingPrice (200)",
     ]);
   });
@@ -185,7 +185,7 @@ describe("calendar", () => {
       expect(r.issues.map((i) => `${i.path}: ${i.message}`)).toEqual([
         "calendar.stays[0]: checkOut (2026-11-05) must be after checkIn (2026-11-05)",
         'calendar.stays[1].kind: must be "reservation" or "blocked", got "owner"',
-        "calendar.stays[2].guest: unknown field (allowed: checkIn, checkOut, kind)",
+        "calendar.stays[2].guest: unknown field (allowed: checkIn, checkOut, kind, unit, units)",
         'calendar.stays[2].checkIn: must be a date like 2026-12-31, got "nope"',
       ]);
     }

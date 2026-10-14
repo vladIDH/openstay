@@ -38,6 +38,8 @@ export interface FakeBooking {
   numAdult?: number;
   numChild?: number;
   apiReference?: string;
+  unitId?: number;
+  roomQty?: number;
 }
 
 export type FakeDay = Record<string, number | string | null | undefined> & {
@@ -191,7 +193,7 @@ export async function startFakeBeds24(opts: FakeOptions) {
           const values: Record<string, unknown> = {};
           if (url.searchParams.get("includePrices") === "true") for (let i = 1; i <= 16; i++) if (day[`price${i}`] !== undefined) values[`price${i}`] = day[`price${i}`];
           if (url.searchParams.get("includeMinStay") === "true" && day.minStay !== undefined) values.minStay = day.minStay;
-          if (url.searchParams.get("includeNumAvail") === "true") values.numAvail = day.numAvail ?? 1;
+          if (url.searchParams.get("includeNumAvail") === "true") values.numAvail = day.numAvail ?? opts.properties.flatMap((p) => p.rooms).find((r) => r.id === roomId)?.qty ?? 1;
           if (url.searchParams.get("includeOverride") === "true") values.override = day.override ?? "none";
           const k = JSON.stringify(values);
           if (current && k === key) current.to = d;

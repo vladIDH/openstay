@@ -206,11 +206,11 @@ describe("reading", () => {
     });
     expect(await client.getCalendar([101], "2026-11-01", "2026-11-05", "price1")).toEqual({
       101: {
-        "2026-11-01": { price: 100, minStay: 2, available: true },
-        "2026-11-02": { price: 100, minStay: 2, available: true },
-        "2026-11-03": { price: 120, minStay: 3, available: false },
-        "2026-11-04": { price: 120, minStay: 3, available: false },
-        "2026-11-05": { price: null, minStay: null, available: true },
+        "2026-11-01": { price: 100, minStay: 2, available: true, numAvail: 1 },
+        "2026-11-02": { price: 100, minStay: 2, available: true, numAvail: 1 },
+        "2026-11-03": { price: 120, minStay: 3, available: false, numAvail: 0 },
+        "2026-11-04": { price: 120, minStay: 3, available: false, numAvail: 1 },
+        "2026-11-05": { price: null, minStay: null, available: true, numAvail: 1 },
       },
     });
     expect((await client.getCalendar([101], "2026-11-01", "2026-11-01", "price2"))[101]?.["2026-11-01"]?.price).toBe(90);

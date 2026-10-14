@@ -142,6 +142,10 @@ export interface Beds24Booking {
   numAdult?: number | string | null;
   numChild?: number | string | null;
   apiReference?: string | null;
+  /** The unit (room) of a room type with qty > 1, ids from 1; 0 or missing while unassigned. */
+  unitId?: number | string | null;
+  /** Rooms of the booking (Beds24 "roomQty"). */
+  roomQty?: number | string | null;
 }
 
 /** One night of a room's calendar, as Fairnight reads it. */
@@ -150,6 +154,8 @@ export interface CalendarDay {
   minStay: number | null;
   /** False when Beds24 has no unit left (numAvail 0) or a blackout override. */
   available: boolean;
+  /** Units still free on Beds24 that night ("numAvail"; below 0 when overbooked), when Beds24 says it. */
+  numAvail?: number | null;
 }
 
 /** One value written to the calendar: the price field chosen and minStay, nothing else. */
@@ -401,6 +407,7 @@ export class Beds24Client {
           price: typeof price === "number" ? price : price === null || price === undefined ? null : Number(price),
           minStay: typeof entry.minStay === "number" ? entry.minStay : null,
           available: !(entry.override === "blackout" || (typeof entry.numAvail === "number" && entry.numAvail <= 0)),
+          numAvail: typeof entry.numAvail === "number" ? entry.numAvail : null,
         };
         for (let d = from < startDate ? startDate : from; d <= to && d <= endDate; d = nextDay(d)) days[d] = day;
       }

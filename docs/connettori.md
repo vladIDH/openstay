@@ -43,6 +43,8 @@ Pacchetto `packages/fairnight-smoobu` e comandi `fairnight smoobu …`. Usa solo
 
 **Firma: solo HMAC.** Il connettore usa solo la firma HMAC-SHA256: serve una chiave API creata **con il suo secret**. La vecchia intestazione `Api-Key` smette di funzionare il 31 ottobre 2026 e Fairnight non la usa nemmeno come ripiego.
 
+**Più camere uguali: un'unione nostra.** Smoobu non ha tipologie con più camere (un appartamento è una sola unità prenotabile). Per un piccolo hotel o un aparthotel Fairnight unisce fino a `units` appartamenti in un annuncio e scrive lo stesso prezzo a quelli ancora liberi; non è una funzione di Smoobu. Vedi [piccoli-hotel.md](piccoli-hotel.md).
+
 **Come si ottiene la chiave:**
 1. In Smoobu: *Settings → Advanced → API Keys → Create API Key*, poi *Generate Secret*.
 2. Copiare subito chiave e secret: Smoobu mostra il secret una volta sola.
@@ -98,7 +100,7 @@ Pacchetto `packages/fairnight-beds24` e comandi `fairnight beds24 …`. Usa solo
 
 **Mappatura.** Un annuncio Fairnight corrisponde a una **stanza** Beds24 (`roomId`), perché prezzi e minimi in Beds24 sono per stanza. Una proprietà con più stanze diventa più annunci.
 
-**Stanze con più unità identiche (`qty` > 1): non gestite in questa versione.** `importa` le salta e lo dice («4 identical units, not handled in this version»). Il motore oggi ragiona su una casa singola: per gestirle serve un pezzo futuro **del motore, non del connettore**, cioè l'occupazione calcolata come unità prenotate diviso `qty` (vedi `piano.md`).
+**Stanze con più unità identiche (`qty` > 1): una tipologia con un solo prezzo.** `importa` crea l'annuncio con `"units": qty`; le prenotazioni si leggono per unità (`unitId`; senza unità contano `roomQty` camere, da verificare su un account vero); `spingi` scrive un prezzo per stanza e salta le notti in cui `numAvail` non coincide con le camere libere per Fairnight. Tutto in [piccoli-hotel.md](piccoli-hotel.md).
 
 **Come si ottiene l'accesso:**
 1. Nel pannello di Beds24: *Settings → Marketplace → API → Generate invite code*.

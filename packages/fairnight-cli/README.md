@@ -90,6 +90,7 @@ fairnight smoobu spingi --applica        # writes, then reads back from Smoobu
 - **Booking day.** For Smoobu listings the stale-calendar discount uses the real day each booking was made.
 - **Past prices.** Smoobu gives the total of each stay. Fairnight stores it with its average per night, and uses that average in the historical floor only with `fairnight price --usa-storico-smoobu`, because it is an average per stay, not the price of each night.
 - **Writing.** Price and minimum stay always go together. Smoobu does not document whether the end of a date range is included, so Fairnight writes one night per operation until the first real `--applica` has checked it once. After that it uses ranges of up to 7 equal nights.
+- **Small hotels.** Smoobu has no room types: one apartment is one bookable unit. A listing with `"units": 4` can list up to 4 Smoobu apartments; Fairnight reads them as the rooms of one room type and writes the same price to the ones still free. The join is Fairnight's, not a Smoobu feature. See [small hotels](../../docs/piccoli-hotel.md).
 - **Limits.** At most 300 requests per minute (Smoobu allows 700). It waits when Smoobu says so (429), retries outages, and stops with an explanation on anything else.
 
 ## Real output (invented calendars)
@@ -119,7 +120,7 @@ seaview-loft: 344 nights for sale written to …/exports/seaview-loft-2026-11-01
 
 ## Beds24 (0.2.0, in development)
 
-One Fairnight listing is one Beds24 **room**. Rooms with several identical units (`qty` > 1) are skipped in this version.
+One Fairnight listing is one Beds24 **room**. A room with several identical units (`qty` > 1) becomes a room type with `"units": qty` and one price: bookings are read unit by unit, and `spingi` leaves alone the nights where Beds24's free units (`numAvail`) differ from Fairnight's. See [small hotels](../../docs/piccoli-hotel.md).
 
 ```
 fairnight beds24 collega                 # once: the invite code, asked without echo
@@ -247,6 +248,8 @@ The MCP server has a read-only tool, `get_guest_deadlines`, that answers "what d
 - **Other**: "not available", "unavailable", "blocked" or "closed" counts as a blocked date.
 
 If a calendar is read the wrong way, set `"treatAs": "reservation"` or `"treatAs": "blocked"` on it.
+
+On a room type of a small hotel (`"units"` > 1 in the pricing) each calendar belongs to one room and says which: `{ "source": "airbnb", "url": "…", "unit": "101" }`. Two calendars of the same room share it, so the room counts once. A calendar of a whole room type is not accepted (Booking.com does not even offer one). See [small hotels](../../docs/piccoli-hotel.md).
 
 Calendars do not say when a booking was made. Fairnight counts a booking as new on the day `fairnight sync` first sees it, and the stale-calendar discount uses that date. Run `sync` often, for example every few hours with the Windows Task Scheduler or cron. Right after the first sync every stay looks new, so the discount waits.
 

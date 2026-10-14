@@ -18,7 +18,7 @@ It is free and open source (AGPL-3.0). It has no account, no monthly fee per lis
   - seasons and weekdays;
   - last-minute discounts and far-ahead premiums;
   - gaps between two stays;
-  - how full the month is;
+  - how full the month is, and for small hotels how many rooms are left;
   - your local events;
   - last year's prices;
   - a discount when no booking has come in for a while.
@@ -87,7 +87,27 @@ fairnight beds24 spingi           # shows what would change; add --applica to wr
 - **Permissions.** Create the invite code in *Settings → Marketplace → API* with the permissions **read:bookings, all:inventory and read:properties**. They are chosen when the code is created and cannot be changed later.
 - **Token lifetime.** The invite code works once, for 24 hours. The refresh token it gives **stops working after 30 days without use**, so run a Beds24 command at least once a month.
 - **Credits.** Beds24 counts credits (100 every 5 minutes by default). Fairnight never uses more than half of them and prints, after each command, how many it used and how many are left.
-- **Rooms with several identical units** are not handled yet.
+- **Rooms with several identical units** (`qty` > 1) become a room type with one price: see [Small hotels](#small-hotels-piccoli-hotel).
+
+## Small hotels (piccoli hotel)
+
+Fairnight prices homes **and small hotels**. In a hotel a room type ("Double") has several identical rooms sold at one price: in Fairnight it is one listing with `"units": 6` in its pricing. The price stays one per night; what changes is how nights are counted.
+
+- **A night is for sale while one room is free**, and its explanation says how many: `Sat 2026-11-21 · 109 EUR (1 of 6 rooms free): … Weighed most: few rooms left (≥80% taken) +15%.`
+- **Occupancy** counts room-nights: 4 of 6 doubles booked is 67%.
+- **Gaps** are short stretches with free rooms between two **sold-out** nights, where no guest can stay longer whatever room they get. One room free between two bookings of that same room, while other rooms are free, is not a gap: moving guests between rooms is the channel manager's job.
+- **Few rooms left** (`scarcity`, off by default): the price rises as rooms run out, by steps, never above a cap (default +20%). Recommended: +5% from 50% of rooms taken, +10% from 65%, +15% from 80%.
+- **Last minute** and the **no-new-bookings discount** work on every night with a room free.
+- With one unit nothing changes: a home is priced exactly as before.
+
+Where the rooms come from:
+
+- **Beds24**: rooms with `qty` > 1 are imported as a room type; bookings are read unit by unit (`unitId`); one price per room is written, and nights where Beds24's free units (`numAvail`) differ from Fairnight's are left alone.
+- **Smoobu** has no room types (one apartment = one bookable unit): Fairnight joins up to `units` apartments into one room type and writes the same price to the free ones. The join is ours, not a Smoobu feature.
+- **iCal**: one calendar per room, each with its `"unit"`. Booking.com gives no iCal for room types with more than one room, and Fairnight never reads a calendar of a whole room type.
+- **MCP**: `get_prices`, `explain_night`, `occupancy` and `next_gaps` show the units and the rooms free, still read only.
+
+The whole guide, with an invented 14-room hotel (6 doubles, 4 triples, 4 singles) and the sources, is in Italian in [docs/piccoli-hotel.md](docs/piccoli-hotel.md).
 
 ## Fairguest: guest registration in Spain
 

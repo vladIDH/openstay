@@ -32,7 +32,7 @@ What it does **not** do (yet): it does not change prices on Airbnb or Booking.co
 
 ## Five-minute setup
 
-Never opened a terminal? There is a double-click installer for Windows and Mac with a guided setup in Italian: [docs/installa.md](docs/installa.md).
+Never opened a terminal? There is a double-click installer for Windows and Mac with a guided setup in Italian: [docs/installa.md](docs/installa.md). The installer is tested in CI on Windows and macOS; what still has to be checked by hand on a real Mac (Finder, Gatekeeper, Dock) is listed in [installa/README.md](installa/README.md#da-verificare-a-mano-su-un-mac-vero).
 
 You need [Node.js](https://nodejs.org) 22 or newer on Windows and Mac, where the SQLite module comes precompiled only from Node 22 on (20 works where a C++ compiler is installed). It is free and its installer takes a minute.
 

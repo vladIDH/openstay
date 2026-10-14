@@ -6,10 +6,8 @@ import { tempDir } from "./helpers.js";
 
 // better-sqlite3 built for another Node.js: what happens after the host updates Node to a new major version.
 vi.mock("better-sqlite3", () => ({
-  default: class {
-    constructor() {
-      throw Object.assign(new Error("was compiled against a different Node.js version"), { code: "ERR_DLOPEN_FAILED" });
-    }
+  default: function Database() {
+    throw Object.assign(new Error("was compiled against a different Node.js version"), { code: "ERR_DLOPEN_FAILED" });
   },
 }));
 

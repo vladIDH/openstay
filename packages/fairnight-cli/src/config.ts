@@ -9,6 +9,7 @@ import { ConfigError, validateListingConfig } from "fairnight";
 import { validateGuestSettings, type GuestSettings } from "fairguest";
 import type { ConfigIssue, ListingConfig, ValidationResult } from "fairnight";
 import { CONFIG_FILE, configPath, stripBom } from "./io.js";
+import { isLanguage, type Language } from "./lingua.js";
 
 export const ICAL_SOURCES = ["airbnb", "booking", "vrbo", "other"] as const;
 export const SOURCES = [...ICAL_SOURCES, "smoobu", "beds24"] as const;
@@ -113,6 +114,8 @@ export interface MarketSettings {
 export interface HostConfig {
   listings: HostListing[];
   market?: MarketSettings;
+  /** Language of the calendar page: "it", "es" or "en". Missing: English. */
+  language?: Language;
 }
 
 const NAME = /^[a-z0-9][a-z0-9-]{0,62}$/;
@@ -257,8 +260,11 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
   if (!isObj(input)) {
     return { ok: false, issues: [{ path: "config", message: "must be an object with a listings list" }] };
   }
-  unknownFields(input, "config", ["listings", "market"], issues);
+  unknownFields(input, "config", ["listings", "market", "language"], issues);
   const market = input.market === undefined ? undefined : checkMarket(input.market, issues);
+  if (input.language !== undefined && !isLanguage(input.language)) {
+    issues.push({ path: "config.language", message: `must be "it", "es" or "en", got ${JSON.stringify(input.language)}` });
+  }
   if (!Array.isArray(input.listings) || input.listings.length === 0) {
     issues.push({ path: "config.listings", message: "must be a list with at least one listing" });
     return { ok: false, issues };
@@ -341,7 +347,9 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
     byRoom.set(room.roomId, l.name);
   }
   if (issues.length > 0) return { ok: false, issues };
-  return { ok: true, value: market ? { listings, market } : { listings } };
+  const value: HostConfig = market ? { listings, market } : { listings };
+  if (isLanguage(input.language)) value.language = input.language;
+  return { ok: true, value };
 }
 
 export class SetupError extends Error {

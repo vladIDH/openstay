@@ -60,6 +60,8 @@ export function pricesPayload(dir: string, config: HostConfig, today: string, da
     return {
       today,
       days,
+      // The page starts in this language unless the browser has another one saved.
+      language: config.language ?? "en",
       listings: config.listings.map((l) => {
         const result = priceOne(db, l, today, days);
         return {

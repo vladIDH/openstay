@@ -84,6 +84,8 @@ Documenti in `docs/`, repo locale, licenza.
 
 **Stanze con più unità identiche: fatto (ramo `hotel`, 14 ottobre 2026).** Il motore conta le camere di ogni notte (`units` nell'annuncio), l'occupazione è in camere-notte, i buchi stanno fra notti tutto esaurito, e c'è il fattore «poche camere rimaste» (spento di default, tetto +20%). Beds24 importa le stanze con `qty` > 1, Smoobu unisce più appartamenti in una tipologia, l'iCal va per camera. Vedi [piccoli-hotel.md](piccoli-hotel.md). Resta fuori: i buchi di una sola camera (spostare gli ospiti fra le camere è il lavoro del gestionale).
 
+**Pagina del calendario in tre lingue: fatto (ramo `lingue`, 14 ottobre 2026).** Italiano, spagnolo e inglese, con `language` nel config e un selettore nella pagina; le regole sono dette dai `params` del motore. **Lavoro futuro: tradurre i messaggi del terminale di `fairnight serve`** (oggi in inglese; quelli di `apri` e `configura` sono già in italiano).
+
 ### Fase 3: mercato e analisi (circa 18 giorni, dopo le risposte scritte dei fornitori)
 
 | Pezzo | Giorni |

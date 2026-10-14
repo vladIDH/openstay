@@ -58,6 +58,7 @@ Guest registration for Spain (Real Decreto 933/2021). Everything runs on the hos
   - New factor `scarcity` (few rooms left), off by default: steps by share of rooms taken, capped by `maxRaisePercent` (default 20). Only with more than one unit.
   - `NightQuote.units` and the explanation ("3 of 6 rooms free", "Weighed most: …") only for room types: with one unit every output is the same as before.
   - `Availability` is exported, so other tools count nights with the engine's own rule.
+- Every price step also carries its facts as data (`params`: season name, days ahead, gap nights, month occupancy, rooms free, floor and ceiling…), so a page can say them in another language. Labels, notes and explanations are unchanged.
 - Zone demand factor (`factors.market`), off unless switched on for a listing:
   - each night of the zone is compared with the zone's own average;
   - half of the difference is passed on, at most +15% or -10% (`weight`, `highPercent`, `lowPercent`, `maxRaisePercent`, `maxLowerPercent`, `withinDays`, `minComparables`);
@@ -126,6 +127,7 @@ Guest registration for Spain (Real Decreto 933/2021). Everything runs on the hos
 - Smoobu stay prices are stored (total, nights, average per night). The historical floor uses them only with `--usa-storico-smoobu`, because they are an average per stay, not per night.
 - Smoobu blocked dates are unavailable nights, never bookings: they do not count in occupancy or in the price history.
 - Database schema 2: `booked_at`, `smoobu_stays`, `smoobu_pushes`. Older databases are upgraded on first use.
+- The calendar page in Italian, Spanish and English: `language` in `fairnight.config.json` (English when missing), a small IT · ES · EN menu saved in the browser, dates, weekdays and prices formatted with `Intl`, the price rules said from the engine's `params`, the engine's English text folded at the bottom of the night panel. `fairnight configura` asks the language once, proposing it from the town (Italy → it, Spain and the Canary Islands → es) or from the computer's language.
 - Small hotels: `beds24 importa` imports rooms with `qty` > 1 as a room type (`units`) and warns when `qty` changes; a listing with `units` can list up to that many Smoobu apartments; an iCal calendar of a room type names its room (`unit`), and calendars of a whole room type are refused. `fairnight price` and the calendar page show the rooms free. Database schema 6: `unit` and `units` of each stored stay.
 
 ### fairnight-mcp

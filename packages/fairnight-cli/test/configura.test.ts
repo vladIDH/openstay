@@ -8,6 +8,7 @@ import { parseAmount } from "../src/configura.js";
 import { openDb } from "../src/db.js";
 import { main } from "../src/main.js";
 import { startServer } from "../src/serve.js";
+import { languageOfCity, languageOfLocale, proposedLanguage, systemLocale } from "../src/lingua.js";
 import { describeSeason, parseDayMonth, proposedSeasons, regionOf } from "../src/stagioni.js";
 import type { FetchLike } from "../src/io.js";
 import { fakeFetch, fixture, tempDir, testIo, type TestIo } from "./helpers.js";
@@ -48,6 +49,7 @@ describe("fairnight configura, first time", () => {
       "", // ceiling: proposed 225
       "s", // seasons as proposed
       "", // no other house
+      "", // calendar language: Costa Adeje proposes Español
     ]);
     expect(await main(["configura"], io)).toBe(0);
     expect(left()).toBe(0);
@@ -91,6 +93,7 @@ describe("fairnight configura, first time", () => {
       "200",
       "s",
       "",
+      "", // calendar language: Palermo proposes Italiano
     ]);
     expect(await main(["configura"], io)).toBe(0);
     expect(io.lines).toContain("    Questo non è un link: deve cominciare con https:// (oppure webcal://). Riprova, o premi Invio per saltare.");
@@ -107,7 +110,7 @@ describe("fairnight configura, first time", () => {
 
   it("asks the prices again when the lowest is above the base", async () => {
     const dir = tempDir();
-    const { io } = host(dir, ["Casa", "", "", "", "", "100", "120", "300", "100", "€ 70", "250,50", "n", ""]);
+    const { io } = host(dir, ["Casa", "", "", "", "", "100", "120", "300", "100", "€ 70", "250,50", "n", "", ""]);
     expect(await main(["configura"], io)).toBe(0);
     expect(io.lines.some((x) => x.startsWith("    Il minimo (120 €) deve essere sotto il base (100 €)"))).toBe(true);
     const l = firstListing(dir);
@@ -151,6 +154,7 @@ describe("fairnight configura, first time", () => {
       "20",
       "n",
       "",
+      "", // calendar language: the proposed one
     ]);
     expect(await main(["configura"], io)).toBe(0);
     expect(firstListing(dir).pricing.factors.seasons).toEqual({
@@ -166,7 +170,7 @@ describe("fairnight configura, first time", () => {
 
   it("adds a second house with its own short name", async () => {
     const dir = tempDir();
-    const { io } = host(dir, ["Casa Sole", "", "", "", "", "80", "", "", "n", "s", "Casa Sole", "", "", "", "", "60", "", "", "n", ""]);
+    const { io } = host(dir, ["Casa Sole", "", "", "", "", "80", "", "", "n", "s", "Casa Sole", "", "", "", "", "60", "", "", "n", "", ""]);
     expect(await main(["configura"], io)).toBe(0);
     expect(loadHostConfig(dir).listings.map((l) => l.name)).toEqual(["casa-sole", "casa-sole-2"]);
   });
@@ -183,7 +187,7 @@ describe("fairnight configura, first time", () => {
 describe("fairnight configura, run again", () => {
   it("shows the current values, changes only what the host changes and keeps the rest of the file", async () => {
     const dir = tempDir();
-    await main(["configura"], host(dir, ["Casa Limone", "Adeje", AIRBNB, "", "", "90", "", "", "s", ""]).io);
+    await main(["configura"], host(dir, ["Casa Limone", "Adeje", AIRBNB, "", "", "90", "", "", "s", "", ""]).io);
     const before = rawConfig(dir);
     before.listings[0].pricing.factors.dayOfWeek.adjustments.sat = 25; // edited by hand
     before.listings[0].pricing.defaultMinStay = 4;
@@ -225,8 +229,8 @@ describe("fairnight configura, run again", () => {
 
   it("removes a link when the host writes a dash", async () => {
     const dir = tempDir();
-    await main(["configura"], host(dir, ["Casa", "", AIRBNB, BOOKING, "", "90", "", "", "n", ""]).io);
-    const { io } = host(dir, ["1", "", "", "-", "", "", "", "", "", "n", "f"]);
+    await main(["configura"], host(dir, ["Casa", "", AIRBNB, BOOKING, "", "90", "", "", "n", "", ""]).io);
+    const { io } = host(dir, ["1", "", "", "-", "", "", "", "", "", "n", "f", ""]);
     expect(await main(["configura"], io)).toBe(0);
     expect(firstListing(dir).calendars).toEqual([{ source: "booking", url: BOOKING }]);
   });
@@ -279,7 +283,7 @@ describe("fairnight apri", () => {
 
   it("runs the setup when there is no config, reads the calendars and opens the browser", async () => {
     const dir = tempDir();
-    const { io } = host(dir, ["Casa", "", AIRBNB, "", "", "90", "", "", "n", ""]);
+    const { io } = host(dir, ["Casa", "", AIRBNB, "", "", "90", "", "", "n", "", ""]);
     const p = port();
     const r = await apri(dir, io, { port: p, days: 30, browser: true });
     if (r.server) servers.push(r.server);
@@ -295,7 +299,7 @@ describe("fairnight apri", () => {
 
   it("only opens the browser again when Fairnight is already running for the same folder", async () => {
     const dir = tempDir();
-    await main(["configura"], host(dir, ["Casa", "", "", "", "", "90", "", "", "n", ""]).io);
+    await main(["configura"], host(dir, ["Casa", "", "", "", "", "90", "", "", "n", "", ""]).io);
     const p = port();
     const running = await startServer({ dir, io: testIo(dir), days: 30, port: p, lan: false, quiet: true });
     servers.push(running);
@@ -308,9 +312,9 @@ describe("fairnight apri", () => {
 
   it("moves to the next port when another folder's Fairnight is using it", async () => {
     const other = tempDir();
-    await main(["configura"], host(other, ["Altra", "", "", "", "", "90", "", "", "n", ""]).io);
+    await main(["configura"], host(other, ["Altra", "", "", "", "", "90", "", "", "n", "", ""]).io);
     const dir = tempDir();
-    await main(["configura"], host(dir, ["Casa", "", "", "", "", "90", "", "", "n", ""]).io);
+    await main(["configura"], host(dir, ["Casa", "", "", "", "", "90", "", "", "n", "", ""]).io);
     const p = port();
     servers.push(await startServer({ dir: other, io: testIo(other), days: 30, port: p, lan: false, quiet: true }));
     const { io } = host(dir, [], (url) => fetch(url));
@@ -318,5 +322,64 @@ describe("fairnight apri", () => {
     if (r.server) servers.push(r.server);
     expect(io.lines).toContain(`Fairnight è acceso: http://localhost:${p + 1}`);
     expect(io.opened).toEqual([]);
+  });
+});
+
+describe("language of the calendar page", () => {
+  it("is proposed from the town: Spain and the Canary Islands Spanish, Italy Italian, anything else nothing", () => {
+    expect(languageOfCity("Costa Adeje")).toBe("es");
+    expect(languageOfCity("Málaga")).toBe("es");
+    expect(languageOfCity("Palma de Mallorca")).toBe("es");
+    expect(languageOfCity("Firenze")).toBe("it");
+    expect(languageOfCity("Polignano a Mare, Puglia")).toBe("it");
+    expect(languageOfCity("Lisboa")).toBeNull();
+    expect(languageOfCity(undefined)).toBeNull();
+  });
+
+  it("falls back to the computer's language, from LANG or the system", () => {
+    expect(proposedLanguage(["Lisboa", "Sevilla"], "en-US")).toBe("es");
+    expect(proposedLanguage(["Lisboa"], "it_IT.UTF-8")).toBe("it");
+    expect(proposedLanguage([undefined], "de-DE")).toBeNull();
+    expect(languageOfLocale("es-ES")).toBe("es");
+    expect(systemLocale({ LANG: "it_IT.UTF-8" })).toBe("it_IT.UTF-8");
+    expect(systemLocale({ LC_ALL: "C" })).toBe(Intl.DateTimeFormat().resolvedOptions().locale);
+  });
+
+  it("is written when the host confirms the proposal", async () => {
+    const dir = tempDir();
+    const { io } = host(dir, ["Casa Limone", "Adeje", "", "", "", "90", "", "", "n", "", ""]);
+    expect(await main(["configura"], io)).toBe(0);
+    expect(io.questions.at(-1)).toBe("Scegli 1, 2 o 3 [2]: ");
+    expect(io.lines).toContain("  1 Italiano · 2 Español · 3 English");
+    expect(rawConfig(dir).language).toBe("es");
+  });
+
+  it("uses the computer's language when the town says nothing, and the host can choose another", async () => {
+    const dir = tempDir();
+    const { io } = host(dir, ["Casa", "Lisboa", "", "", "", "90", "", "", "n", "", "3"]);
+    io.locale = "it-IT";
+    expect(await main(["configura"], io)).toBe(0);
+    expect(io.questions.at(-1)).toBe("Scegli 1, 2 o 3 [1]: ");
+    expect(rawConfig(dir).language).toBe("en");
+  });
+
+  it("with nothing to propose, Invio leaves it out and the page stays in English; it is not asked again once set", async () => {
+    const dir = tempDir();
+    const first = host(dir, ["Casa", "Lisboa", "", "", "", "90", "", "", "n", "", ""]);
+    expect(await main(["configura"], first.io)).toBe(0);
+    expect(first.io.questions.at(-1)).toBe("Scegli 1, 2 o 3 (Invio per saltare: il calendario resta in inglese): ");
+    expect(rawConfig(dir).language).toBeUndefined();
+    const second = host(dir, ["f", "2"]);
+    expect(await main(["configura"], second.io)).toBe(0);
+    expect(rawConfig(dir).language).toBe("es");
+    const third = host(dir, ["f"]);
+    expect(await main(["configura"], third.io)).toBe(0);
+    expect(third.left()).toBe(0);
+  });
+
+  it("only it, es or en in the config", () => {
+    const dir = tempDir();
+    writeFileSync(path.join(dir, "fairnight.config.json"), JSON.stringify({ language: "fr", listings: [{ name: "casa", calendars: [], pricing: { currency: "EUR", basePrice: 90, defaultMinStay: 2, factors: {} } }] }));
+    expect(() => loadHostConfig(dir)).toThrow('config.language: must be "it", "es" or "en", got "fr"');
   });
 });

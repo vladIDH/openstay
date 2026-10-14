@@ -29,7 +29,8 @@ const CANARY_PLACES = [
   "costa calma", "jandia", "los llanos de aridane", "santa cruz de la palma", "tazacorte", "valle gran rey", "san sebastian de la gomera",
 ];
 
-const plain = (s: string) =>
+/** A place name without accents, lowercase, words separated by single spaces. */
+export const plainPlace = (s: string) =>
   s
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
@@ -37,10 +38,15 @@ const plain = (s: string) =>
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
+/** True when the town is in the Canary Islands. */
+export function isCanaryPlace(city: string): boolean {
+  const words = ` ${plainPlace(city)} `;
+  return CANARY_PLACES.some((p) => words.includes(` ${p} `));
+}
+
 export function regionOf(city: string | undefined): SeasonRegion {
   if (city === undefined) return "estate";
-  const words = ` ${plain(city)} `;
-  return CANARY_PLACES.some((p) => words.includes(` ${p} `)) ? "canarie" : "estate";
+  return isCanaryPlace(city) ? "canarie" : "estate";
 }
 
 export function proposedSeasons(region: SeasonRegion): SeasonPeriod[] {

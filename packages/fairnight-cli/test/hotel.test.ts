@@ -216,7 +216,7 @@ describe("Beds24: rooms with several units", () => {
       { total: 6, free: 4, reserved: 2, blocked: 0 },
       { total: 6, free: 3, reserved: 3, blocked: 0 },
     ]);
-    expect(renderPage("nonce-0000")).toContain('" camere libere"');
+    expect(renderPage("nonce-0000")).toContain('"{n} camere libere su {total}"');
   });
 
   it("warns when the number of units changes on Beds24", async () => {

@@ -20,6 +20,8 @@ export interface Io {
   now(): Date;
   /** Environment variables (SMOOBU_API_KEY, SMOOBU_API_SECRET, BEDS24_REFRESH_TOKEN, AIRROI_API_KEY). Default: none. */
   env?: Record<string, string | undefined>;
+  /** The language of this computer, like "it-IT" (only for tests). Default: from LANG or the system. */
+  locale?: string;
   /** Ask the user for a line of text; with hidden, nothing typed is shown. */
   prompt?(question: string, options: { hidden: boolean }): Promise<string>;
   /** Network access for the Smoobu API (method, headers, body). Default: global fetch. */

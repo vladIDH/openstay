@@ -244,7 +244,30 @@ export interface PriceStep {
   percent?: number;
   /** Extra detail, e.g. "ceiling not reached". */
   note?: string;
+  /**
+   * The same facts as label and note, as data, so a page can say them in the
+   * host's language without parsing English. See StepParams for each factor.
+   */
+  params?: StepParams;
 }
+
+/**
+ * Facts behind a step, by factor (names written by the host stay as written):
+ * - season: name, fixed (true for a fixed price)
+ * - dayOfWeek: weekday
+ * - lastMinute: withinDays, daysAhead, gapNotAdded (gap discount % left out)
+ * - farOut: fromDays, daysAhead
+ * - gap: nights, lastMinuteNotAdded (last-minute discount % left out)
+ * - occupancy: kind ("busy" | "quiet"), monthPercent
+ * - scarcity: takenPercent (the step), free, total, takenNow, cap (when capped)
+ * - market: signal ("occupancy" | "price"), value, average, attribution, area, cap, comparables, estimated, readOn
+ * - event: name, impact, others (other events that night)
+ * - limits: kind ("floor" | "ceiling" | "within"), floor, ceiling
+ * - staleCalendar: idleDays
+ * - historicalFloor: percent, month, average, nights
+ * - rounding: step
+ */
+export type StepParams = Record<string, string | number | boolean>;
 
 export type MinStaySource = "override" | "farOut" | "lastMinute" | "default" | "gap";
 

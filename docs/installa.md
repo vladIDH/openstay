@@ -14,7 +14,7 @@ Questa guida è per chi affitta da 1 a 10 case su Airbnb, Booking o Vrbo e non h
 
 - **non cambia i prezzi su Airbnb, Booking o Vrbo.** Con i link iCal Fairnight può solo leggere le date occupate, non scrivere i prezzi. I prezzi li copi tu sulle piattaforme. Oppure, se usi Smoobu o Beds24, glieli manda Fairnight e loro li passano alle piattaforme: vedi [connettori.md](connettori.md);
 - non guarda i prezzi delle case vicine e non entra nei tuoi account: non gli dai nessuna password;
-- non lavora da solo in sottofondo: calcola quando apri il calendario o premi «Recalculate».
+- non lavora da solo in sottofondo: calcola quando apri il calendario o premi «Aggiorna i prezzi».
 
 **Dove stanno i tuoi dati:** solo sul tuo computer, nella cartella `Fairnight` del tuo utente: `C:\Users\<tuo nome>\Fairnight` su Windows, `/Users/<tuo nome>/Fairnight` su Mac. Fairnight si collega a internet solo per leggere i link iCal che gli dai. Non abbiamo un server e non riceviamo niente.
 
@@ -104,6 +104,7 @@ Il link iCal è privato: chi lo ha vede quando la casa è occupata. Non pubblica
 ![Prezzi e stagioni proposte](images/installa/06-prezzi-stagioni.png)
 
 7. **Un'altra casa?** Scrivi **s** per aggiungerla e rispondi alle stesse domande, oppure premi Invio per finire.
+8. **Lingua del calendario**: 1 Italiano, 2 Español, 3 English. Fairnight la propone in base alla città (Italia → italiano, Spagna e Canarie → spagnolo) o, se la città non basta, in base alla lingua del computer: premi Invio per tenerla. Se non c'è niente da proporre e premi Invio, il calendario resta in inglese. La domanda arriva una volta sola: dopo si cambia dal calendario stesso.
 
 Il resto delle regole ha valori di partenza prudenti, che puoi cambiare dopo:
 - fine settimana: venerdì +10%, sabato +15%, domenica -5%;
@@ -117,10 +118,13 @@ Fairnight legge i calendari e apre il calendario dei prezzi nel browser.
 
 ![Fairnight è acceso](images/installa/08-acceso.png)
 
-![Il calendario dei prezzi](images/installa/09-calendario.png)
+![Il calendario dei prezzi in italiano](images/installa/09-calendario.png)
 
-- Ogni giorno libero mostra il prezzo e il soggiorno minimo. Le notti già prenotate sono scure. Clicca una notte per vedere da dove viene il prezzo.
-- Per ora la pagina del calendario è in inglese: «reserved» vuol dire prenotata, «blocked» bloccata, «Recalculate» rilegge i calendari e ricalcola.
+- Ogni giorno libero mostra il prezzo e il soggiorno minimo. Le notti già prenotate sono scure. Clicca una notte per vedere da dove viene il prezzo: ogni regola è spiegata con le sue parole (buco tra due prenotazioni, ultimo minuto, stagione, prezzo minimo e massimo…).
+- «Aggiorna i prezzi» rilegge i calendari e ricalcola.
+- Il calendario parla italiano, spagnolo o inglese. Per cambiare lingua usa il piccolo menu **IT · ES · EN** in alto: la scelta resta in quel browser. In fondo al pannello di una notte, «Testo completo (in inglese)» apre la spiegazione originale di Fairnight: è quella da mandare se chiedi aiuto.
+
+![Lo stesso calendario in spagnolo](images/installa/09-calendario-es.png)
 - **La finestra nera deve restare aperta** mentre usi il calendario: quando la chiudi, Fairnight si spegne. Puoi ridurla a icona.
 
 **Le volte successive** non serve il terminale:

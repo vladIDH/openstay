@@ -15,7 +15,7 @@ import type { PriceHistory } from "./history.js";
 import type { MarketIndex } from "./market.js";
 import type { Availability } from "./calendar.js";
 import type { Weekday } from "./dates.js";
-import type { FarOutStep, HostEvent, LastMinuteStep, ListingConfig, PriceStep } from "./types.js";
+import type { FarOutStep, HostEvent, LastMinuteStep, ListingConfig, PriceStep, StepParams } from "./types.js";
 
 export interface NightContext {
   config: ListingConfig;
@@ -49,9 +49,11 @@ function percentStep(
   before: number,
   percent: number,
   note?: string,
+  params?: StepParams,
 ): PriceStep {
   const step: PriceStep = { factor, label, before, after: cents(before * (1 + percent / 100)), percent };
   if (note !== undefined) step.note = note;
+  if (params !== undefined) step.params = params;
   return step;
 }
 
@@ -63,10 +65,17 @@ export function seasonFactor(ctx: NightContext, price: number): PriceStep | null
   const period = f.periods.find((p) => inRecurringPeriod(md, p.start, p.end));
   if (!period) return null;
   if (period.fixedPrice !== undefined) {
-    return { factor: "season", label: `season "${period.name}"`, before: price, after: cents(period.fixedPrice), note: "fixed price" };
+    return {
+      factor: "season",
+      label: `season "${period.name}"`,
+      before: price,
+      after: cents(period.fixedPrice),
+      note: "fixed price",
+      params: { name: period.name, fixed: true },
+    };
   }
   const percent = cents(((period.multiplier ?? 1) - 1) * 100);
-  return percentStep("season", `season "${period.name}"`, price, percent);
+  return percentStep("season", `season "${period.name}"`, price, percent, undefined, { name: period.name });
 }
 
 export function dayOfWeekFactor(ctx: NightContext, price: number): PriceStep | null {
@@ -74,7 +83,7 @@ export function dayOfWeekFactor(ctx: NightContext, price: number): PriceStep | n
   if (!f?.enabled) return null;
   const percent = f.adjustments[ctx.weekday] ?? 0;
   if (percent === 0) return null;
-  return percentStep("dayOfWeek", ctx.weekday, price, percent);
+  return percentStep("dayOfWeek", ctx.weekday, price, percent, undefined, { weekday: ctx.weekday });
 }
 
 /** The tightest last-minute step that covers this night (steps sorted by withinDays). */
@@ -113,13 +122,18 @@ export function lastMinuteFactor(ctx: NightContext, price: number): PriceStep | 
   if (gap > step.discountPercent) return null;
   const ahead = daysAhead(ctx);
   const note = gap > 0 ? `${ahead}; gap discount ${gap}% not added` : ahead;
-  return percentStep("lastMinute", `last minute (≤${step.withinDays} days)`, price, -step.discountPercent, note);
+  const params: StepParams = { withinDays: step.withinDays, daysAhead: ctx.leadDays };
+  if (gap > 0) params.gapNotAdded = gap;
+  return percentStep("lastMinute", `last minute (≤${step.withinDays} days)`, price, -step.discountPercent, note, params);
 }
 
 export function farOutFactor(ctx: NightContext, price: number): PriceStep | null {
   const step = farOutStepFor(ctx);
   if (!step || step.premiumPercent === 0) return null;
-  return percentStep("farOut", `far out (≥${step.fromDays} days)`, price, step.premiumPercent, daysAhead(ctx));
+  return percentStep("farOut", `far out (≥${step.fromDays} days)`, price, step.premiumPercent, daysAhead(ctx), {
+    fromDays: step.fromDays,
+    daysAhead: ctx.leadDays,
+  });
 }
 
 /** Length of the gap this night belongs to, if the gap factor is on. */
@@ -136,7 +150,9 @@ export function gapFactor(ctx: NightContext, price: number): PriceStep | null {
   const lastMinute = lastMinuteDiscount(ctx);
   if (lastMinute >= discount) return null;
   const label = `gap of ${gap} night${gap === 1 ? "" : "s"}`;
-  return percentStep("gap", label, price, -discount, lastMinute > 0 ? `last-minute discount ${lastMinute}% not added` : undefined);
+  const params: StepParams = { nights: gap };
+  if (lastMinute > 0) params.lastMinuteNotAdded = lastMinute;
+  return percentStep("gap", label, price, -discount, lastMinute > 0 ? `last-minute discount ${lastMinute}% not added` : undefined, params);
 }
 
 export function occupancyFactor(ctx: NightContext, price: number): PriceStep | null {
@@ -145,11 +161,12 @@ export function occupancyFactor(ctx: NightContext, price: number): PriceStep | n
   const occ = ctx.availability.monthOccupancy(ctx.day, ctx.todayDay);
   if (!occ) return null;
   const shown = `month ${Math.round(occ.percent)}% booked`;
+  const monthPercent = Math.round(occ.percent);
   if (occ.percent >= f.highThresholdPercent && f.raisePercent !== 0) {
-    return percentStep("occupancy", "busy month", price, f.raisePercent, shown);
+    return percentStep("occupancy", "busy month", price, f.raisePercent, shown, { kind: "busy", monthPercent });
   }
   if (occ.percent <= f.lowThresholdPercent && f.lowerPercent !== 0) {
-    return percentStep("occupancy", "quiet month", price, -f.lowerPercent, shown);
+    return percentStep("occupancy", "quiet month", price, -f.lowerPercent, shown, { kind: "quiet", monthPercent });
   }
   return null;
 }
@@ -176,8 +193,12 @@ export function scarcityFactor(ctx: NightContext, price: number): PriceStep | nu
   const percent = Math.min(step.raisePercent, cap);
   if (percent === 0) return null;
   const parts = [unitsFree(n.free, n.total), `${Math.round(takenPercent)}% taken`];
-  if (percent < step.raisePercent) parts.push(`capped at +${cap}%`);
-  return percentStep("scarcity", `few rooms left (≥${step.takenPercent}% taken)`, price, percent, parts.join(" · "));
+  const params: StepParams = { takenPercent: step.takenPercent, free: n.free, total: n.total, takenNow: Math.round(takenPercent) };
+  if (percent < step.raisePercent) {
+    parts.push(`capped at +${cap}%`);
+    params.cap = cap;
+  }
+  return percentStep("scarcity", `few rooms left (≥${step.takenPercent}% taken)`, price, percent, parts.join(" · "), params);
 }
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
@@ -219,7 +240,13 @@ export function marketFactor(ctx: NightContext, price: number): PriceStep | null
   parts.push(data.attribution + (r.signal === "occupancy" && data.estimated ? ", occupancy estimated" : ""));
   if (data.readOn) parts.push(`read ${data.readOn}`);
   const label = data.area ? `zone demand "${data.area}"` : "zone demand";
-  return percentStep("market", label, price, percent, parts.join(" · "));
+  const params: StepParams = { signal: r.signal, value: round1(r.value), average: round1(r.average), attribution: data.attribution };
+  if (data.area) params.area = data.area;
+  if (Math.abs(percent) === cap) params.cap = cap;
+  if (r.comparables !== undefined) params.comparables = r.comparables;
+  if (r.signal === "occupancy" && data.estimated) params.estimated = true;
+  if (data.readOn) params.readOn = data.readOn;
+  return percentStep("market", label, price, percent, parts.join(" · "), params);
 }
 
 /** Events on this night; the list is sorted by date, then by impact (highest first). */
@@ -240,19 +267,38 @@ export function eventFactor(ctx: NightContext, price: number): PriceStep | null 
     events.length > 1
       ? `highest impact counts; also ${events.slice(1).map((e) => `"${e.name}" (impact ${e.impact})`).join(", ")}`
       : undefined;
-  return percentStep("event", `event "${top.name}" (impact ${top.impact})`, price, percent, note);
+  return percentStep("event", `event "${top.name}" (impact ${top.impact})`, price, percent, note, {
+    name: top.name,
+    impact: top.impact,
+    others: events.length - 1,
+  });
 }
 
 export function limitsFactor(ctx: NightContext, price: number): PriceStep | null {
   const f = ctx.config.factors.limits;
   if (!f?.enabled) return null;
+  const bounds = { floor: f.floorPrice, ceiling: f.ceilingPrice };
   if (price < f.floorPrice) {
-    return { factor: "limits", label: "floor", before: price, after: f.floorPrice, note: `raised to floor ${f.floorPrice}` };
+    return { factor: "limits", label: "floor", before: price, after: f.floorPrice, note: `raised to floor ${f.floorPrice}`, params: { kind: "floor", ...bounds } };
   }
   if (price > f.ceilingPrice) {
-    return { factor: "limits", label: "ceiling", before: price, after: f.ceilingPrice, note: `lowered to ceiling ${f.ceilingPrice}` };
+    return {
+      factor: "limits",
+      label: "ceiling",
+      before: price,
+      after: f.ceilingPrice,
+      note: `lowered to ceiling ${f.ceilingPrice}`,
+      params: { kind: "ceiling", ...bounds },
+    };
   }
-  return { factor: "limits", label: "limits", before: price, after: price, note: `within floor ${f.floorPrice} and ceiling ${f.ceilingPrice}` };
+  return {
+    factor: "limits",
+    label: "limits",
+    before: price,
+    after: price,
+    note: `within floor ${f.floorPrice} and ceiling ${f.ceilingPrice}`,
+    params: { kind: "within", ...bounds },
+  };
 }
 
 export function roundingFactor(ctx: NightContext, price: number): PriceStep | null {
@@ -266,7 +312,7 @@ export function roundingFactor(ctx: NightContext, price: number): PriceStep | nu
     if (after < limits.floorPrice) after = limits.floorPrice;
   }
   if (after === price) return null;
-  return { factor: "rounding", label: `rounded to ${f.step}`, before: price, after };
+  return { factor: "rounding", label: `rounded to ${f.step}`, before: price, after, params: { step: f.step } };
 }
 
 /**
@@ -282,7 +328,7 @@ export function staleCalendarFactor(ctx: NightContext, price: number): PriceStep
   if (idle < f.afterDays) return null;
   const steps = 1 + Math.floor((idle - f.afterDays) / (f.everyDays ?? DEFAULT_STALE.everyDays));
   const percent = Math.min(f.maxPercent, cents(f.stepPercent * steps));
-  return percentStep("staleCalendar", "no new bookings", price, -percent, `${idle} days since the last new booking`);
+  return percentStep("staleCalendar", "no new bookings", price, -percent, `${idle} days since the last new booking`, { idleDays: idle });
 }
 
 /**
@@ -302,5 +348,6 @@ export function historicalFloorFactor(ctx: NightContext, price: number): PriceSt
     before: price,
     after: floor,
     note: `${f.percent}% of the ${month.month} average of ${month.average} over ${month.nights} sold nights`,
+    params: { percent: f.percent, month: month.month, average: month.average, nights: month.nights },
   };
 }

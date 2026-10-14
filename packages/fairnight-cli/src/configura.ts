@@ -19,6 +19,7 @@ import { classify, parseIcal } from "./ical.js";
 import { initFolder } from "./init.js";
 import { configPath, dbPath, stripBom, type Io } from "./io.js";
 import { describeSeason, multiplierOf, parseDayMonth, percentOf, proposedSeasons, REGION_LABEL, regionOf, typedDayMonth } from "./stagioni.js";
+import { isLanguage, proposedLanguage, systemLocale, type Language } from "./lingua.js";
 import { download } from "./sync.js";
 import { syncEverything } from "./sync-all.js";
 import type { FeedReport } from "./sync.js";
@@ -337,6 +338,31 @@ export function feedLineIt(r: FeedReport, titles: Map<string, string>): string {
   return `  ✓ ${house} · ${where}: ${plural(r.seen, "evento", "eventi")}${r.added > 0 ? `, ${r.added} nuovi` : ""}${r.removed > 0 ? `, ${r.removed} tolti` : ""}`;
 }
 
+const LANGUAGE_CHOICES: { key: string; language: Language; label: string }[] = [
+  { key: "1", language: "it", label: "Italiano" },
+  { key: "2", language: "es", label: "Español" },
+  { key: "3", language: "en", label: "English" },
+];
+
+/**
+ * The language of the calendar page, asked once when the config has none.
+ * Proposed from the towns, then from this computer; with nothing clear there
+ * is no proposal, and Enter leaves it empty (the page is then in English).
+ */
+async function askLanguage(a: Asker, io: Io, cities: (string | undefined)[]): Promise<Language | null> {
+  const proposed = proposedLanguage(cities, io.locale ?? systemLocale(io.env ?? {}));
+  io.out("");
+  io.out("Lingua del calendario (la pagina con i prezzi):");
+  io.out(`  ${LANGUAGE_CHOICES.map((c) => `${c.key} ${c.label}`).join(" · ")}`);
+  const keys = LANGUAGE_CHOICES.map((c) => c.key);
+  if (proposed !== null) {
+    const key = await a.choice("Scegli 1, 2 o 3", keys, LANGUAGE_CHOICES.find((c) => c.language === proposed)?.key as string);
+    return LANGUAGE_CHOICES.find((c) => c.key === key)?.language ?? null;
+  }
+  const key = await a.choice("Scegli 1, 2 o 3 (Invio per saltare: il calendario resta in inglese)", [...keys, ""], "");
+  return LANGUAGE_CHOICES.find((c) => c.key === key)?.language ?? null;
+}
+
 export function readRawConfig(dir: string): Obj | null {
   const file = configPath(dir);
   if (!existsSync(file)) return null;
@@ -390,6 +416,14 @@ export async function configura(dir: string, io: Io): Promise<number> {
   }
 
   const next: Obj = { ...(raw ?? { market: { airroi: { enabled: false } } }), listings };
+  if (!isLanguage(next.language)) {
+    const language = await askLanguage(
+      a,
+      io,
+      listings.map((l) => (typeof l.city === "string" ? l.city : undefined)),
+    );
+    if (language !== null) next.language = language;
+  }
   const checked = validateHostConfig(next);
   if (!checked.ok) throw new ConfigError("configurazione", checked.issues);
 

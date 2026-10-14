@@ -2,7 +2,11 @@
  * The calendar page served by `fairnight serve`: one file, no external
  * resources, no framework. Data comes from /api/data and is only ever put in
  * the page as text (textContent), never as HTML.
+ *
+ * In Italian, Spanish or English: the texts are in page-texts.ts, dates and
+ * prices are formatted by the browser (Intl) in the chosen language.
  */
+import { PAGE_TEXTS } from "./page-texts.js";
 
 const STYLE = `
 :root {
@@ -24,6 +28,9 @@ header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-
 .brand span { color: var(--muted); font-weight: 400; }
 select, .btn { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
 select { max-width: 220px; }
+select.lang { padding: 7px 6px; font-size: 12px; color: var(--muted); }
+.panel details.raw summary { cursor: pointer; }
+.panel details.raw div { margin-top: 6px; }
 .btn { cursor: pointer; }
 .btn:hover { border-color: #3a4350; }
 .btn:disabled { opacity: .5; cursor: default; }
@@ -77,6 +84,7 @@ select { max-width: 220px; }
   header { gap: 8px; }
   .brand { width: 100%; }
   select { flex: 1; max-width: none; }
+  select.lang { flex: 0 0 auto; }
   .monthbar h2 { font-size: 16px; min-width: 0; flex: 1; }
   .monthbar .stats { display: none; }
   .grid { gap: 3px; }
@@ -95,24 +103,104 @@ const SCRIPT = `
 "use strict";
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-const fmt = (n) => Number.isInteger(n) ? String(n) : n.toFixed(2);
-const state = { data: null, listing: 0, month: null, selected: null };
+const LANGS = ["it", "es", "en"];
+const STORE = "fairnight.language";
+const state = { data: null, listing: 0, month: null, selected: null, lang: "en" };
+
+// ---- language: the texts come from page-texts.ts, numbers and dates from Intl
+function savedLang() { try { const v = localStorage.getItem(STORE); return LANGS.includes(v) ? v : null; } catch { return null; } }
+function saveLang(v) { try { localStorage.setItem(STORE, v); } catch { /* private window: only for this visit */ } }
+function t(key, vars) {
+  const table = TEXTS[state.lang] || TEXTS.en;
+  let s = table[key] != null ? table[key] : TEXTS.en[key] != null ? TEXTS.en[key] : key;
+  if (vars) for (const k of Object.keys(vars)) s = s.split("{" + k + "}").join(String(vars[k]));
+  return s;
+}
+function tn(key, n, vars) {
+  const form = new Intl.PluralRules(state.lang).select(n) === "one" ? "_one" : "_other";
+  return t(key + form, Object.assign({ n: n }, vars || {}));
+}
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+function num(n) { return new Intl.NumberFormat(state.lang, { maximumFractionDigits: 2 }).format(n); }
+function money(n, currency) {
+  const digits = Number.isInteger(n) ? 0 : 2;
+  try { return new Intl.NumberFormat(state.lang, { style: "currency", currency: currency, minimumFractionDigits: digits, maximumFractionDigits: digits }).format(n); }
+  catch { return num(n) + " " + currency; }
+}
+function utc(iso) { const [y, m, d] = iso.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d || 1)); }
+function dateFmt(opts) { return new Intl.DateTimeFormat(state.lang, Object.assign({ timeZone: "UTC" }, opts)); }
+function monthTitle(key) { return cap(dateFmt({ month: "long", year: "numeric" }).format(utc(key))); }
+function dayTitle(iso) { return cap(dateFmt({ weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(utc(iso))); }
+function shortDate(iso) { return dateFmt({ day: "numeric", month: "long", year: "numeric" }).format(utc(iso)); }
+// 2026-11-02 is a Monday: the week starts on Monday.
+function weekdayName(i, style) { return dateFmt({ weekday: style }).format(new Date(Date.UTC(2026, 10, 2 + i))); }
+const WEEKDAY_INDEX = { mon: 0, tue: 1, wed: 2, thu: 3, fri: 4, sat: 5, sun: 6 };
+
+function applyLang() {
+  document.documentElement.lang = state.lang;
+  document.title = t("page_title");
+  for (const node of document.querySelectorAll("[data-t]")) node.textContent = t(node.dataset.t);
+  for (const node of document.querySelectorAll("[data-t-label]")) node.setAttribute("aria-label", t(node.dataset.tLabel));
+  $("#lang").value = state.lang;
+}
+
+// ---- the steps of a price, said from their facts (params), not from the engine's English
+function stepText(s, currency) {
+  const p = s.params || {};
+  const m = (v) => money(v, currency);
+  const pct = (v) => num(v);
+  switch (s.factor) {
+    case "base": return { label: t("step_base") };
+    case "season": return { label: t("step_season", { name: p.name }), note: p.fixed ? t("note_fixed_price") : null };
+    case "dayOfWeek": return { label: cap(weekdayName(WEEKDAY_INDEX[p.weekday], "long")) };
+    case "lastMinute": {
+      const notes = [p.daysAhead === 0 ? t("note_tonight") : tn("note_days_ahead", p.daysAhead)];
+      if (p.gapNotAdded) notes.push(t("note_gap_not_added", { p: pct(p.gapNotAdded) }));
+      return { label: tn("step_last_minute", p.withinDays), note: notes.join(" · ") };
+    }
+    case "farOut": return { label: tn("step_far_out", p.fromDays), note: tn("note_days_ahead", p.daysAhead) };
+    case "gap": return { label: tn("step_gap", p.nights), note: p.lastMinuteNotAdded ? t("note_last_minute_not_added", { p: pct(p.lastMinuteNotAdded) }) : null };
+    case "occupancy": return { label: t(p.kind === "busy" ? "step_busy_month" : "step_quiet_month"), note: t("note_month_booked", { p: pct(p.monthPercent) }) };
+    case "scarcity": {
+      const notes = [tn("rooms_free", p.free, { total: p.total }), t("note_taken", { p: pct(p.takenNow) })];
+      if (p.cap != null) notes.push(t("note_capped", { p: pct(p.cap) }));
+      return { label: t("step_scarcity"), note: notes.join(" · ") };
+    }
+    case "market": {
+      const notes = [p.signal === "occupancy"
+        ? t("note_market_occupancy", { value: pct(p.value), average: pct(p.average) })
+        : t("note_market_price", { value: m(p.value), average: m(p.average) })];
+      if (p.cap != null) notes.push(t("note_capped", { p: pct(p.cap) }));
+      if (p.comparables != null) notes.push(tn("note_comparables", p.comparables));
+      notes.push(String(p.attribution) + (p.estimated ? ", " + t("note_estimated") : ""));
+      if (p.readOn) notes.push(t("note_read_on", { date: shortDate(p.readOn) }));
+      return { label: p.area ? t("step_market_area", { area: p.area }) : t("step_market"), note: notes.join(" · ") };
+    }
+    case "event": return { label: t("step_event", { name: p.name, impact: p.impact }), note: p.others ? tn("note_other_events", p.others) : null };
+    case "limits":
+      if (p.kind === "floor") return { label: t("step_floor"), note: t("note_floor", { floor: m(p.floor) }) };
+      if (p.kind === "ceiling") return { label: t("step_ceiling"), note: t("note_ceiling", { ceiling: m(p.ceiling) }) };
+      return { label: t("step_limits"), note: t("note_within", { floor: m(p.floor), ceiling: m(p.ceiling) }) };
+    case "staleCalendar": return { label: t("step_stale"), note: tn("note_idle", p.idleDays) };
+    case "historicalFloor": return {
+      label: t("step_history_floor"),
+      note: t("note_history", { p: pct(p.percent), month: dateFmt({ month: "long", year: "numeric" }).format(utc(p.month)), average: m(p.average), n: p.nights }),
+    };
+    case "rounding": return { label: t("step_rounding", { step: m(p.step) }) };
+    case "override": return { label: t("step_override"), note: s.note || null };
+    default: return { label: t("step_unknown", { label: s.label }), note: s.note || null };
+  }
+}
 
 function monthsOf(nights) { return [...new Set(nights.map((n) => n.date.slice(0, 7)))]; }
-function monthTitle(key) {
-  const [y, m] = key.split("-").map(Number);
-  return new Intl.DateTimeFormat("en", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, 1)));
-}
-function dayTitle(iso) {
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Intl.DateTimeFormat("en", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, d)));
-}
 
 async function load() {
-  setStatus("Loading prices…");
+  say("status_loading");
   const res = await fetch("/api/data");
   if (!res.ok) throw new Error((await res.json()).error || res.statusText);
   state.data = await res.json();
+  message = null;
+  if (!savedLang() && LANGS.includes(state.data.language)) { state.lang = state.data.language; applyLang(); }
   const sel = $("#listing");
   sel.replaceChildren(...state.data.listings.map((l, i) => { const o = el("option", null, l.title); o.value = String(i); return o; }));
   fromHash();
@@ -122,7 +210,11 @@ async function load() {
 
 function current() { return state.data.listings[state.listing]; }
 
+// A message (reading, errors) stays until the next load; otherwise the line says when the calendars were read.
+// It is kept as a key so a change of language says it again.
+let message = null;
 function setStatus(text, isError) { const s = $("#status"); s.textContent = text; s.classList.toggle("error", !!isError); }
+function say(key, vars, isError) { message = { key: key, vars: vars, isError: isError }; setStatus(t(key, vars), isError); }
 
 function render() {
   const l = current();
@@ -141,29 +233,30 @@ function render() {
   const lead = (first.getUTCDay() + 6) % 7; // Monday first
 
   const grid = $("#grid");
-  const cells = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => el("div", "dow", d));
+  const cells = [0, 1, 2, 3, 4, 5, 6].map((i) => el("div", "dow", weekdayName(i, "short")));
   for (let i = 0; i < lead; i++) cells.push(el("div", "cell empty"));
   for (let d = 1; d <= daysIn; d++) {
     const iso = state.month + "-" + String(d).padStart(2, "0");
     const n = byDate.get(iso);
     const c = el(n ? "button" : "div", "cell");
-    c.append(el("div", "day", String(d)));
+    c.append(el("div", "day", num(d)));
     if (!n) { c.classList.add("past"); cells.push(c); continue; }
     c.type = "button";
     c.dataset.date = iso;
     if (n.status !== "available") {
       c.classList.add(n.status);
-      c.append(el("div", "price", n.status));
+      c.append(el("div", "price", t(n.status === "reserved" ? "cell_reserved" : "cell_blocked")));
+      c.setAttribute("aria-label", t(n.status === "reserved" ? "aria_night_reserved" : "aria_night_blocked", { date: dayTitle(iso) }));
     } else {
-      c.append(el("div", "price", fmt(n.price)));
-      c.append(el("div", "min", "min " + n.minStay));
+      c.append(el("div", "price", num(n.price)));
+      c.append(el("div", "min", t("cell_min", { n: n.minStay })));
       const bar = n.price > l.basePrice ? "up" : n.price < l.basePrice ? "down" : null;
       if (bar) c.append(el("div", "bar " + bar));
+      c.setAttribute("aria-label", tn("aria_night_for_sale", n.minStay, { date: dayTitle(iso), price: money(n.price, l.currency) }));
     }
     // A room type of a small hotel: how many rooms are still free that night.
     if (n.units) c.append(el("div", "min", n.units.free + "/" + n.units.total));
     if (state.selected === iso) c.classList.add("selected");
-    c.setAttribute("aria-label", iso + (n.price == null ? ", " + n.status : ", " + fmt(n.price) + " " + l.currency + ", minimum " + n.minStay + " nights"));
     c.addEventListener("click", () => openNight(iso));
     cells.push(c);
   }
@@ -172,8 +265,9 @@ function render() {
   const forSale = nights.filter((n) => n.price != null);
   const reserved = nights.filter((n) => n.status === "reserved").length;
   const avg = forSale.length ? forSale.reduce((a, n) => a + n.price, 0) / forSale.length : null;
-  $("#stats").textContent = forSale.length + " for sale · " + reserved + " reserved" + (avg == null ? "" : " · average " + fmt(Math.round(avg)) + " " + l.currency);
-  setStatus(l.lastSync ? "Calendars read " + new Date(l.lastSync).toLocaleString() : "Calendars not read yet: press Recalculate.");
+  $("#stats").textContent = t("stats", { forSale: forSale.length, reserved: reserved }) + (avg == null ? "" : " · " + t("stats_average", { price: money(Math.round(avg), l.currency) }));
+  if (message) setStatus(t(message.key, message.vars), message.isError);
+  else setStatus(l.lastSync ? t("status_read", { when: new Intl.DateTimeFormat(state.lang, { dateStyle: "medium", timeStyle: "short" }).format(new Date(l.lastSync)) }) : t("status_not_read"));
 }
 
 function openNight(iso) {
@@ -185,33 +279,36 @@ function openNight(iso) {
   const p = $("#panel");
   const body = $("#panel-body");
   const parts = [el("h3", null, dayTitle(iso))];
-  const rooms = n.units ? el("div", "sub", n.units.free + (n.units.free === 1 ? " camera libera" : " camere libere") + " su " + n.units.total) : null;
+  const rooms = n.units ? el("div", "sub", tn("rooms_free", n.units.free, { total: n.units.total })) : null;
   if (n.price == null) {
-    parts.push(el("div", "big", n.status === "reserved" ? "Reserved" : "Blocked"));
-    parts.push(el("div", "sub", "Not for sale: no price."));
+    parts.push(el("div", "big", t(n.status === "reserved" ? "big_reserved" : "big_blocked")));
+    parts.push(el("div", "sub", t("not_for_sale")));
     if (rooms) parts.push(rooms);
   } else {
-    parts.push(el("div", "big", fmt(n.price) + " " + l.currency));
-    const rule = { override: "date override", farOut: "far out", lastMinute: "last minute", default: "default", gap: "lowered to fill the gap" }[n.minStaySource];
-    parts.push(el("div", "sub", "Minimum stay " + n.minStay + " night" + (n.minStay === 1 ? "" : "s") + " (" + rule + ")"));
+    parts.push(el("div", "big", money(n.price, l.currency)));
+    parts.push(el("div", "sub", tn("min_stay", n.minStay, { why: t("min_" + n.minStaySource) })));
     if (rooms) parts.push(rooms);
     const list = el("ul", "steps");
     for (const s of n.steps) {
+      const text = stepText(s, l.currency);
       const li = el("li");
-      li.append(el("div", "lbl", s.factor === "base" ? "Base price" : s.label));
-      li.append(el("div", "val", fmt(s.after)));
+      li.append(el("div", "lbl", text.label));
+      li.append(el("div", "val", money(s.after, l.currency)));
       let change = "";
-      if (s.percent != null) change = (s.percent >= 0 ? "+" : "") + fmt(s.percent) + "%";
-      else if (s.before !== s.after) change = (s.after > s.before ? "+" : "−") + fmt(Math.abs(Math.round((s.after - s.before) * 100) / 100));
+      if (s.percent != null) change = (s.percent >= 0 ? "+" : "−") + num(Math.abs(s.percent)) + "%";
+      else if (s.before !== s.after) change = (s.after > s.before ? "+" : "−") + num(Math.abs(Math.round((s.after - s.before) * 100) / 100));
       const chg = el("div", "chg", change);
       if (s.after < s.before) chg.classList.add("neg"); else if (s.after > s.before) chg.classList.add("pos");
       li.append(el("div"), chg);
-      if (s.note) li.append(el("div", "note", s.note));
+      if (text.note) li.append(el("div", "note", text.note));
       list.append(li);
     }
     parts.push(list);
   }
-  parts.push(el("div", "raw", n.explanation));
+  // The engine's own sentence, in English: handy in a screenshot sent for help.
+  const raw = el("details", "raw");
+  raw.append(el("summary", null, t("raw_summary")), el("div", null, n.explanation));
+  parts.push(raw);
   body.replaceChildren(...parts);
   p.classList.add("open");
   document.body.classList.add("panel-open");
@@ -241,21 +338,31 @@ function fromHash() {
 async function refresh() {
   const btn = $("#refresh");
   btn.disabled = true;
-  setStatus("Reading the calendars…");
+  say("status_reading");
   try {
     const res = await fetch("/api/refresh", { method: "POST", headers: { "X-Fairnight": "1" } });
     const body = await res.json();
+    if (res.status === 409) throw new Error(t("error_busy"));
     if (!res.ok) throw new Error(body.error || res.statusText);
     const failed = body.reports.filter((r) => !r.ok);
     await load();
-    if (failed.length) setStatus("Not read: " + failed.map((r) => r.listing + " · " + r.feed + " (" + r.error + ")").join("; "), true);
+    if (failed.length) {
+      say("status_not_read_list", { list: failed.map((r) => r.listing + " · " + r.feed + " (" + r.error + ")").join("; ") }, true);
+    }
   } catch (e) {
-    setStatus("Recalculate failed: " + e.message, true);
+    say("status_refresh_failed", { error: e.message }, true);
   } finally {
     btn.disabled = false;
   }
 }
 
+$("#lang").addEventListener("change", (e) => {
+  state.lang = e.target.value;
+  saveLang(state.lang);
+  applyLang();
+  if (!state.data) { if (message) setStatus(t(message.key, message.vars), message.isError); return; }
+  if (state.selected) openNight(state.selected); else render();
+});
 $("#listing").addEventListener("change", (e) => { state.listing = Number(e.target.value); state.month = null; closePanel(); });
 $("#prev").addEventListener("click", () => { const ms = monthsOf(current().nights); state.month = ms[Math.max(0, ms.indexOf(state.month) - 1)]; render(); });
 $("#next").addEventListener("click", () => { const ms = monthsOf(current().nights); state.month = ms[Math.min(ms.length - 1, ms.indexOf(state.month) + 1)]; render(); });
@@ -267,8 +374,13 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "ArrowLeft" && !$("#prev").disabled) $("#prev").click();
   if (e.key === "ArrowRight" && !$("#next").disabled) $("#next").click();
 });
-load().catch((e) => setStatus("Could not load the prices: " + e.message, true));
+state.lang = savedLang() || "en";
+applyLang();
+load().catch((e) => say("status_load_failed", { error: e.message }, true));
 `;
+
+/** The texts as a script literal: "<" escaped so no text can close the script tag. */
+const textsJson = () => JSON.stringify(PAGE_TEXTS).replace(/</g, "\\u003c");
 
 export function renderPage(nonce: string): string {
   return `<!doctype html>
@@ -277,37 +389,43 @@ export function renderPage(nonce: string): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>Fairnight calendar</title>
+<title>${PAGE_TEXTS.en.page_title}</title>
 <style nonce="${nonce}">${STYLE}</style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="brand">Fairnight <span>· nightly prices</span></div>
-    <select id="listing" aria-label="Listing"></select>
-    <button class="btn primary" id="refresh" type="button">Recalculate</button>
+    <div class="brand">Fairnight <span>· <span data-t="brand_sub">${PAGE_TEXTS.en.brand_sub}</span></span></div>
+    <select id="lang" class="lang" data-t-label="language" aria-label="${PAGE_TEXTS.en.language}">
+      <option value="it">IT</option>
+      <option value="es">ES</option>
+      <option value="en">EN</option>
+    </select>
+    <select id="listing" data-t-label="listing" aria-label="${PAGE_TEXTS.en.listing}"></select>
+    <button class="btn primary" id="refresh" type="button" data-t="recalculate">${PAGE_TEXTS.en.recalculate}</button>
   </header>
   <div class="status" id="status" role="status"></div>
   <div class="monthbar">
-    <button class="btn" id="prev" type="button" aria-label="Previous month">‹</button>
+    <button class="btn" id="prev" type="button" data-t-label="previous_month" aria-label="${PAGE_TEXTS.en.previous_month}">‹</button>
     <h2 id="month"></h2>
-    <button class="btn" id="next" type="button" aria-label="Next month">›</button>
+    <button class="btn" id="next" type="button" data-t-label="next_month" aria-label="${PAGE_TEXTS.en.next_month}">›</button>
     <div class="stats" id="stats"></div>
   </div>
   <div class="grid" id="grid"></div>
   <div class="legend">
-    <span><i class="l-res"></i>reserved</span>
-    <span><i class="l-blk"></i>blocked</span>
-    <span><i class="l-up"></i>above base price</span>
-    <span><i class="l-down"></i>below base price</span>
-    <span>click a night to see why</span>
+    <span><i class="l-res"></i><span data-t="legend_reserved">${PAGE_TEXTS.en.legend_reserved}</span></span>
+    <span><i class="l-blk"></i><span data-t="legend_blocked">${PAGE_TEXTS.en.legend_blocked}</span></span>
+    <span><i class="l-up"></i><span data-t="legend_above">${PAGE_TEXTS.en.legend_above}</span></span>
+    <span><i class="l-down"></i><span data-t="legend_below">${PAGE_TEXTS.en.legend_below}</span></span>
+    <span data-t="legend_hint">${PAGE_TEXTS.en.legend_hint}</span>
   </div>
 </div>
-<aside class="panel" id="panel" aria-hidden="true" aria-label="Night details">
-  <button class="btn close" id="close" type="button" aria-label="Close">✕</button>
+<aside class="panel" id="panel" aria-hidden="true" data-t-label="night_details" aria-label="${PAGE_TEXTS.en.night_details}">
+  <button class="btn close" id="close" type="button" data-t-label="close" aria-label="${PAGE_TEXTS.en.close}">✕</button>
   <div id="panel-body"></div>
 </aside>
-<script nonce="${nonce}">${SCRIPT}</script>
+<script nonce="${nonce}">const TEXTS = ${textsJson()};
+${SCRIPT}</script>
 </body>
 </html>
 `;

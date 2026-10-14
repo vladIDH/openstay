@@ -46,7 +46,7 @@ describe("host config", () => {
     input.listings[2].calendars[0].treatAs = "maybe";
     input.extra = true;
     expect(issuesOf(input)).toEqual([
-      "config.extra: unknown field (allowed: listings, market)",
+      "config.extra: unknown field (allowed: listings, market, language)",
       'listings[0].name: must be a short name with lowercase letters, digits and dashes (like "seaview-loft"), got "Seaview Loft"',
       'listings[0].calendars[0].url: must be an https:// or webcal:// link, got "file:///C:/cal.ics"',
       'listings[0].calendars[1].source: must be one of airbnb, booking, vrbo, other, smoobu, beds24, got "expedia"',

@@ -53,6 +53,8 @@ export function testIo(cwd: string, fetch: FetchLike = fakeFetch({}), now = "202
   let current = new Date(now);
   const io: TestIo = {
     cwd,
+    // A computer in English: the setup proposes a language only from the towns.
+    locale: "en-US",
     lines: [],
     errors: [],
     out: (l) => io.lines.push(...l.split("\n")),

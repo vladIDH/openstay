@@ -45,6 +45,8 @@ export interface DraftRequest {
   messages: ConversationMessage[];
   /** How the host signs (e.g. "Marta"). */
   signature?: string | null;
+  /** The host's language ("it", "es", "en"): the note for the host is written in it. Default English. */
+  hostLanguage?: string | null;
   registration?: Registration | null;
   /** Free nights right before check-in and right after check-out, from the calendars. Dates only. */
   nearby?: { freeBefore: string[]; freeAfter: string[] } | null;
@@ -91,7 +93,9 @@ Answer with JSON only:
 - "language": the ISO 639-1 code of the language of your reply (e.g. "en", "it", "es", "de");
 - "reply": the message for the guest;
 - "needsHost": true when the host must look at this personally (rules 2, 3, 6) or when you are not sure;
-- "note": one short sentence for the host, in English, about what to check before sending (empty when there is nothing).`;
+- "note": one short sentence for the host, in HOST_LANGUAGE, about what to check before sending (empty when there is nothing).`;
+
+const HOST_LANGUAGES: Record<string, string> = { it: "Italian", es: "Spanish", en: "English" };
 
 const escapeTag = (s: string) => s.replace(/</g, "‹").replace(/>/g, "›");
 
@@ -102,7 +106,8 @@ function block(tag: string, content: string): string {
 const SENDER: Record<Sender, string> = { guest: "GUEST", host: "HOST", system: "CHANNEL" };
 
 export function buildPrompt(r: DraftRequest): Prompt {
-  const system = `${RULES}\n\n${block("house", escapeTag((r.house.title ? `# ${r.house.title}\n\n` : "") + houseText(r.house)))}`;
+  const rules = RULES.replace("HOST_LANGUAGE", HOST_LANGUAGES[r.hostLanguage ?? "en"] ?? "English");
+  const system = `${rules}\n\n${block("house", escapeTag((r.house.title ? `# ${r.house.title}\n\n` : "") + houseText(r.house)))}`;
 
   const s = r.stay;
   const stayLines = [

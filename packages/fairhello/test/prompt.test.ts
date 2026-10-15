@@ -40,6 +40,13 @@ describe("buildPrompt", () => {
     expect(p.user).toContain("HOST: Welcome!");
   });
 
+  it("asks for the note to the host in the host's language", () => {
+    expect(buildPrompt(request()).system).toContain('"note": one short sentence for the host, in English');
+    expect(buildPrompt(request({ hostLanguage: "it" })).system).toContain("in Italian");
+    expect(buildPrompt(request({ hostLanguage: "es" })).system).toContain("in Spanish");
+    expect(buildPrompt(request({ hostLanguage: "xx" })).system).toContain("in English");
+  });
+
   it("is the same system part for every stay of a listing (cacheable)", () => {
     expect(buildPrompt(request()).system).toBe(buildPrompt(request({ today: "2026-11-06", messages: [{ from: "guest", text: "Hi" }] })).system);
   });

@@ -66,7 +66,7 @@ body{font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit
 .wrap{max-width:860px;margin:0 auto;padding:22px 20px 48px}
 header{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:6px}
 .brand{font-weight:700;font-size:17px;margin-right:auto}.brand span{color:var(--muted);font-weight:400;font-size:14px}
-nav{display:flex;gap:10px;font-size:13px}nav a{color:var(--muted);text-decoration:none}nav a[aria-current]{color:var(--text);font-weight:700}
+nav{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:13px}nav a{color:var(--muted);text-decoration:none}nav a[aria-current]{color:var(--text);font-weight:700}
 a{color:var(--accent)}
 .intro,.privacy{color:var(--muted);font-size:13px;margin:4px 0 14px}
 .bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:12px 16px;margin-bottom:16px;background:var(--card);border:1px solid var(--line);border-radius:14px}
@@ -76,7 +76,7 @@ a{color:var(--accent)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:700}
 .banner{border-radius:12px;padding:10px 14px;margin:0 0 14px;background:var(--card-2);border:1px solid var(--line)}.banner.bad{color:var(--bad)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin:0 0 16px}
-.card h2{font-size:17px;margin:0 0 2px}.meta{color:var(--muted);font-size:13px;margin:0 0 12px}
+.card h2{font-size:17px;margin:0 0 2px;overflow-wrap:anywhere}.meta{color:var(--muted);font-size:13px;margin:0 0 12px;overflow-wrap:anywhere}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}.chip{font-size:12px;border-radius:999px;padding:3px 10px;border:1px solid var(--line);color:var(--muted)}
 .chip.warn{border-color:var(--up);color:var(--up)}
 .msgs{display:flex;flex-direction:column;gap:6px;margin:0 0 12px}

@@ -80,7 +80,15 @@ export function registrationOf(db: Db, listing: HostListing, stay: { check_in: s
   return { registered: row ? peopleCount(db, row.id) : 0 };
 }
 
-export function draftRequest(db: Db, house: House, listing: HostListing, stay: HelloStayRow, today: string, settings: HelloSettings): DraftRequest {
+export function draftRequest(
+  db: Db,
+  house: House,
+  listing: HostListing,
+  stay: HelloStayRow,
+  today: string,
+  settings: HelloSettings,
+  hostLanguage: string | null = null,
+): DraftRequest {
   return {
     house,
     stay: {
@@ -95,6 +103,7 @@ export function draftRequest(db: Db, house: House, listing: HostListing, stay: H
     today,
     messages: conversation(db, stay.id).map((m) => ({ from: m.sender, text: m.text })),
     signature: settings.signature,
+    hostLanguage,
     registration: registrationOf(db, listing, stay),
     nearby: nearbyNights(db, listing, stay, today),
   };
@@ -154,7 +163,7 @@ export async function writeDrafts(db: Db, dir: string, io: Io, config: HostConfi
       report.postponed++;
       continue;
     }
-    const request = draftRequest(db, house, listing, stay, today, settings);
+    const request = draftRequest(db, house, listing, stay, today, settings, config.language ?? null);
     try {
       const answer = await askModel(buildPrompt(request), settings, dir, io);
       const draft = finishDraft(answer.draft, request);

@@ -26,6 +26,7 @@ import { connectAirRoi, deleteMarketData, importAirRoi, importFile, marketStatus
 import { formatFeedReport, syncEverything } from "./sync-all.js";
 import { GUEST_USAGE, runGuests } from "./guests/commands.js";
 import { runPilotCommand } from "./pilota-comandi.js";
+import { HELLO_USAGE, runHello } from "./hello/commands.js";
 
 export const USAGE = `Fairnight: dynamic prices for short-term rentals, on your own computer.
 
@@ -64,6 +65,9 @@ Autopilot (every day: read the calendars, price, write to Smoobu or Beds24 where
 Guest registration (Fairguest, Spain: SES.HOSPEDAJES and Mossos d'Esquadra):
 ${GUEST_USAGE}
 
+Replies to guests (Fairhello: drafts from Smoobu and Beds24 messages, every reply approved by you):
+${HELLO_USAGE}
+
 Every command works in the current folder; use --dir <folder> to point at another one.`;
 
 const OPTIONS = {
@@ -95,6 +99,7 @@ const OPTIONS = {
   quartiere: { type: "string" },
   pianificato: { type: "boolean" },
   ora: { type: "string" },
+  "senza-bozze": { type: "boolean" },
   help: { type: "boolean", short: "h" },
 } as const;
 
@@ -160,6 +165,10 @@ export async function main(argv: string[], io: Io): Promise<number> {
       case "ospiti":
       case "guests":
         return await runGuests(dir, values, rest, io);
+      case "risposte":
+      case "hello":
+      case "replies":
+        return await runHello(dir, values, rest, io);
       default:
         throw new UsageError(`Unknown command "${command}".`);
     }

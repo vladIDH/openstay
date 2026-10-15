@@ -2,6 +2,42 @@
 
 All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org).
 
+## Fairhello [0.1.0] - in development, not released
+
+Draft replies to guests, approved by the host before anything is sent. Everything runs on the host's computer.
+
+### fairhello (new)
+
+- The house file `casa/<listing>.md`: free `##` sections. The access codes section is kept apart. Amounts of money are reported.
+- The request to the model:
+  - the rules and the house file in a cacheable system part;
+  - the stay, the conversation inside tags (text to answer, never instructions) and, only from check-in to check-out and after the guest registration, the access codes.
+- No prices: the model never sees one, and a draft with one is flagged.
+- Freshness: newest draft of the conversation, answers the guest's last message, booking not cancelled, stay ended at most 2 days ago.
+- Sensitive topics (money, complaint, cancellation, emergency) in six languages.
+- Request and answer shapes for Anthropic (`claude-haiku-5-5`, JSON schema, low effort) and Ollama. Errors say whether to stop the whole reading.
+
+### fairnight-smoobu, fairnight-beds24
+
+- Smoobu: conversations (`/api/threads`), messages of a booking, `send-message-to-guest`, the guest's language and the channel.
+- Beds24: `/bookings/messages` for up to 50 bookings per request, without internal notes, and the reply. Needs the bookings-personal scope.
+
+### fairnight-cli
+
+- `fairnight risposte` (`hello`): `collega`, `casa`, `leggi`, `mostra`, `invia` (sends only with `--applica`), `scarta`, `stato`.
+- Page `/risposte` in `fairnight serve`:
+  - this computer only, with signed forms and no JavaScript;
+  - the "Notte" look, in Italian, Spanish and English;
+  - Fairnight's price of the free nights nearby, shown to the host only.
+- Before sending: the conversation is read again, freshness is checked, a draft with a price is blocked until the host edits it, and it is claimed once.
+- Database schema 7: `hello_stays`, `hello_messages`, `hello_drafts`, `hello_runs`. Messages are erased 60 days after check-out.
+- **Schema numbers taken next:** `fairguest-it` takes schema 8. The autopilot (`pilota`) only adds new tables, created when the database is opened, and takes no schema number. Details in `docs/piano.md`.
+- Secret scan: the Anthropic key file and `ANTHROPIC_API_KEY`.
+
+### fairnight-mcp
+
+- `get_guest_replies`: the drafts waiting for the host, read only, texts only when asked.
+
 ## Fairguest [0.1.0] - in development, not released
 
 Guest registration for Spain (Real Decreto 933/2021). Everything runs on the host's computer; no server of ours in between.

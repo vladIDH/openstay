@@ -9,9 +9,10 @@
  * - GET  /api/ping   "this is Fairnight, for this folder": lets `fairnight apri`
  *   find a calendar that is already running instead of starting a second one
  * - GET/POST /checkin/<code>  the guest check-in form (Fairguest), local network only
+ * - GET/POST /risposte  the replies to guests to approve (Fairhello), this computer only
  * - GET/POST /api/pilot…  the autopilot: its state, and its switches for this computer only (pilota-pagina.ts)
- * The page writes only through "Recalculate", which runs the same sync as
- * `fairnight sync`, and through the autopilot switches.
+ * The calendar page writes only through "Recalculate", which runs the same
+ * sync as `fairnight sync`, and through the autopilot switches.
  */
 import { createHash, randomBytes } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
@@ -21,6 +22,7 @@ import { loadHostConfig, type HostConfig } from "./config.js";
 import { openDb } from "./db.js";
 import { dbPath, localToday, type Io } from "./io.js";
 import { handleCheckin, type CheckinContext } from "./guests/checkin.js";
+import { handleReplies, type RepliesContext } from "./hello/page.js";
 import { applyRetention, guestsEnabled, prefillFromCalendar } from "./guests/store.js";
 import { renderPage } from "./page.js";
 import { handlePilot, PAGE_CHECK_MS, pageRunIfDue, type PilotPageContext } from "./pilota-pagina.js";
@@ -97,6 +99,7 @@ export function createHandler(opts: ServeOptions): (req: IncomingMessage, res: S
   let refreshing: Promise<unknown> | null = null;
   const checkin: CheckinContext = { dir: opts.dir, io: opts.io, secret: randomBytes(32), failures: new Map() };
   const pilot = opts.pilot ?? { dir: opts.dir, io: opts.io, previews: new Map(), busy: false };
+  const replies: RepliesContext = { dir: opts.dir, io: opts.io, secret: randomBytes(32), ...(opts.today !== undefined ? { today: opts.today } : {}) };
 
   return (req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
@@ -104,6 +107,7 @@ export function createHandler(opts: ServeOptions): (req: IncomingMessage, res: S
     const run = async () => {
       if (await handleCheckin(req, res, url, checkin, randomBytes(16).toString("base64"))) return;
       if (await handlePilot(req, res, url, pilot)) return;
+      if (await handleReplies(req, res, url, replies, randomBytes(16).toString("base64"))) return;
       if (req.method === "GET" && url.pathname === "/") {
         const nonce = randomBytes(16).toString("base64");
         send(res, 200, "text/html; charset=utf-8", renderPage(nonce), {
@@ -200,6 +204,7 @@ export async function startServer(opts: ServeOptions & { port: number; lan: bool
             : "  guest check-in forms: only on this computer; add --lan to fill them in on a phone or tablet",
         );
       }
+      opts.io.out(`  replies to guests: http://localhost:${port}/risposte (this computer only)`);
       opts.io.out("Press Ctrl+C to stop.");
       resolve(server);
     });

@@ -29,7 +29,7 @@ done
 
 NODE_MINIMO=22
 PAGINA_NODE="https://nodejs.org/it/download"
-PACCHETTI="fairnight fairguest fairnight-smoobu fairnight-beds24 fairnight-market fairnight-cli"
+PACCHETTI="fairnight fairguest fairhello fairnight-smoobu fairnight-beds24 fairnight-market fairnight-cli"
 QUI="$(cd "$(dirname "$0")" && pwd)"
 PROGETTO="$(dirname "$QUI")"
 PROGRAMMA="$CARTELLA/programma"

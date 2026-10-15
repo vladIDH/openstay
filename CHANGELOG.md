@@ -10,7 +10,7 @@ The first version published on npm and on GitHub Releases. It brings the connect
 
 - **Smoobu connector** (#1): HMAC-signed API, import of apartments and bookings, prices and minimum stays written only after the host confirms.
 - **Beds24 connector** (#2): invite code and refresh token, credits kept under half of the window, same confirm-then-write flow.
-- **Zone data** (#3, #10): the host's own CSV, Inside Airbnb files the host downloads, ISTAC open data for the Canary Islands, and a suggested base price the host confirms by hand. Every remote source is off unless switched on.
+- **Zone data** (#3, #10): the host's own CSV, Inside Airbnb files the host downloads, ISTAC open data for the Canary Islands, AirROI with the host's own key (used with AirROI's agreement), and a suggested base price the host confirms by hand.
 - **Fairguest** (#4, #9, #13, #14, #15): guest registration on the host's computer, encrypted with a passphrase only the host knows. Spain: the Mossos d'Esquadra file and the SES.HOSPEDAJES rules; Italy: Alloggiati Web and the regional Istat data. A check-in form on the host's network or through a link, with the document read in the guest's browser.
 - **Installer for hosts** (#5, #16): a double-click file for Windows and Mac, a guided setup in Italian (`fairnight configura`) and a one-click calendar (`fairnight apri`), tried in CI on both systems.
 - **Small hotels** (#6): room types with several identical rooms, occupancy by room-night, a few-rooms-left factor.
@@ -32,7 +32,10 @@ The first version published on npm and on GitHub Releases. It brings the connect
 - fairnight-market: ISTAC holiday homes of the Canary Islands (ADR by municipality and size, open data), INE tourist apartments (occupancy by tourist point), Inside Airbnb filter by guests (`accommodates`).
 - fairnight-cli: `fairnight mercato prezzo-base [--listing] [--applica]`; `mercato importa --fonte istac --comune <code> [--ospiti N]`; `mercato importa --fonte ine --punto <name>`, off (`market.ine.enabled`) while INE's licence is unclear; `--ospiti` on import; a listing field `guests`; which homes a zone describes is kept and shown by `mercato stato`.
 - Calendar page: the suggested base price with "Use this price" after a confirmation, only on the computer that runs Fairnight.
-- AirROI stays off until AirROI confirms its terms in a formal written document.
+- AirROI is on, used with AirROI's agreement (15 October 2026), and still optional: it needs the host's own key and a zone under `market.airroi.areas`, and `market.airroi.enabled: false` switches it off.
+  - No 30-day limit any more: the first `fairnight sync` (also the autopilot's and the page's Recalculate) 30 days after the last read reads the AirROI zones again; on failure the old data stays and the sync says why.
+  - "Powered by AirROI (https://www.airroi.com)" wherever AirROI data appears; on the calendar page it is a link to https://www.airroi.com.
+  - AirROI zone data also feeds the suggested base price.
 
 #### fairnight (engine)
 
@@ -54,7 +57,7 @@ The first version published on npm and on GitHub Releases. It brings the connect
 - The host's own zone CSV: date, occupancy, average price, comparables, with headers in English, Italian or Spanish.
 - Inside Airbnb: only the files the host downloads (`calendar.csv(.gz)`, optional `listings.csv(.gz)` for comparables), read as a stream. Attribution "Inside Airbnb (insideairbnb.com), CC BY 4.0". The occupancy is marked as estimated, and listings closed on every night are left out.
 - AirROI client with the host's own key:
-  - only `GET /markets/search` and `POST /markets/metrics/all`, never price recommendations;
+  - only `GET /markets/search` and `POST /markets/metrics/all`;
   - retries on 429 and 5xx;
   - the key never appears in an error.
 - A fake AirROI server for tests, with invented data.
@@ -96,8 +99,7 @@ The first version published on npm and on GitHub Releases. It brings the connect
 - Database schema 3: `beds24_stays`, `beds24_pushes`.
 - `fairnight mercato importa <file> --zona <name>`: zone data from the host's CSV or from Inside Airbnb files. Use `--annunci`, `--tipo`, `--camere` and `--quartiere` to keep comparables, and `--dry-run` to check first.
 - `fairnight mercato importa --fonte airroi`, `fairnight mercato collega`: AirROI with the host's own key.
-  - Off (`market.airroi.enabled: false`) until AirROI confirms its terms in writing.
-  - When on: `AIRROI_API_KEY` first, then `airroi-credentials.json` (for the current user only); data deleted after 30 days.
+  - `AIRROI_API_KEY` first, then `airroi-credentials.json` (for the current user only); data read again every 30 days, deleted on request.
 - `fairnight mercato stato` and `fairnight mercato cancella [--zona] [--fonte]`.
 - Listings choose their zone with `marketArea`.
 - Database schema 4: `market_areas`, `market_days`.

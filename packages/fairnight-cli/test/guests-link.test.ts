@@ -185,7 +185,7 @@ describe("fairnight ospiti link", () => {
         sex: "female",
         nationality: "ESP",
         document: { type: "dni", number: "00000000T", support: "ZZZ000000" },
-        address: { country: "ESP", street: "Calle de Prueba 1", postalCode: "08000", municipalityCode: "080000" },
+        address: { country: "ESP", street: "Calle de Prueba 1", postalCode: "08000", municipalityCode: "080193" },
         email: "ospite.prova@example.com",
       },
       payment: "platform",

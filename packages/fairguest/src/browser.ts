@@ -19,3 +19,5 @@ export type { X25519Fallback } from "./web-seal.js";
 export { BOX_ID, linkFor, readLinkFragment, relayPlace } from "./link.js";
 export type { LinkPayload } from "./link.js";
 export { residenceProblems } from "./istat/record.js";
+export { esMunicipalities, esMunicipalityByCode, findEsMunicipality, normalizePlace, sesMunicipalityCode } from "./countries/es-municipalities.js";
+export type { Municipality, MunicipalityMatch } from "./countries/es-municipalities.js";

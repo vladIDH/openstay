@@ -70,3 +70,5 @@ export type { IstatGuest, IstatStay } from "./istat/record.js";
 export { NOT_SPECIFIED_TOURISM, NOT_SPECIFIED_TRANSPORT, Ross1000Client, rossFile } from "./istat/ross1000.js";
 export type { RossDay, RossOutcome } from "./istat/ross1000.js";
 export { dayFigures, monthSummary, provenance, PROVINCES, trentoCsv, umbriaDay } from "./istat/files.js";
+export { esMunicipalities, esMunicipalityByCode, findEsMunicipality, normalizePlace, sesMunicipalityCode } from "./countries/es-municipalities.js";
+export type { Municipality, MunicipalityMatch } from "./countries/es-municipalities.js";

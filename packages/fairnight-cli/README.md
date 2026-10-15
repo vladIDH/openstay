@@ -257,7 +257,7 @@ fairnight ospiti cancella <stay> --persona 2 --applica
 fairnight ospiti pulisci                                  # apply the retention rules now, and show each stay's rule
 ```
 
-The INE code of the municipality, needed for guests who live in Spain, is not asked in the form: guests rarely know it. Add it with `correggi`.
+The INE code of the municipality, needed for guests who live in Spain, comes from the town the guest picks in the form (the INE's official list, suggested as they type). `correggi … address.municipalityCode` takes 5 or 6 digits and refuses a code that does not exist.
 
 **Retention runs by itself** at every `fairnight ospiti` command, at every `sync` and when `serve` starts. It deletes the guests, the encrypted details, the form link and any file, and keeps only dates and the record of what was sent. Backups and copies of `data/fairnight.db` are not touched: erasing works only on the file itself.
 

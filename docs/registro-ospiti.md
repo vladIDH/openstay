@@ -479,6 +479,7 @@ Fra i tre paesi è quello più facile da aggiungere.
 | Precompilazione da iCal, Smoobu e Beds24 | `prefillFromCalendar`, `noteChannelGuests` |
 | File per i Mossos | `packages/fairguest/src/countries/es-mossos.ts`, `fairnight ospiti prepara` |
 | Promemoria: comando e tool MCP in sola lettura | `fairnight ospiti` (uscita 1 se c'è un ritardo), `get_guest_deadlines` |
+| Codice INE del comune di residenza: il modulo chiede il comune per nome dalla tabella ufficiale INE (6 cifre per i Mossos, 5 per SES) | `packages/fairguest/src/countries/es-municipalities.ts`, guida in [fairguest-spagna.md](fairguest-spagna.md#il-comune-di-residenza) |
 | **SES: stub esplicito** | `prepare` fallisce con `SES_NOT_READY` e dice che mancano gli XSD in `openstay-ses-docs`; nessun XML inventato |
 
 ### Catalogna: il formato è pubblico
@@ -500,6 +501,5 @@ Fra i tre paesi è quello più facile da aggiungere.
 ### Ancora da fare
 
 - **XML di SES** (PV e RH), zip + Base64, SOAP, `consultaLote`, annullamento: dopo gli XSD (sezione 7b). Fino ad allora l'host inserisce i dati sul sito SES e li registra con `fairnight ospiti inviato`.
-- **Codice INE del comune** per chi risiede in Spagna: il modulo non lo chiede, perché un ospite di solito non lo conosce. Lo aggiunge l'host con `fairnight ospiti correggi … address.municipalityCode`. Con la tabella pubblica dell'INE si potrà ricavare dal CAP e dal nome.
 - **Segno sulla pagina calendario** per le notti con un invio mancante: non fatto, per ora ci sono `fairnight ospiti` e il tool MCP.
 - **Invio di un annullamento:** oggi si registra soltanto (`--tipo annullamento`).

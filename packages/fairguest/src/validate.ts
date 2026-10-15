@@ -4,6 +4,7 @@
  * Every problem is reported at once, with the path of the field.
  */
 import { isCountryCode } from "./countries-iso.js";
+import { esMunicipalityByCode } from "./countries/es-municipalities.js";
 import { ageOn, isDate } from "./dates.js";
 import { DOCUMENT_TYPES, KINSHIPS, PAYMENT_TYPES, SEXES } from "./types.js";
 import type { Address, DocumentType, Guest, IdentityDocument, Kind, Kinship, PaymentType, Place, Problem, Sex, Stay } from "./types.js";
@@ -205,8 +206,10 @@ function parseAddress(input: unknown, path: string, problems: Problem[]): Addres
     else a.postalCode = postalCode;
   }
   if (municipalityCode !== undefined) {
-    if (/^\d{6}$/.test(municipalityCode)) a.municipalityCode = municipalityCode;
-    else add("municipalityCode", "must be the 6-digit INE code of the municipality");
+    // Kept with 6 digits (Mossos); 5 digits, as SES writes it, are completed from the INE's list.
+    const m = esMunicipalityByCode(municipalityCode);
+    if (m) a.municipalityCode = m.code;
+    else add("municipalityCode", "must be the INE code of a Spanish municipality (5 digits, like 38001 for Adeje, or 6 with the check digit)");
   }
   if (province !== undefined) {
     if (/^[A-Z]{2}$/.test(province)) a.province = province;
@@ -247,10 +250,9 @@ export function spainRules(stay: Stay, kind: Kind, documentFromAge: number): Pro
 
 /**
  * What one guest must give at check-in. Used by spainRules and by the check-in
- * form, which skips the INE code (a guest cannot be expected to know it: the
- * host adds it).
+ * form, which finds the INE code from the town the guest picks.
  */
-export function guestRules(g: Guest, index: number, checkIn: string, documentFromAge: number, options: { skipMunicipalityCode?: boolean } = {}): Problem[] {
+export function guestRules(g: Guest, index: number, checkIn: string, documentFromAge: number): Problem[] {
   const problems: Problem[] = [];
   const p = `guests[${index}]`;
   const add = (path: string, message: string) => problems.push({ path, message });
@@ -261,7 +263,7 @@ export function guestRules(g: Guest, index: number, checkIn: string, documentFro
   else {
     if (!g.address.street) add(`${p}.address.street`, "the address is required");
     if (g.address.country === "ESP") {
-      if (!g.address.municipalityCode && !options.skipMunicipalityCode) add(`${p}.address.municipalityCode`, "the INE code of the municipality is required for an address in Spain");
+      if (!g.address.municipalityCode) add(`${p}.address.municipalityCode`, "the INE code of the municipality is required for an address in Spain");
       if (!g.address.postalCode) add(`${p}.address.postalCode`, "the postal code is required for an address in Spain");
     } else if (!g.address.locality) add(`${p}.address.locality`, "the town or city is required for an address abroad");
   }

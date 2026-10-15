@@ -21,7 +21,7 @@ export const sesRegistry: Registry = {
   authority: "SES.HOSPEDAJES (Ministerio del Interior)",
   documentTypes: SPAIN_DOCUMENT_TYPES,
   validate: (stay, kind) => spainRules(stay, kind, 18),
-  checkGuest: (g, i, checkIn) => guestRules(g, i, checkIn, 18, { skipMunicipalityCode: true }),
+  checkGuest: (g, i, checkIn) => guestRules(g, i, checkIn, 18),
   deadlines: spainDeadlines,
   prepare() {
     throw new NotAvailableError(SES_NOT_READY);

@@ -237,6 +237,25 @@ describe("check-in form", () => {
     expect(await proxied.text()).not.toContain("Casa di Prova");
   });
 
+  it("asks a guest who lives in Spain for the municipality and keeps its INE code: nothing for the host to correct", async () => {
+    const { dir, stays } = await ready({ country: "ES" });
+    const base = await serve(dir);
+    const html = await (await fetch(`${base}/checkin/${one(stays).code}?lang=es`)).text();
+    expect(html).toContain('<option value="Adeje (Santa Cruz de Tenerife)">');
+    const spanish = { ...HOLDER, nationality: "ESP", country: "ESP", street: "Calle de Prueba 1", postalCode: "38670", phone: "+34 600 000 000" };
+    // A resort is not a municipality: the form asks to pick one from the list.
+    const resort = await postGuest(base, one(stays).code, { ...spanish, locality: "Costa Adeje" });
+    expect(resort.status).toBe(422);
+    expect(await resort.text()).toContain(WORDS.es.invalidFor.municipality as string);
+    const picked = await postGuest(base, one(stays).code, { ...spanish, locality: "adeje" });
+    expect(picked.status).toBe(303);
+    const shown = io(dir);
+    expect(await main(["ospiti", "mostra", one(stays).id], shown)).toBe(0);
+    expect(shown.lines.join("\n")).not.toMatch(/municipalityCode|address/);
+    const d = db(dir);
+    expect(d.prepare("SELECT COUNT(*) AS n FROM guest_people").get()).toEqual({ n: 1 });
+  });
+
   it("shows the stay in the guest's language, with no script and only the payment type", async () => {
     const { dir, stays } = await ready();
     const base = await serve(dir);

@@ -192,6 +192,7 @@ Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web, 
 
 - fairguest: `formValuesFromMrz` fills the form of the listing's country from the MRZ (Spanish DNI with its support number; a document the form does not offer becomes the closest one it does).
 - Tested from the link to the Mossos file; guide for Spanish hosts in Spanish and Italian (docs/fairguest-espana.es.md, docs/fairguest-spagna.md).
+- fairguest: the town of residence in Spain is picked by its name from the INE's official list of municipalities (1 January 2026, 8,132 towns), and the form keeps its INE code: the traveller's part is complete without the host's corrections. 6 digits are kept for the Mossos file, the first 5 go to SES. `correggi` takes 5 or 6 digits and refuses a code that does not exist.
 
 #### Istat, the regional tourist movement
 

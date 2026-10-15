@@ -5,6 +5,7 @@
  * No Node.js and no browser API in here: plain strings in, plain strings out.
  */
 import { countryNames } from "../countries-iso.js";
+import { esMunicipalities, findEsMunicipality } from "../countries/es-municipalities.js";
 import { registryFor } from "../registry.js";
 import { KINSHIPS, PAYMENT_TYPES, SEXES, type Country, type Problem } from "../types.js";
 import { LANGS, WORDS, type Lang, type Words } from "./words.js";
@@ -104,7 +105,7 @@ function fieldOf(path: string): string {
     "address.street": "street",
     "address.postalCode": "postalCode",
     "address.locality": "locality",
-    "address.municipalityCode": "postalCode",
+    "address.municipalityCode": "locality",
     "address.province": "province",
     phone2: "phone",
   };
@@ -121,7 +122,8 @@ export function errorsByField(problems: Problem[], w: Words): Map<string, string
     // (a missing name is already shown on the name fields).
     if (field === "phone" && !contact && !p.path.endsWith("phone")) continue;
     const required = /required|missing/.test(p.message);
-    out.set(field, contact ? w.contactMissing : required ? w.required : (w.invalidFor[field] ?? w.invalid));
+    const municipality = p.path.endsWith("address.municipalityCode");
+    out.set(field, contact ? w.contactMissing : municipality ? (w.invalidFor.municipality as string) : required ? w.required : (w.invalidFor[field] ?? w.invalid));
   }
   return out;
 }
@@ -159,7 +161,7 @@ ${select("nationality", countries)}
 ${first ? "" : select("kinship", KINSHIPS.map((k) => [k, w.kinship[k]]), w.hints.kinship)}
 </fieldset>
 <fieldset><legend>${esc(w.sections.address)}</legend>
-${select("country", countries)}${input("street", "text", 'maxlength="100"')}${input("postalCode", "text", 'maxlength="20"')}${input("locality", "text", 'maxlength="100"')}
+${select("country", countries)}${input("street", "text", 'maxlength="100"')}${input("postalCode", "text", 'maxlength="20" inputmode="numeric"')}${townField(w, state)}
 </fieldset>
 <fieldset><legend>${esc(w.sections.contact)}</legend><p class="hint">${esc(w.hints.contact as string)}</p>
 ${input("phone", "tel", 'maxlength="20" inputmode="tel"')}${input("email", "email", 'maxlength="100" inputmode="email"')}
@@ -175,6 +177,23 @@ ${first ? `<fieldset><legend>${esc(w.sections.payment)}</legend>${select("paymen
 </section>
 <button type="submit">${esc(w.save)}</button>
 </form>`;
+}
+
+let townList: string | null = null;
+
+/** Every Spanish municipality as a suggestion of the town field: plain HTML, it works without JavaScript too. */
+function townOptions(): string {
+  townList ??= `<datalist id="es-towns">${esMunicipalities()
+    .map((m) => `<option value="${esc(m.label)}">`)
+    .join("")}</datalist>`;
+  return townList;
+}
+
+/** The town of residence: in Spain the municipality, picked from the INE's list by its name; abroad, free text. */
+function townField(w: Words, state: FormState): string {
+  const k = "locality";
+  const bad = state.errors.has(k);
+  return `<div${bad ? ' class="has-err"' : ""}><label for="${k}">${esc(w.fields.town as string)} <span class="hint">${esc(w.hints.town as string)}</span></label><input id="${k}" name="${k}" type="text" value="${esc(state.values[k] ?? "")}" maxlength="100" list="es-towns" autocomplete="off"${bad ? ` aria-invalid="true" aria-describedby="${k}-err"` : ""}>${bad ? `<div class="err" id="${k}-err">${esc(state.errors.get(k) as string)}</div>` : ""}${townOptions()}</div>`;
 }
 
 interface Controls {
@@ -231,6 +250,20 @@ ${c.select("docCountry", c.countries)}${hint("docPlace", w.italy.docPlaceHint)}$
 </form>`;
 }
 
+/**
+ * The address as posted. In Spain the town is looked up in the INE's list: when
+ * it is a municipality (the postal code tells apart towns of the same name),
+ * its INE code goes with it and the name becomes the INE's. Otherwise no code,
+ * and the rules ask the guest to pick the municipality from the list.
+ */
+function addressInput(country: string, street: string, postalCode: string, locality: string, province: string): Record<string, string> {
+  const address = { country, street, postalCode, locality, province };
+  if (country.trim().toUpperCase() !== "ESP" || !locality.trim()) return address;
+  const found = findEsMunicipality(locality, postalCode.trim());
+  if (!("municipality" in found)) return address;
+  return { ...address, locality: found.municipality.name, municipalityCode: found.municipality.code };
+}
+
 /** The guest object from the posted form; unknown fields are never read. */
 export function guestInput(f: URLSearchParams): Record<string, unknown> {
   const g = (k: string) => f.get(k) ?? "";
@@ -251,7 +284,7 @@ export function guestInput(f: URLSearchParams): Record<string, unknown> {
       spanish: f.get("docSpanish") === "1" && g("docType") === "passport",
       issuedIn: { country: g("docCountry"), locality: g("docPlace"), province: g("docProvince") },
     },
-    address: { country: g("country"), street: g("street"), postalCode: g("postalCode"), locality: g("locality"), province: g("province") },
+    address: addressInput(g("country"), g("street"), g("postalCode"), g("locality"), g("province")),
     phone: g("phone"),
     email: g("email"),
   };

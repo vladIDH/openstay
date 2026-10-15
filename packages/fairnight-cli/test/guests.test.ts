@@ -306,6 +306,9 @@ describe("check-in form", () => {
     // The form for the next guest is there, folded under "Añadir otro viajero".
     expect(after).toContain('<details class="another"><summary>Añadir otro viajero</summary>');
     expect(after).toContain("Viajero 2");
+    // One privacy text only, the box at the top, with who receives the data and when it is erased.
+    expect(after).toContain('<span class="where">Van a SES.HOSPEDAJES o a los Mossos d');
+    expect(after).not.toContain('<p class="privacy">');
 
     const t = io(dir);
     expect(await main(["ospiti", "esporta", one(stays).id], t)).toBe(0);
@@ -455,7 +458,7 @@ describe("words of the check-in form", () => {
     for (const l of LANGS) {
       const w = WORDS[l];
       expect(Object.keys(w.invalidFor).sort(), l).toEqual(fields);
-      for (const text of [w.steps.data, w.steps.document, w.steps.confirm, w.privacyShort, w.saved(1), w.stepLabel(1), ...Object.values(w.invalidFor)]) {
+      for (const text of [w.steps.data, w.steps.document, w.steps.confirm, w.privacyShort, w.privacyWhere, w.italy.privacyWhere, w.saved(1), w.stepLabel(1), ...Object.values(w.invalidFor)]) {
         expect(text.trim(), l).not.toBe("");
       }
     }

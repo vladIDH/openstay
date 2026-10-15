@@ -16,7 +16,7 @@ El modelo de datos y los plazos están en [registro-ospiti.md](registro-ospiti.m
 fairnight ospiti link <estancia>
 ```
 
-Imprime una dirección como `https://fairguest.khlumen.com/c/…#v1.…`. Mándela al huésped: funciona desde cualquier teléfono hasta dos días después de la salida.
+Imprime una dirección como `https://fairguest-relay.openstay.workers.dev/c/…#v1.…`. Mándela al huésped: funciona desde cualquier teléfono hasta dos días después de la salida.
 
 **Qué hace el huésped**
 - Rellena el formulario de siempre, con las preguntas del Real Decreto 933/2021: dirección, teléfono o correo y tipo de pago (solo el tipo, nunca números de tarjeta).

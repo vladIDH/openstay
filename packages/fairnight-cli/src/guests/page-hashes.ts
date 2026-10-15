@@ -3,12 +3,12 @@
  * `fairnight ospiti verifica-pagina` compares them with what a relay serves. Do not edit by hand.
  */
 export const PAGE_HASHES: Record<string, string> = {
-  "/app.css": "a2fbfa06bf615b660c7ef8ee1c831963b551982d4963a5c7a21190157f8a993d",
-  "/app.js": "0683810b35adc54e60a331d565734f352e569f49881e86c340772d22b766eb8d",
+  "/app.css": "9048c8d869afc0dbdc606a7b1fd10eec348960f5f3f0d26f92983357ed1d2ccd",
+  "/app.js": "159724668c6e66d4110b1db61d9095673944f2310d82bcc49906f341f9726d33",
   "/checkin.html": "0d87230da80a3233dd8b40c5f075a498f87fa168966ba1493848452911f77e78",
-  "/chunks/chunk-5X2OUKCB.js": "eeae04de86e76f97bbee0fc66195e4110857189ac2c60faeec9046dc4355577a",
+  "/chunks/chunk-GAPWU6WI.js": "6c11189916145f8972ff7cb6b91c9c38149d2acdeea3da9f67fbc7f2a37c0015",
   "/chunks/chunk-ZGOTX6UK.js": "e41b59a05075d824fa6d3265186141639e11954f97e920f9299e05da53264ac5",
-  "/chunks/ocr-RGCDVCMW.js": "a42d41e4b6cacffe3465ff9903ee25382cc8c89d384eac1d073b587a81bdd4e5",
+  "/chunks/ocr-TM4BBBDL.js": "cb9a9bc14b8312329a6bea5811cabc15960bc76f651d47266d753c791775da16",
   "/chunks/src-HHEQOMB4.js": "26fa808bee10b7b59f3643220de08da590387c01d28a610fb43c901aeea0b1c9",
   "/ocr/tesseract-core-lstm.wasm.js": "eef5f8b2f8e20e150680b20adaec4a60babafee3adbe8a94583c81fee46e8680",
   "/ocr/tesseract-core-relaxedsimd-lstm.wasm.js": "861a536cf9ef8e63cb644d57bab39c388f37f7d6b6f60024b741c5f6b39a59b3",

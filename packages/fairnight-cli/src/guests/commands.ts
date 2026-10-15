@@ -1080,7 +1080,7 @@ async function verifyPage(config: HostConfig, args: string[], io: Io): Promise<n
   noExtra(args);
   const relay = relayOf(config);
   const results = await checkPage(io, config, { ...PAGE_HASHES, "/ocr/mrz.traineddata": MRZ_MODEL_SHA256 });
-  for (const r of results) io.out(`${r.ok ? "same     " : "DIFFERENT"}  ${r.path}${r.ok ? "" : r.got ? `  (sha256 ${r.got})` : "  (not served)"}`);
+  for (const r of results) io.out(`${r.ok ? "same     " : "DIFFERENT"}  ${r.path}${r.ok ? "" : r.got ? `  (sha256 ${r.got})` : r.redirect ? `  (redirect, ${r.redirect}: the link would lose its box)` : "  (not served)"}`);
   const bad = results.filter((r) => !r.ok).length;
   if (bad === 0) io.out(`${relay} serves exactly the page of this version of Fairguest.`);
   else io.out(`${relay} serves ${bad} file${bad === 1 ? "" : "s"} different from this version: do not send its links until you know why (an update of the relay, or someone changed it).`);

@@ -28,6 +28,7 @@ nav a:focus-visible,a.button:focus-visible,button:focus-visible,summary:focus-vi
 .steps li.done{border-color:var(--accent)}.steps li[aria-current]{border-color:var(--accent);color:var(--ink);font-weight:700}
 .privacy-line{display:flex;gap:9px;align-items:flex-start;background:var(--soft);border-radius:12px;padding:10px 12px;margin:12px 0 4px;font-size:.92rem}
 .privacy-line svg{flex:none;margin-top:3px;color:var(--accent)}
+.privacy-line .where{display:block;margin-top:4px}
 .intro{color:var(--muted);font-size:.95rem}
 h2{font-size:1.15rem;margin:22px 0 6px}
 .step{margin:14px 0}

@@ -81,7 +81,8 @@ function header(w: Words, step: 1 | 2 | 3): string {
     `<header class="top"><h1>${esc(w.title)}</h1>${nav}</header>` +
     `<div class="stay"><b>${esc(link.n)}</b><span>${esc(w.stay)}: ${esc(stayDay(link.i, lang))} → ${esc(stayDay(link.o, lang))}</span></div>` +
     stepsBar(w, step) +
-    `<p class="privacy-line">${LOCK}<span>${esc(law(w).privacyShort)} ${esc(w.remote.encrypted)}</span></p>`
+    // On the confirmation the box is the only privacy text: it also says who receives the data and when it is erased.
+    `<p class="privacy-line">${LOCK}<span>${esc(law(w).privacyShort)} ${esc(w.remote.encrypted)}${step === 3 ? `<span class="where">${esc(law(w).privacyWhere)}</span>` : ""}</span></p>`
   );
 }
 
@@ -119,8 +120,7 @@ function showDone(): void {
   app.innerHTML =
     header(w, 3) +
     `<div class="done-card" role="status"><div class="tick">${TICK}</div><h2>${esc(w.saved(saved))}</h2><p>${esc(w.finished)}</p></div>` +
-    `<button type="button" class="button secondary" id="another">${esc(w.addAnother)}</button>` +
-    `<p class="privacy">${esc(law(w).privacy)}</p>`;
+    `<button type="button" class="button secondary" id="another">${esc(w.addAnother)}</button>`;
   document.getElementById("another")?.addEventListener("click", () => showForm());
 }
 

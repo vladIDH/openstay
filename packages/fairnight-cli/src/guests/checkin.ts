@@ -150,8 +150,10 @@ export async function handleCheckin(req: IncomingMessage, res: ServerResponse, u
     const registered = peopleCount(db, row.id);
     const stayBox = (l: Lang, wl: Words) =>
       `<div class="stay"><b>${esc(listing.pricing.name ?? listing.name)}</b><span>${esc(wl.stay)}: ${esc(stayDay(row.check_in, l))} → ${esc(stayDay(row.check_out, l))} · ${esc(wl.registered(registered))}</span></div>`;
-    const privacyLine = (wl: Words) => `<p class="privacy-line">${LOCK}<span>${esc(law(wl).privacyShort)}</span></p>`;
-    const header = (l: Lang, wl: Words, at: 1 | 2 | 3) => stayBox(l, wl) + stepsBar(wl, at) + privacyLine(wl);
+    // On the confirmation the box is the only privacy text: it also says who receives the data and when it is erased.
+    const privacyLine = (wl: Words, at: 1 | 2 | 3) =>
+      `<p class="privacy-line">${LOCK}<span>${esc(law(wl).privacyShort)}${at === 3 ? `<span class="where">${esc(law(wl).privacyWhere)}</span>` : ""}</span></p>`;
+    const header = (l: Lang, wl: Words, at: 1 | 2 | 3) => stayBox(l, wl) + stepsBar(wl, at) + privacyLine(wl, at);
     const intro = `<p class="intro">${esc(law(w).intro)}</p>`;
     const privacy = (wl: Words) => `<p class="privacy">${esc(law(wl).privacy)}</p>`;
     const tok = token(ctx.secret, code);
@@ -166,8 +168,7 @@ export async function handleCheckin(req: IncomingMessage, res: ServerResponse, u
         body =
           header(lang, w, 3) +
           `<div class="done-card" role="status"><div class="tick">${TICK}</div><h2>${esc(w.saved(saved))}</h2><p>${esc(w.finished)}</p></div>` +
-          `<details class="another"><summary>${esc(w.addAnother)}</summary>${form}</details>` +
-          privacy(w);
+          `<details class="another"><summary>${esc(w.addAnother)}</summary>${form}</details>`;
       } else body = header(lang, w, 1) + intro + form + privacy(w);
       send(res, 200, page(lang, w.title, body, nonce, langLink), nonce);
       return true;

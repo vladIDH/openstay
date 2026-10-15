@@ -205,7 +205,8 @@ Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web, 
 - fairguest: `webSeal` seals in the browser with Web Crypto in the same fg1 format (optional X25519 fallback); `padded` gives every guest the same size; `linkFor` / `readLinkFragment` for the link, whose key and stay stay after "#".
 - fairguest: `parseMrz` (TD1, TD2, TD3, ICAO check digits, OCR repairs confirmed by the check digits) and `guestFromMrz` (Spanish DNI: DNI number and support number apart).
 - fairguest-relay (new, private): Cloudflare Worker with one Durable Object per box in the EU jurisdiction; only sealed text, hashed secrets, limits, expiry two days after check-out, no logs; the guest's page with the photo read in the browser (Tesseract and the MRZ model served by the relay); hashes of the page for `verifica-pagina`; `scripts/dev.mjs` to try it locally.
-- fairnight-cli: `fairnight ospiti link`, `scarica` (no passphrase: the guests stay sealed) and `verifica-pagina`; downloads also before `elenco` and `invia` and every 5 minutes while `serve` runs; `"fairguestRelay"` in the config (default https://fairguest.khlumen.com); schema 9.
+- fairnight-cli: `fairnight ospiti link`, `scarica` (no passphrase: the guests stay sealed) and `verifica-pagina`; downloads also before `elenco` and `invia` and every 5 minutes while `serve` runs; `"fairguestRelay"` in the config (default https://fairguest-relay.openstay.workers.dev, the free workers.dev address: no DNS to move); schema 9.
+- fairguest-relay: on workers.dev, files served at their own name (`html_handling = "none"`: a redirect made the phone lose the box); `verifica-pagina` reports a redirect instead of following it. The confirmation screen has one privacy text, with who receives the data and when it is erased.
 
 #### fairguest (new)
 

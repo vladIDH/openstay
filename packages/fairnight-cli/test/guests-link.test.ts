@@ -30,6 +30,7 @@ afterEach(() => {
 function fakeRelay() {
   const boxes = new Map<string, { read: string; write: string; expires: string; messages: { id: string; body: string }[] }>();
   const files = new Map<string, Buffer>();
+  const redirects = new Map<string, string>();
   const calls: string[] = [];
   let next = 0;
   const sha = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -39,6 +40,7 @@ function fakeRelay() {
     calls.push(`${init.method} ${u.pathname}`);
     const m = /^\/api\/box\/([^/]+)(\/messages(?:\/([^/]+))?)?$/.exec(u.pathname);
     if (!m) {
+      if (redirects.has(u.pathname)) return { status: 307, text: async () => "", arrayBuffer: async () => new ArrayBuffer(0), headers: new Headers({ location: redirects.get(u.pathname) as string }) };
       const f = files.get(u.pathname);
       return f ? { status: 200, text: async () => f.toString(), arrayBuffer: async () => f.buffer.slice(f.byteOffset, f.byteOffset + f.length) as ArrayBuffer } : answer(404, {});
     }
@@ -71,7 +73,7 @@ function fakeRelay() {
     b.messages.push({ id: `m${next++}`, body: await webSeal(payload.k, padded(message as object), relayPlace(box)) });
     return payload;
   };
-  return { fetchFn, boxes, files, calls, guestPosts };
+  return { fetchFn, boxes, files, redirects, calls, guestPosts };
 }
 
 const ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Example//EN\r\nBEGIN:VEVENT\r\nDTEND;VALUE=DATE:20990613\r\nDTSTART;VALUE=DATE:20990610\r\nUID:prova-1@airbnb.example\r\nSUMMARY:Reserved\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n`;
@@ -225,5 +227,13 @@ describe("fairnight ospiti verifica-pagina", () => {
     // The page is asked where the relay serves it, at /c/<box>.
     expect(relay.calls).toContain(`GET /c/${"0".repeat(22)}`);
     expect(Object.keys(PAGE_HASHES)).toEqual(expect.arrayContaining(["/app.js", "/app.css", "/checkin.html", "/ocr/worker.min.js"]));
+  });
+
+  it("does not follow a redirect of the page: the phone would leave /c/<box> and lose the box", async () => {
+    const { relay, io } = await ready();
+    relay.redirects.set(`/c/${"0".repeat(22)}`, "/checkin");
+    const t = io();
+    expect(await main(["ospiti", "verifica-pagina"], t)).toBe(1);
+    expect(t.lines).toContain("DIFFERENT  /checkin.html  (redirect, HTTP 307 to /checkin: the link would lose its box)");
   });
 });

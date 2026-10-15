@@ -84,8 +84,8 @@ export interface SystemInfo {
 
 export type RelayFetchLike = (
   url: string,
-  init: { method: string; headers: Record<string, string>; body?: string; signal?: AbortSignal },
-) => Promise<{ status: number; text(): Promise<string>; arrayBuffer(): Promise<ArrayBuffer> }>;
+  init: { method: string; headers: Record<string, string>; body?: string; signal?: AbortSignal; redirect?: "manual" },
+) => Promise<{ status: number; text(): Promise<string>; arrayBuffer(): Promise<ArrayBuffer>; headers?: { get(name: string): string | null } }>;
 
 export type SmoobuFetchLike = (
   url: string,

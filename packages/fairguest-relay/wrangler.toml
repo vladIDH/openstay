@@ -1,16 +1,26 @@
 # Fairguest relay on Cloudflare Workers. Deploy, by the maintainer (see README.md):
 #   npm run assets -w fairguest-relay && npm run build -w fairguest-relay
 #   npx wrangler@4.151.0 deploy --config packages/fairguest-relay/wrangler.toml
-# Self-hosting: change name and routes to your own domain; nothing else.
+# Self-hosting: change name (and, with your own domain, routes); nothing else.
 name = "fairguest-relay"
 main = "src/worker.ts"
 compatibility_date = "2026-10-01"
-workers_dev = false
-routes = [{ pattern = "fairguest.khlumen.com", custom_domain = true }]
+# The free address of the account: https://fairguest-relay.<account>.workers.dev.
+# No DNS to move. The official instance lives here until it has a domain of ours.
+workers_dev = true
+# No extra address per version: the page is served from one place only.
+preview_urls = false
+# Later, with a domain on Cloudflare: uncomment and change DEFAULT_RELAY in
+# fairnight-cli to the domain. Keep workers_dev = true until the links already
+# sent have expired (two days after their check-out), then set it to false.
+# routes = [{ pattern = "fairguest.khlumen.com", custom_domain = true }]
 
 [assets]
 directory = "public"
 binding = "ASSETS"
+# Files are served at their own name: by default Cloudflare redirects /checkin.html
+# to /checkin, and the guest's phone would leave /c/<box> for a page with no box.
+html_handling = "none"
 # Every request goes through the worker first: it adds the security headers and serves the page at /c/<box>.
 run_worker_first = true
 

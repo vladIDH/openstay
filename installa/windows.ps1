@@ -11,6 +11,8 @@
   I dati (impostazioni e calendari) stanno solo in quella cartella. Rilanciarlo aggiorna
   il programma e non tocca i dati.
 #>
+# Un parametro scritto male (-Cartela) ferma lo script invece di installare nella cartella di default.
+[CmdletBinding()]
 param(
   # Dove installare: per le prove si usa una cartella a parte.
   [string]$Cartella = (Join-Path $env:USERPROFILE 'Fairnight'),

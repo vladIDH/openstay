@@ -27,7 +27,9 @@ param(
 $ErrorActionPreference = 'Stop'
 $Email = 'hello@khlumen.com'
 $NodeMinimo = 22
-$PaginaNode = 'https://nodejs.org/it/download'
+# La pagina è in inglese (anche /it porta lì). Pulsanti verificati il 15 ottobre 2026: «Windows Installer (.msi)»,
+# sotto la frase «Or get a prebuilt Node.js for Windows running a x64 architecture», dopo un riquadro di comandi.
+$PaginaNode = 'https://nodejs.org/en/download'
 $Pacchetti = @('fairnight', 'fairguest', 'fairhello', 'fairnight-smoobu', 'fairnight-beds24', 'fairnight-market', 'fairnight-cli')
 
 $Programma = Join-Path $Cartella 'programma'
@@ -139,8 +141,9 @@ $node = TrovaNode
 if (-not $node) {
   Fermati @(
     'Per far funzionare Fairnight serve Node.js, un programma gratuito (versione 22 o più recente).',
-    "  1. Apri la pagina ufficiale: $PaginaNode",
-    '  2. Scarica la versione «LTS» per Windows (il file .msi) e installala lasciando le opzioni come sono.',
+    "  1. Apri la pagina ufficiale (è in inglese): $PaginaNode",
+    '  2. Scorri oltre il riquadro con i comandi, fino a «Or get a prebuilt Node.js for Windows», e clicca il pulsante verde «Windows Installer (.msi)».',
+    '     Apri il file scaricato e installalo lasciando le opzioni come sono.',
     '  3. Poi fai di nuovo doppio clic su «Installa Fairnight (Windows)».'
   ) $PaginaNode
 }
@@ -150,16 +153,17 @@ $maggiore = [int]($versione.Split('.')[0])
 if ($maggiore -lt $NodeMinimo) {
   Fermati @(
     "Sul computer c'è Node.js $versione, ma Fairnight ha bisogno della versione $NodeMinimo o più recente.",
-    "  1. Apri la pagina ufficiale: $PaginaNode",
-    '  2. Scarica la versione «LTS» per Windows e installala: prende il posto di quella vecchia.',
+    "  1. Apri la pagina ufficiale (è in inglese): $PaginaNode",
+    '  2. Scorri oltre il riquadro con i comandi e clicca il pulsante verde «Windows Installer (.msi)». Installalo: prende il posto di quella vecchia.',
     '  3. Poi fai di nuovo doppio clic su «Installa Fairnight (Windows)».'
   ) $PaginaNode
 }
 if ($architettura -ne 'x64') {
   Fermati @(
     "Su questo computer c'è Node.js per processori ${architettura}: Fairnight per ora funziona con la versione x64.",
-    "  1. Apri la pagina ufficiale: $PaginaNode",
-    '  2. Scarica la versione «LTS» per Windows x64 (va bene anche sui computer con processore ARM) e installala.',
+    "  1. Apri la pagina ufficiale (è in inglese): $PaginaNode",
+    '  2. Scorri fino a «Or get a prebuilt Node.js for Windows running a ... architecture»: nel menu dopo «running a» scegli «x64» al posto di «ARM64».',
+    '     Poi clicca «Windows Installer (.msi)» e installalo: la versione x64 funziona anche sui computer con processore ARM.',
     '  3. Poi fai di nuovo doppio clic su «Installa Fairnight (Windows)».'
   ) $PaginaNode
 }
@@ -188,7 +192,8 @@ Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $Programma 'package-
 if ($DalProgetto) {
   Scrivi ''
   Scrivi 'Passo 1 di 3: scarico i componenti di Fairnight.'
-  Scrivi '  La prima volta ci vogliono 2-4 minuti e la finestra sembra ferma: è normale, lasciala aperta.'
+  if ($aggiornamento) { Scrivi '  La finestra può sembrare ferma per un minuto o due: è normale, lasciala aperta.' }
+  else { Scrivi '  La prima volta ci vogliono 2-4 minuti e la finestra sembra ferma: è normale, lasciala aperta.' }
   if ((Esegui $Progetto 'ci --no-audit --no-fund') -ne 0) { NonRiuscito 'scaricare i componenti di Fairnight' }
   Scrivi 'Passo 2 di 3: preparo Fairnight...'
   if ((Esegui $Progetto 'run build') -ne 0) { NonRiuscito 'preparare Fairnight' }
@@ -202,7 +207,8 @@ if ($DalProgetto) {
 } else {
   $daInstallare = 'fairnight-cli@latest'
   Scrivi ''
-  Scrivi 'Scarico e installo Fairnight: 1-2 minuti, e la finestra sembra ferma. È normale, lasciala aperta.'
+  if ($aggiornamento) { Scrivi 'Scarico e installo Fairnight: la finestra può sembrare ferma per un minuto. È normale, lasciala aperta.' }
+  else { Scrivi 'Scarico e installo Fairnight: 1-2 minuti, e la finestra sembra ferma. È normale, lasciala aperta.' }
 }
 if ((Esegui $Programma "install --omit=dev --no-audit --no-fund $daInstallare") -ne 0) { NonRiuscito 'installare Fairnight' }
 

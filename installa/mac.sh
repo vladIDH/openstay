@@ -28,7 +28,8 @@ for a in "$@"; do
 done
 
 NODE_MINIMO=22
-PAGINA_NODE="https://nodejs.org/it/download"
+# La pagina è in inglese (anche /it porta lì). Pulsante verificato il 15 ottobre 2026: «macOS Installer (.pkg)».
+PAGINA_NODE="https://nodejs.org/en/download"
 EMAIL="hello@khlumen.com"
 PACCHETTI="fairnight fairguest fairhello fairnight-smoobu fairnight-beds24 fairnight-market fairnight-cli"
 QUI="$(cd "$(dirname "$0")" && pwd)"
@@ -112,8 +113,9 @@ fi
 if [ -z "$NODE" ]; then
   fermati "$PAGINA_NODE" \
     "Per far funzionare Fairnight serve Node.js, un programma gratuito (versione 22 o più recente)." \
-    "  1. Apri la pagina ufficiale: $PAGINA_NODE" \
-    "  2. Scarica la versione «LTS» per macOS (il file .pkg) e installala lasciando le opzioni come sono." \
+    "  1. Apri la pagina ufficiale (è in inglese): $PAGINA_NODE" \
+    "  2. Scorri oltre il riquadro con i comandi e clicca il pulsante verde «macOS Installer (.pkg)»." \
+    "     Apri il file scaricato e installalo lasciando le opzioni come sono." \
     "  3. Poi fai di nuovo doppio clic su «Installa Fairnight (Mac)»."
 fi
 VERSIONE="$("$NODE" -p 'process.versions.node')"
@@ -122,8 +124,8 @@ MAGGIORE="${VERSIONE%%.*}"
 if [ "$MAGGIORE" -lt "$NODE_MINIMO" ]; then
   fermati "$PAGINA_NODE" \
     "Sul Mac c'è Node.js $VERSIONE, ma Fairnight ha bisogno della versione $NODE_MINIMO o più recente." \
-    "  1. Apri la pagina ufficiale: $PAGINA_NODE" \
-    "  2. Scarica la versione «LTS» per macOS e installala: prende il posto di quella vecchia." \
+    "  1. Apri la pagina ufficiale (è in inglese): $PAGINA_NODE" \
+    "  2. Scorri oltre il riquadro con i comandi e clicca il pulsante verde «macOS Installer (.pkg)». Installalo: prende il posto di quella vecchia." \
     "  3. Poi fai di nuovo doppio clic su «Installa Fairnight (Mac)»."
 fi
 NPM="$(dirname "$NODE")/npm"
@@ -151,7 +153,11 @@ rm -f "$PROGRAMMA/package-lock.json"
 if [ -f "$PROGETTO/packages/fairnight-cli/package.json" ]; then
   scrivi ""
   scrivi "Passo 1 di 3: scarico i componenti di Fairnight."
-  scrivi "  La prima volta ci vogliono 2-4 minuti e la finestra sembra ferma: è normale, lasciala aperta."
+  if [ "$AGGIORNAMENTO" = 1 ]; then
+    scrivi "  La finestra può sembrare ferma per un minuto o due: è normale, lasciala aperta."
+  else
+    scrivi "  La prima volta ci vogliono 2-4 minuti e la finestra sembra ferma: è normale, lasciala aperta."
+  fi
   esegui "$PROGETTO" ci --no-audit --no-fund || non_riuscito "scaricare i componenti di Fairnight"
   scrivi "Passo 2 di 3: preparo Fairnight..."
   esegui "$PROGETTO" run build || non_riuscito "preparare Fairnight"
@@ -165,7 +171,11 @@ if [ -f "$PROGETTO/packages/fairnight-cli/package.json" ]; then
 else
   DA_INSTALLARE=(fairnight-cli@latest)
   scrivi ""
-  scrivi "Scarico e installo Fairnight: 1-2 minuti, e la finestra sembra ferma. È normale, lasciala aperta."
+  if [ "$AGGIORNAMENTO" = 1 ]; then
+    scrivi "Scarico e installo Fairnight: la finestra può sembrare ferma per un minuto. È normale, lasciala aperta."
+  else
+    scrivi "Scarico e installo Fairnight: 1-2 minuti, e la finestra sembra ferma. È normale, lasciala aperta."
+  fi
 fi
 esegui "$PROGRAMMA" install --omit=dev --no-audit --no-fund "${DA_INSTALLARE[@]}" || non_riuscito "installare Fairnight"
 

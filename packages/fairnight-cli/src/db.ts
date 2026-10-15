@@ -16,7 +16,7 @@ import { SetupError } from "./config.js";
 
 export type Db = Database.Database;
 
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (
@@ -165,6 +165,8 @@ CREATE TABLE IF NOT EXISTS guest_stays (
   host_data    TEXT,
   cancelled_at TEXT,
   erased_at    TEXT,
+  -- Italy: when the host confirmed they saw the guests in person or on a live video call
+  recognized_at TEXT,
   UNIQUE (listing, source, source_uid)
 );
 
@@ -189,6 +191,17 @@ CREATE TABLE IF NOT EXISTS guest_submissions (
   -- a file written for the host to upload (Mossos); deleted with the personal data
   file     TEXT,
   detail   TEXT
+);
+
+-- Version 8: the Alloggiati Web receipts (one PDF per account and day), kept
+-- 5 years. No personal data: the PDF holds only the number of schedine.
+CREATE TABLE IF NOT EXISTS guest_receipts (
+  account    TEXT NOT NULL,
+  day        TEXT NOT NULL,
+  file       TEXT NOT NULL,
+  fetched_at TEXT NOT NULL,
+  PRIMARY KEY (account, day)
+
 );
 
 -- Version 7 (Fairhello, the guest assistant). Messages read from Smoobu or
@@ -324,7 +337,17 @@ const MIGRATIONS: { to: number; run(db: Database.Database): void }[] = [
     },
   },
   { to: 7, run: () => {} }, // Fairhello: new tables only
+  {
+    to: 8, // Fairguest Italy: the recognition of the guests (and the receipts table, new)
+    run: (db) => {
+      if (hasTable(db, "guest_stays") && !hasColumn(db, "guest_stays", "recognized_at")) db.exec("ALTER TABLE guest_stays ADD COLUMN recognized_at TEXT");
+    },
+  },
 ];
+
+function hasTable(db: Database.Database, table: string): boolean {
+  return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table);
+}
 
 function upgrade(db: Database.Database): void {
   const current = Number(getMeta(db, "schema_version") ?? "1");

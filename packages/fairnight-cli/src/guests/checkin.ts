@@ -9,12 +9,14 @@
  * - Plain HTML, no JavaScript, no external file; Spanish, English, Italian.
  *   Light or dark with the guest's phone; three steps on screen (details,
  *   document, confirmation) over the same single form.
- * - Only the TYPE of payment exists in the form. Any other field sent is ignored.
+ * - The questions follow the country of the listing: in Spain address, contact
+ *   and the TYPE of payment; in Italy the places of birth and of issue, and the
+ *   document only for the holder. Any other field sent is ignored.
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { isIPv4, isIPv6 } from "node:net";
-import { countryNames, guestRules, isPaymentType, localDateTime, parseGuest, DOCUMENT_TYPES, KINSHIPS, PAYMENT_TYPES, SEXES, type Problem } from "fairguest";
+import { countryNames, isPaymentType, localDateTime, parseGuest, registryFor, KINSHIPS, PAYMENT_TYPES, SEXES, type Country, type Problem } from "fairguest";
 import { loadHostConfig } from "../config.js";
 import { openDb } from "../db.js";
 import { dbPath, type Io } from "../io.js";
@@ -162,6 +164,14 @@ function fieldOf(path: string): string {
     "document.number": "docNumber",
     "document.support": "docSupport",
     "document.issuedOn": "docIssued",
+    "document.issuedIn": "docCountry",
+    "document.issuedIn.country": "docCountry",
+    "document.issuedIn.locality": "docPlace",
+    "document.issuedIn.province": "docProvince",
+    "birthPlace": "birthCountry",
+    "birthPlace.country": "birthCountry",
+    "birthPlace.locality": "birthPlace",
+    "birthPlace.province": "birthProvince",
     "address": "country",
     "address.country": "country",
     "address.street": "street",
@@ -193,7 +203,7 @@ interface FormState {
   errors: Map<string, string>;
 }
 
-function renderForm(w: Words, lang: Lang, action: string, tok: string, registered: number, state: FormState): string {
+function renderForm(w: Words, lang: Lang, country: Country, action: string, tok: string, registered: number, state: FormState): string {
   const v = (k: string) => esc(state.values[k] ?? "");
   const err = (k: string) => (state.errors.has(k) ? `<div class="err" id="${k}-err">${esc(state.errors.get(k) as string)}</div>` : "");
   const cls = (k: string) => (state.errors.has(k) ? ' class="has-err"' : "");
@@ -205,6 +215,8 @@ function renderForm(w: Words, lang: Lang, action: string, tok: string, registere
       .join("")}</select>${err(k)}</div>`;
   const countries = countryNames(lang).map((c): [string, string] => [c.code, c.name]);
   const first = registered === 0;
+  const documentTypes = registryFor(country).documentTypes.map((d): [string, string] => [d, w.documentTypes[d]]);
+  if (country === "IT") return renderItalianForm(w, lang, action, tok, first, registered, state, { input, select, countries, documentTypes });
   // Step 1: the person, where they live, how to reach them. Step 2: the document (and, for the holder, the payment).
   return `<form method="post" action="${esc(action)}" autocomplete="off" id="form">
 <input type="hidden" name="t" value="${esc(tok)}"><input type="hidden" name="lang" value="${lang}">
@@ -226,11 +238,58 @@ ${input("phone", "tel", 'maxlength="20" inputmode="tel"')}${input("email", "emai
 </section>
 <section class="step"><h3><span class="n">2</span>${esc(w.steps.document)}</h3>
 <fieldset><legend>${esc(w.sections.document)}</legend>
-${select("docType", DOCUMENT_TYPES.map((d) => [d, w.documentTypes[d]]))}
+${select("docType", documentTypes)}
 ${input("docNumber", "text", 'maxlength="20" autocapitalize="characters"')}${input("docSupport", "text", 'maxlength="9" autocapitalize="characters"')}${input("docIssued", "date")}
 <label class="check"><input type="checkbox" name="docSpanish" value="1"${state.values.docSpanish ? " checked" : ""}>${esc(w.fields.docSpanish as string)}</label>
 </fieldset>
 ${first ? `<fieldset><legend>${esc(w.sections.payment)}</legend>${select("payment", PAYMENT_TYPES.map((p) => [p, w.payment[p]]))}<p class="hint">${esc(w.paymentNote)}</p></fieldset>` : ""}
+</section>
+<button type="submit">${esc(w.save)}</button>
+</form>`;
+}
+
+interface Controls {
+  input(k: string, type?: string, extra?: string): string;
+  select(k: string, options: [string, string][], hint?: string): string;
+  countries: [string, string][];
+  documentTypes: [string, string][];
+}
+
+/**
+ * Italy (Alloggiati Web): who the person is and where they were born; the
+ * document only for the holder. No address, contact or payment: the law does
+ * not ask for them, so the form does not either.
+ */
+function renderItalianForm(w: Words, lang: Lang, action: string, tok: string, first: boolean, registered: number, state: FormState, c: Controls): string {
+  const hint = (k: string, text: string) => c.input(k, "text", 'maxlength="60"').replace(`${esc(w.fields[k] as string)}</label>`, `${esc(w.fields[k] as string)} <span class="hint">${esc(text)}</span></label>`);
+  const province = (k: string) => c.input(k, "text", 'maxlength="2" autocapitalize="characters" size="2"');
+  const sexes = SEXES.filter((x) => x !== "other").map((x): [string, string] => [x, w.sex[x]]);
+  const surname = c.input("surname1", "text", 'maxlength="50" required').replace(`>${esc(w.fields.surname1 as string)}</label>`, `>${esc(w.italy.surname)}</label>`);
+  return `<form method="post" action="${esc(action)}" autocomplete="off" id="form">
+<input type="hidden" name="t" value="${esc(tok)}"><input type="hidden" name="lang" value="${lang}">
+<h2>${esc(first ? w.firstGuest : w.nextGuest(registered + 1))}</h2>
+<section class="step"><h3><span class="n">1</span>${esc(w.steps.data)}</h3>
+<fieldset><legend>${esc(w.sections.person)}</legend>
+${c.input("givenName", "text", 'maxlength="30" required autocomplete="given-name"')}${surname}
+${c.input("birthDate", "date")}
+${c.select("sex", sexes)}
+${c.select("nationality", c.countries)}
+${first ? "" : c.select("kinship", KINSHIPS.map((k) => [k, w.kinship[k]]), w.italy.kinshipHint)}
+</fieldset>
+<fieldset><legend>${esc(w.fields.birthPlace as string)}</legend>
+${c.select("birthCountry", c.countries)}${hint("birthPlace", w.italy.birthPlaceHint)}${province("birthProvince")}
+</fieldset>
+</section>
+<section class="step"><h3><span class="n">2</span>${esc(w.steps.document)}</h3>
+${
+  first
+    ? `<fieldset><legend>${esc(w.sections.document)}</legend>
+${c.select("docType", c.documentTypes)}
+${c.input("docNumber", "text", 'maxlength="20" autocapitalize="characters"')}
+${c.select("docCountry", c.countries)}${hint("docPlace", w.italy.docPlaceHint)}${province("docProvince")}
+</fieldset>`
+    : `<p class="message">${esc(w.italy.noDocument)}</p>`
+}
 </section>
 <button type="submit">${esc(w.save)}</button>
 </form>`;
@@ -247,14 +306,48 @@ function guestInput(f: URLSearchParams): Record<string, unknown> {
     sex: g("sex"),
     nationality: g("nationality"),
     kinship: g("kinship"),
-    document: { type: g("docType"), number: g("docNumber"), support: g("docSupport"), issuedOn: g("docIssued"), spanish: f.get("docSpanish") === "1" && g("docType") === "passport" },
+    birthPlace: { country: g("birthCountry"), locality: g("birthPlace"), province: g("birthProvince") },
+    document: {
+      type: g("docType"),
+      number: g("docNumber"),
+      support: g("docSupport"),
+      issuedOn: g("docIssued"),
+      spanish: f.get("docSpanish") === "1" && g("docType") === "passport",
+      issuedIn: { country: g("docCountry"), locality: g("docPlace"), province: g("docProvince") },
+    },
     address: { country: g("country"), street: g("street"), postalCode: g("postalCode"), locality: g("locality") },
     phone: g("phone"),
     email: g("email"),
   };
 }
 
-const FORM_KEYS = ["givenName", "surname1", "surname2", "birthDate", "sex", "nationality", "kinship", "docType", "docNumber", "docSupport", "docIssued", "docSpanish", "country", "street", "postalCode", "locality", "phone", "email", "payment"];
+const FORM_KEYS = [
+  "givenName",
+  "surname1",
+  "surname2",
+  "birthDate",
+  "sex",
+  "nationality",
+  "kinship",
+  "birthCountry",
+  "birthPlace",
+  "birthProvince",
+  "docType",
+  "docNumber",
+  "docSupport",
+  "docIssued",
+  "docSpanish",
+  "docCountry",
+  "docPlace",
+  "docProvince",
+  "country",
+  "street",
+  "postalCode",
+  "locality",
+  "phone",
+  "email",
+  "payment",
+];
 
 function readBody(req: IncomingMessage): Promise<string | null> {
   return new Promise((resolve, reject) => {
@@ -315,20 +408,22 @@ export async function handleCheckin(req: IncomingMessage, res: ServerResponse, u
       send(res, 404, page(lang, w.notFound, `<p class="message">${esc(w.notFoundText)}</p>`, nonce), nonce);
       return true;
     }
+    const country = listing.fairguest.country;
+    const law = (wl: Words) => (country === "IT" ? wl.italy : wl);
     const action = `/checkin/${code}`;
     const langLink = (l: Lang) => `${action}?lang=${l}`;
     const registered = peopleCount(db, row.id);
     const stayBox = (l: Lang, wl: Words) =>
       `<div class="stay"><b>${esc(listing.pricing.name ?? listing.name)}</b><span>${esc(wl.stay)}: ${esc(stayDay(row.check_in, l))} → ${esc(stayDay(row.check_out, l))} · ${esc(wl.registered(registered))}</span></div>`;
-    const privacyLine = (wl: Words) => `<p class="privacy-line">${LOCK}<span>${esc(wl.privacyShort)}</span></p>`;
+    const privacyLine = (wl: Words) => `<p class="privacy-line">${LOCK}<span>${esc(law(wl).privacyShort)}</span></p>`;
     const header = (l: Lang, wl: Words, at: 1 | 2 | 3) => stayBox(l, wl) + stepsBar(wl, at) + privacyLine(wl);
-    const intro = `<p class="intro">${esc(w.intro)}</p>`;
-    const privacy = (wl: Words) => `<p class="privacy">${esc(wl.privacy)}</p>`;
+    const intro = `<p class="intro">${esc(law(w).intro)}</p>`;
+    const privacy = (wl: Words) => `<p class="privacy">${esc(law(wl).privacy)}</p>`;
     const tok = token(ctx.secret, code);
 
     if (req.method === "GET") {
       const saved = Number(url.searchParams.get("saved"));
-      const form = renderForm(w, lang, action, tok, registered, { values: {}, errors: new Map() });
+      const form = renderForm(w, lang, country, action, tok, registered, { values: {}, errors: new Map() });
       let body: string;
       if (registered >= MAX_GUESTS) body = header(lang, w, 3);
       else if (Number.isInteger(saved) && saved > 0) {
@@ -364,17 +459,17 @@ export async function handleCheckin(req: IncomingMessage, res: ServerResponse, u
     }
     const parsed = parseGuest(guestInput(form), today);
     const problems = [...parsed.problems];
-    const docAge = listing.fairguest.country === "ES-CT" ? 14 : 18;
-    problems.push(...guestRules(parsed.draft, registered, row.check_in, docAge, { skipMunicipalityCode: true }));
+    problems.push(...registryFor(country).checkGuest(parsed.draft, registered, row.check_in));
     const payment = form.get("payment") ?? "";
-    if (registered === 0 && !isPaymentType(payment)) problems.push({ path: "payment", message: "the type of payment is required" });
+    // Only Spain asks for the type of payment (RD 933/2021); Italy does not.
+    if (country !== "IT" && registered === 0 && !isPaymentType(payment)) problems.push({ path: "payment", message: "the type of payment is required" });
     if (problems.length > 0 || !parsed.guest) {
       const values: Record<string, string> = {};
       for (const k of FORM_KEYS) values[k] = form.get(k) ?? "";
       const body =
         header(postLang, pw, 1) +
         `<div class="banner bad" role="alert">${esc(pw.fix)}</div>` +
-        renderForm(pw, postLang, action, tok, registered, { values, errors: errorsByField(problems, pw) }) +
+        renderForm(pw, postLang, country, action, tok, registered, { values, errors: errorsByField(problems, pw) }) +
         privacy(pw);
       send(res, 422, page(postLang, pw.title, body, nonce, (l) => `${action}?lang=${l}`), nonce);
       return true;

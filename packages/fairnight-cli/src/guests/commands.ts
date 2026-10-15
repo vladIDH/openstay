@@ -10,8 +10,12 @@
 import { chmodSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
+  addDays,
+  ALLOGGIATI_PORTAL,
+  alloggiatiFile,
   changePassphrase,
   createKeys,
+  DEFAULT_ALLOGGIATI_ACCOUNT,
   DEFAULT_SCRYPT,
   isDate,
   isPaymentType,
@@ -22,7 +26,10 @@ import {
   parseGuest,
   passphraseProblem,
   PassphraseError,
+  AlloggiatiError,
   registryFor,
+  schedine,
+  type AlloggiatiTables,
   type GuestSettings,
   type Kind,
   type PaymentType,
@@ -31,6 +38,7 @@ import { loadHostConfig, SetupError, type HostConfig } from "../config.js";
 import { getMeta, openDb, setMeta, type Db } from "../db.js";
 import { UsageError } from "../errors.js";
 import { DATA_DIR, dbPath, type Io } from "../io.js";
+import { alloggiatiClient, downloadTables, dropOldReceipts, hasCredentials, loadCredentials, loadTables, receipts, saveCredentials, saveReceipt, TABLES_MAX_DAYS } from "./italy.js";
 import {
   addManualStay,
   applyRetention,
@@ -41,6 +49,7 @@ import {
   guestListings,
   guestsEnabled,
   listStays,
+  markRecognized,
   openStay,
   people,
   peopleCount,
@@ -68,6 +77,9 @@ export interface GuestOptions {
   out?: string;
   applica?: boolean;
   json?: boolean;
+  account?: string;
+  prova?: boolean;
+  verifica?: boolean;
 }
 
 export const GUEST_USAGE = `  fairnight ospiti                                 guest communications due, late or open (no passphrase) [--json]
@@ -79,6 +91,11 @@ export const GUEST_USAGE = `  fairnight ospiti                                 g
   fairnight ospiti correggi <stay> <field>         change one field (the value is asked) [--persona N]
   fairnight ospiti prepara <stay…>                 the file or message to send [--tipo checkin|prenotazione] [--out folder]
   fairnight ospiti inviato <stay> --tipo T         record that a communication went through (checkin|prenotazione|annullamento)
+  fairnight ospiti tabelle                         Italy: download the Alloggiati Web code tables (municipalities, states, documents)
+  fairnight ospiti credenziali [--account NAME]    Italy: save the Alloggiati Web user, password and key, sealed [--verifica]
+  fairnight ospiti riconosciuto <stay>             Italy: you saw the guests in person or on a live video call
+  fairnight ospiti invia [<stay>…]                 Italy: the schedine due; checks them with --prova, sends them with --applica
+  fairnight ospiti ricevute                        Italy: download the Alloggiati Web receipts not saved yet (last 30 days)
   fairnight ospiti esporta <stay>                  a guest's data as JSON, on request [--persona N] [--out file]
   fairnight ospiti cancella <stay>                 erase on request; shows what, erases with --applica [--persona N]
   fairnight ospiti pulisci                         apply the retention rules now`;
@@ -161,7 +178,7 @@ export async function runGuests(dir: string, values: GuestOptions, rest: string[
   const config = loadHostConfig(dir);
   const db = openDb(dbPath(dir));
   try {
-    if (sub === "attiva" || sub === "setup") return await activate(db, config, args, io);
+    if (sub === "attiva" || sub === "setup") return await activate(dir, db, config, args, io);
     if (!guestsEnabled(db)) throw new SetupError('Guest registration is not turned on in this folder: run "fairnight ospiti attiva" first.');
     if (guestListings(config.listings).length === 0) {
       io.out('No listing has a "fairguest" block in fairnight.config.json: add one to the listings whose guests you register (see the README).');
@@ -170,6 +187,7 @@ export async function runGuests(dir: string, values: GuestOptions, rest: string[
     prefillFromCalendar(db, config.listings, io.now());
     const retention = applyRetention(db, config, io.now());
     for (const e of retention.erased) io.out(`Erased the personal data of stay ${e.id}: ${e.reason}.`);
+    for (const r of dropOldReceipts(db, io.now())) io.out(`Deleted the Alloggiati Web receipt ${r}: kept the 5 years the law asks.`);
 
     switch (sub) {
       case "scadenze":
@@ -196,6 +214,21 @@ export async function runGuests(dir: string, values: GuestOptions, rest: string[
       case "inviato":
       case "sent":
         return confirmSent(db, config, args, values, io);
+      case "tabelle":
+      case "tables":
+        return await tables(dir, db, args, io);
+      case "credenziali":
+      case "credentials":
+        return await credentials(db, args, values, io);
+      case "riconosciuto":
+      case "recognized":
+        return recognized(db, config, args, io);
+      case "invia":
+      case "send":
+        return await sendItaly(dir, db, config, args, values, io);
+      case "ricevute":
+      case "receipts":
+        return await fetchReceipts(dir, db, config, args, io);
       case "esporta":
       case "export":
         return await exportStay(db, config, args, values, io);
@@ -217,7 +250,7 @@ function noExtra(args: string[]): void {
   if (args.length > 0) throw new UsageError(`Unexpected argument "${args[0]}".`);
 }
 
-async function activate(db: Db, config: HostConfig, args: string[], io: Io): Promise<number> {
+async function activate(dir: string, db: Db, config: HostConfig, args: string[], io: Io): Promise<number> {
   noExtra(args);
   if (readKeys(db)) throw new SetupError('Guest registration is already on in this folder. To change the passphrase: "fairnight ospiti frase".');
   const fromEnv = io.env?.FAIRGUEST_FRASE;
@@ -228,6 +261,15 @@ async function activate(db: Db, config: HostConfig, args: string[], io: Io): Pro
   io.out("Guest registration is on. The guests' data will be stored encrypted in data/fairnight.db.");
   for (const line of LOST_WARNING) io.out(line);
   const r = prefillFromCalendar(db, config.listings, io.now());
+  if (guestListings(config.listings).some((l) => l.fairguest.country === "IT")) {
+    try {
+      await downloadTables(dir, db, io);
+      io.out("Downloaded the Alloggiati Web code tables (municipalities, states, documents) from the portal.");
+    } catch (e) {
+      io.out(`The Alloggiati Web code tables could not be downloaded now (${(e as Error).message}): run "fairnight ospiti tabelle" later.`);
+    }
+    io.out('Italy: save the Alloggiati Web credentials with "fairnight ospiti credenziali".');
+  }
   if (guestListings(config.listings).length === 0) io.out('Next: add a "fairguest" block to the listings whose guests you register, then "fairnight sync".');
   else io.out(`${r.created} stay${r.created === 1 ? "" : "s"} to register, from the calendars already read. Next: "fairnight ospiti".`);
   return 0;
@@ -271,10 +313,16 @@ function deadlines(db: Db, config: HostConfig, args: string[], values: GuestOpti
     return late > 0 ? 1 : 0;
   }
   const pending = rows.filter((r) => r.state !== "done");
-  io.out(`Guest communications · now ${show(localDateTime(io.now()))} · 24 hours from the booking and from check-in (RD 933/2021, art. 6.3)`);
+  const countries = new Set(guestListings(config.listings).map((l) => l.fairguest.country));
+  const rules = [
+    countries.has("ES") || countries.has("ES-CT") ? "Spain: 24 hours from the booking and from check-in (RD 933/2021, art. 6.3)" : "",
+    countries.has("IT") ? "Italy: 24 hours from arrival, 6 for a stay of 24 hours or less (art. 109 TULPS)" : "",
+  ].filter(Boolean);
+  io.out(`Guest communications · now ${show(localDateTime(io.now()))}${rules.length ? ` · ${rules.join(" · ")}` : ""}`);
   if (pending.length === 0) io.out("Nothing to communicate.");
   for (const r of pending) io.out(deadlineLine(r));
   if (late > 0) io.out(`${late} communication${late === 1 ? " is" : "s are"} late: make ${late === 1 ? "it" : "them"} now, then "fairnight ospiti inviato <stay> --tipo …".`);
+  if (pending.some((r) => r.country === "IT")) io.out('Italy: "fairnight ospiti invia" shows the schedine due; "--applica" sends them to Alloggiati Web.');
   return late > 0 ? 1 : 0;
 }
 
@@ -343,6 +391,7 @@ async function showStay(db: Db, config: HostConfig, args: string[], io: Io): Pro
     io.out(problems.length === 0 ? `  ${KIND_LABEL[kind]}: complete` : `  ${KIND_LABEL[kind]}: missing or wrong`);
     for (const p of problems) io.out(`    - ${p.path}: ${p.message}`);
   }
+  if (o.settings.country === "IT") io.out(row.recognized_at ? `  Guests recognized ${show(row.recognized_at)}.` : '  Guests not recognized yet: see them in person or on a live video call, then "fairnight ospiti riconosciuto".');
   for (const sub of submissions(db, row.id)) io.out(`  ${KIND_LABEL[sub.kind]}: ${sub.status} ${show(sub.at)} (${sub.channel})`);
   const rule = retentionOf(db, row, o.settings);
   io.out(`  Retention: ${rule.eraseFrom ? `erased from ${show(rule.eraseFrom)}` : "kept for now"}, ${rule.reason}.`);
@@ -371,6 +420,12 @@ const GUEST_FIELDS = [
   "document.support",
   "document.issuedOn",
   "document.spanish",
+  "document.issuedIn.country",
+  "document.issuedIn.locality",
+  "document.issuedIn.province",
+  "birthPlace.country",
+  "birthPlace.locality",
+  "birthPlace.province",
   "address.country",
   "address.street",
   "address.locality",
@@ -423,10 +478,16 @@ async function correct(db: Db, config: HostConfig, args: string[], values: Guest
   const person = o.people[index] as OpenedStay["people"][number];
   const raw = (await io.prompt(`New value for ${field} of guest ${index + 1}, empty to remove: `, { hidden: false })).trim();
   const draft = JSON.parse(JSON.stringify(person.data.guest)) as Record<string, unknown>;
-  const [top, sub] = field.split(".") as [string, string | undefined];
   const value: unknown = field === "document.spanish" ? raw === "true" || raw === "sì" || raw === "si" || raw === "yes" : raw;
-  if (sub === undefined) draft[top] = raw === "" ? undefined : value;
-  else draft[top] = { ...((draft[top] as Record<string, unknown> | undefined) ?? {}), [sub]: raw === "" ? undefined : value };
+  // Up to three levels, like document.issuedIn.locality: the objects on the way are created when missing.
+  const keys = field.split(".");
+  let target = draft;
+  for (const k of keys.slice(0, -1)) {
+    const next = { ...((target[k] as Record<string, unknown> | undefined) ?? {}) };
+    target[k] = next;
+    target = next;
+  }
+  target[keys[keys.length - 1] as string] = raw === "" ? undefined : value;
   const parsed = parseGuest(draft, today);
   if (!parsed.guest) {
     for (const p of parsed.problems) io.out(`  - ${p.path}: ${p.message}`);
@@ -454,6 +515,7 @@ async function prepare(dir: string, db: Db, config: HostConfig, args: string[], 
   const countries = new Set(rows.map((r) => settingsOf(config, r).country));
   if (countries.size > 1) throw new UsageError("These stays go to different authorities: prepare SES and Mossos stays separately.");
   const country = [...countries][0];
+  if (country === "IT") return await prepareItaly(dir, db, config, rows, values, io);
   if (country === "ES") {
     // Stop before asking for the passphrase: nothing can be prepared for SES yet.
     try {
@@ -516,10 +578,11 @@ function confirmSent(db: Db, config: HostConfig, args: string[], values: GuestOp
   const [id, ...extra] = args;
   noExtra(extra);
   const row = stayOrFail(db, id);
-  const kind = kindOf(values.tipo, null);
   const settings = settingsOf(config, row);
+  const kind = settings.country === "IT" ? kindOf(values.tipo, "checkin") : kindOf(values.tipo, null);
+  if (settings.country === "IT" && kind !== "checkin") throw new UsageError("In Italy only the guests are communicated (Alloggiati Web): there is no booking or cancellation to record.");
   const at = localDateTime(io.now());
-  const channel = settings.country === "ES-CT" ? "mossos-file" : "ses-web";
+  const channel = settings.country === "ES-CT" ? "mossos-file" : settings.country === "IT" ? "alloggiati-web" : "ses-web";
   recordSubmission(db, { stayId: row.id, kind, channel, status: kind === "cancellation" ? "cancelled" : "accepted", at, detail: "confirmed by the host" });
   // The uploaded file is not needed any more.
   for (const s of submissions(db, row.id)) {
@@ -603,4 +666,331 @@ function clean(db: Db, config: HostConfig, args: string[], erasedNow: number, or
   }
   io.out("Backups of data/fairnight.db are not touched: erasing works only on this file.");
   return 0;
+}
+
+// ---------------------------------------------------------------- Italy, Alloggiati Web
+
+const ALLOGGIATI_CHANNEL = "alloggiati-web";
+
+async function tables(dir: string, db: Db, args: string[], io: Io): Promise<number> {
+  noExtra(args);
+  const t = await downloadTables(dir, db, io);
+  io.out(`Downloaded the Alloggiati Web code tables: ${t.municipalities.length} municipalities, ${t.states.length} states, ${t.documents.length} document types (saved in data/fairguest/alloggiati).`);
+  return 0;
+}
+
+/** The saved tables, downloaded again when older than a month (municipalities change). */
+async function freshTables(dir: string, db: Db, io: Io): Promise<AlloggiatiTables> {
+  const saved = loadTables(dir, db);
+  const today = localDateTime(io.now()).slice(0, 10);
+  if (saved && addDays(saved.at.slice(0, 10), TABLES_MAX_DAYS) > today) return saved.tables;
+  try {
+    const t = await downloadTables(dir, db, io);
+    io.out("Downloaded the Alloggiati Web code tables from the portal.");
+    return t;
+  } catch (e) {
+    if (saved) {
+      io.out(`The Alloggiati Web code tables could not be updated (${(e as Error).message}): using those of ${saved.at.slice(0, 10)}.`);
+      return saved.tables;
+    }
+    throw new SetupError(`The Alloggiati Web code tables are needed and could not be downloaded (${(e as Error).message}). Try again later with "fairnight ospiti tabelle".`);
+  }
+}
+
+function accountOf(values: GuestOptions): string {
+  const account = values.account ?? DEFAULT_ALLOGGIATI_ACCOUNT;
+  if (!/^[a-z0-9-]{1,30}$/.test(account)) throw new UsageError(`--account must be a short name of lower-case letters, digits and dashes, got "${account}"`);
+  return account;
+}
+
+const italyAccount = (s: GuestSettings) => s.alloggiati?.account ?? DEFAULT_ALLOGGIATI_ACCOUNT;
+
+async function credentials(db: Db, args: string[], values: GuestOptions, io: Io): Promise<number> {
+  noExtra(args);
+  const account = accountOf(values);
+  if (values.verifica) {
+    // Asks the service for a token and checks it: no schedina is sent.
+    const key = await unlockedKey(db, io);
+    const c = loadCredentials(db, account, key);
+    if (!c) throw new SetupError(`No Alloggiati Web credentials saved for account "${account}": "fairnight ospiti credenziali${account === DEFAULT_ALLOGGIATI_ACCOUNT ? "" : ` --account ${account}`}".`);
+    const client = alloggiatiClient(io);
+    const { token, expires } = await client.token(c);
+    const check = await client.authenticationTest(c.user, token);
+    if (!check.ok) throw new SetupError(`Alloggiati Web gave a token but did not accept it: ${[check.code, check.description, check.detail].filter(Boolean).join(" · ")}`);
+    io.out(`Alloggiati Web accepted the credentials of account "${account}" (token valid until ${expires || "unknown"}). Nothing was sent.`);
+    return 0;
+  }
+  if (!io.prompt) throw new SetupError("The credentials are asked in a terminal (password and key without echo), never written on the command line.");
+  const before = hasCredentials(db, account);
+  io.out(`Alloggiati Web, account "${account}": the user and password of the portal, and the "Chiave Web Service" generated in the portal's user menu.`);
+  const user = (await io.prompt("Utente: ", { hidden: false })).trim();
+  if (!/^[A-Za-z0-9._-]{2,40}$/.test(user)) throw new SetupError("The user is a code of letters and digits, as given by the Questura: nothing was saved.");
+  const password = await io.prompt("Password: ", { hidden: true });
+  const wsKey = (await io.prompt("Chiave Web Service: ", { hidden: true })).trim();
+  if (!password || !wsKey) throw new SetupError("Password and key are both needed: nothing was saved.");
+  saveCredentials(db, account, { user, password, wsKey });
+  io.out(`Saved${before ? ", replacing the previous ones" : ""}. They are sealed with your Fairguest key and open only with the passphrase.`);
+  io.out(`When the password changes, the key must be generated again on the portal and saved here again. To check them without sending anything: "fairnight ospiti credenziali --verifica${account === DEFAULT_ALLOGGIATI_ACCOUNT ? "" : ` --account ${account}`}".`);
+  return 0;
+}
+
+async function unlockedKey(db: Db, io: Io) {
+  const pass = await askPassphrase(io);
+  try {
+    return unlockKeys(db, pass);
+  } catch (e) {
+    if (e instanceof PassphraseError) throw new SetupError(e.message);
+    throw e;
+  }
+}
+
+function italyRow(db: Db, config: HostConfig, id: string | undefined): { row: StayRow; settings: GuestSettings } {
+  const row = stayOrFail(db, id);
+  const settings = settingsOf(config, row);
+  if (settings.country !== "IT") throw new UsageError(`Stay ${row.id} is not in Italy: this command is for Alloggiati Web.`);
+  return { row, settings };
+}
+
+function recognized(db: Db, config: HostConfig, args: string[], io: Io): number {
+  if (args.length === 0) throw new UsageError("Which stay? fairnight ospiti riconosciuto <stay>");
+  for (const id of [...new Set(args)]) {
+    const { row } = italyRow(db, config, id);
+    notErased(row);
+    markRecognized(db, row.id, io.now());
+    io.out(`Stay ${row.id}: guests recognized on ${show(localDateTime(io.now()))}.`);
+  }
+  io.out("This records that you checked each guest against the identity document, in person or on a live video call (Consiglio di Stato, judgment 9101/2025). The check-in link fills in the data: it does not replace this.");
+  return 0;
+}
+
+/** Stays that cannot go yet: not recognized, or with a missing field or code. */
+function problemsOfItaly(o: OpenedStay, tables: AlloggiatiTables): { lines: string[]; problems: string[] } {
+  const problems: string[] = [];
+  if (!o.row.recognized_at) problems.push('the guests are not recognized yet: see them in person or on a live video call, then "fairnight ospiti riconosciuto"');
+  const r = schedine(o.stay, tables);
+  problems.push(...r.problems.map((p) => `${p.path}: ${p.message}`));
+  return { lines: problems.length === 0 ? r.lines : [], problems };
+}
+
+async function prepareItaly(dir: string, db: Db, config: HostConfig, rows: StayRow[], values: GuestOptions, io: Io): Promise<number> {
+  if (values.tipo !== undefined && kindOf(values.tipo, "checkin") !== "checkin") throw new UsageError("In Italy only the guests are communicated: there is no booking to prepare.");
+  const tablesNow = await freshTables(dir, db, io);
+  const key = await unlockedKey(db, io);
+  const stays = rows.map((r) => openStay(db, r, settingsOf(config, r), key));
+  let failed = false;
+  const ready: { o: OpenedStay; lines: string[] }[] = [];
+  for (const o of stays) {
+    const r = problemsOfItaly(o, tablesNow);
+    if (r.problems.length === 0) ready.push({ o, lines: r.lines });
+    else {
+      failed = true;
+      io.out(`${o.stay.id}: the schedine cannot be made yet:`);
+      for (const p of r.problems) io.out(`  - ${p}`);
+    }
+  }
+  if (failed) {
+    io.out('Complete the data with the check-in form or "fairnight ospiti correggi", then prepare again. No file was written.');
+    return 1;
+  }
+  const at = localDateTime(io.now());
+  const folder = path.resolve(io.cwd, values.out ?? path.join(dir, DATA_DIR, "fairguest"));
+  mkdirSync(folder, { recursive: true });
+  const byListing = new Map<string, { o: OpenedStay; lines: string[] }[]>();
+  for (const r of ready) byListing.set(r.o.row.listing, [...(byListing.get(r.o.row.listing) ?? []), r]);
+  for (const [listing, group] of byListing) {
+    const f = alloggiatiFile(
+      group.flatMap((g) => g.lines),
+      `alloggiati-${listing}-${at.replace(/[-:]/g, "").replace("T", "-")}.txt`,
+    );
+    const file = path.join(folder, f.name);
+    writeFileSync(file, f.bytes, { mode: 0o600 });
+    chmodSync(file, 0o600);
+    for (const g of group) recordSubmission(db, { stayId: g.o.stay.id, kind: "checkin", channel: "alloggiati-file", status: "prepared", at, file });
+    io.out(`Wrote ${file}: ${group.reduce((n, g) => n + g.lines.length, 0)} schedine for ${listing}.`);
+  }
+  io.out(`Upload it on ${ALLOGGIATI_PORTAL} ("Invio File"; the portal takes arrivals of today and yesterday only), then: fairnight ospiti inviato <stay>`);
+  io.out("The file holds the guests' data in clear: it is deleted when you record the upload, or with the stay's data.");
+  return 0;
+}
+
+interface SendItem {
+  o: OpenedStay;
+  lines: string[];
+}
+
+async function sendItaly(dir: string, db: Db, config: HostConfig, args: string[], values: GuestOptions, io: Io): Promise<number> {
+  const today = localDateTime(io.now()).slice(0, 10);
+  const yesterday = addDays(today, -1);
+  const done = (r: StayRow) => submissions(db, r.id).some((s) => s.kind === "checkin" && (s.status === "accepted" || s.status === "sent"));
+  let rows: StayRow[];
+  if (args.length > 0) {
+    rows = [...new Set(args)].map((id) => italyRow(db, config, id).row);
+    rows.forEach(notErased);
+  } else {
+    const italian = listStays(db).filter((r) => !r.erased_at && !r.cancelled_at && config.listings.find((l) => l.name === r.listing)?.fairguest?.country === "IT" && !done(r));
+    for (const r of italian.filter((r) => r.check_in < yesterday && today <= addDays(r.check_out, 30))) {
+      io.out(`${r.id}: arrived ${r.check_in}, too late for the web service (it takes arrivals of today and yesterday only). Ask the Questura how to communicate it.`);
+    }
+    rows = italian.filter((r) => r.check_in === today || r.check_in === yesterday);
+  }
+  for (const r of rows) {
+    if (done(r)) throw new SetupError(`Stay ${r.id} was already communicated to Alloggiati Web: nothing is sent twice.`);
+    if (r.check_in > today) throw new SetupError(`Stay ${r.id} arrives on ${r.check_in}: Alloggiati Web takes the schedine from the day of arrival.`);
+    if (r.check_in < yesterday) throw new SetupError(`Stay ${r.id} arrived on ${r.check_in}: the web service takes arrivals of today and yesterday only. Ask the Questura how to communicate it.`);
+  }
+  if (rows.length === 0) {
+    io.out("Nothing to send to Alloggiati Web now: no arrival today or yesterday still to communicate.");
+    return 0;
+  }
+  const network = values.prova || values.applica;
+  if (network && !io.prompt) {
+    // Without a terminal (a scheduled task) only listings that allow it explicitly.
+    const notAllowed = rows.filter((r) => !settingsOf(config, r).alloggiati?.autoSend);
+    if (notAllowed.length > 0) {
+      throw new SetupError(
+        `Sending without a terminal is off for ${[...new Set(notAllowed.map((r) => r.listing))].join(", ")}: set "alloggiati": { "autoSend": true } in fairnight.config.json only if you accept the risks explained in docs/fairguest-italia.md.`,
+      );
+    }
+  }
+  const tablesNow = await freshTables(dir, db, io);
+  const key = await unlockedKey(db, io);
+  const ready: SendItem[] = [];
+  let blocked = 0;
+  for (const r of rows) {
+    const o = openStay(db, r, settingsOf(config, r), key);
+    const check = problemsOfItaly(o, tablesNow);
+    if (check.problems.length > 0) {
+      blocked++;
+      io.out(`${r.id} (${r.listing}, arrival ${r.check_in}): not ready`);
+      for (const p of check.problems) io.out(`  - ${p}`);
+      continue;
+    }
+    ready.push({ o, lines: check.lines });
+    io.out(`${r.id} (${r.listing}, arrival ${r.check_in}): ${check.lines.length} schedin${check.lines.length === 1 ? "a" : "e"} ready`);
+  }
+  if (!network) {
+    io.out(
+      ready.length > 0
+        ? 'Nothing was sent. "--prova" asks Alloggiati Web to check them without registering them; "--applica" checks them and sends them.'
+        : "Nothing was sent.",
+    );
+    return blocked > 0 ? 1 : 0;
+  }
+  // One token per account; one call per account and apartment.
+  const groups = new Map<string, { account: string; apartmentId: number | undefined; items: SendItem[] }>();
+  for (const item of ready) {
+    const s = item.o.settings;
+    const id = `${italyAccount(s)}#${s.alloggiati?.apartmentId ?? ""}`;
+    const g = groups.get(id) ?? { account: italyAccount(s), apartmentId: s.alloggiati?.apartmentId, items: [] };
+    g.items.push(item);
+    groups.set(id, g);
+  }
+  const client = alloggiatiClient(io);
+  const tokens = new Map<string, { user: string; token: string }>();
+  let failures = blocked;
+  const at = localDateTime(io.now());
+  for (const g of groups.values()) {
+    let auth = tokens.get(g.account);
+    if (!auth) {
+      const c = loadCredentials(db, g.account, key);
+      if (!c) {
+        failures += g.items.length;
+        io.out(`No Alloggiati Web credentials for account "${g.account}": "fairnight ospiti credenziali${g.account === DEFAULT_ALLOGGIATI_ACCOUNT ? "" : ` --account ${g.account}`}". Nothing was sent for ${g.items.map((i) => i.o.stay.id).join(", ")}.`);
+        continue;
+      }
+      auth = { user: c.user, token: (await client.token(c)).token };
+      tokens.set(g.account, auth);
+    }
+    // Always check first: only the stays whose schedine all pass are sent.
+    const test = await client.test(auth.user, auth.token, g.items.flatMap((i) => i.lines), g.apartmentId);
+    if (!test.result.ok) throw new AlloggiatiError(`Alloggiati Web refused the check: ${[test.result.code, test.result.description, test.result.detail].filter(Boolean).join(" · ")}`);
+    const passing: SendItem[] = [];
+    let offset = 0;
+    for (const item of g.items) {
+      const outcomes = test.lines.slice(offset, offset + item.lines.length);
+      offset += item.lines.length;
+      const bad = outcomes.map((x, i) => ({ x, i })).filter(({ x }) => !x.ok);
+      if (outcomes.length === item.lines.length && bad.length === 0) passing.push(item);
+      else {
+        failures++;
+        io.out(`${item.o.stay.id}: Alloggiati Web found errors${values.applica ? ", not sent" : ""}:`);
+        for (const { x, i } of bad) io.out(`  - guest ${i + 1}: ${[x.code, x.description, x.detail].filter(Boolean).join(" · ")}`);
+        if (outcomes.length !== item.lines.length) io.out("  - the service did not answer for every schedina");
+      }
+    }
+    if (!values.applica) {
+      for (const item of passing) io.out(`${item.o.stay.id}: Alloggiati Web checked ${item.lines.length} schedin${item.lines.length === 1 ? "a" : "e"}: correct. Not sent (--prova).`);
+      continue;
+    }
+    if (passing.length === 0) continue;
+    const sent = await client.send(auth.user, auth.token, passing.flatMap((i) => i.lines), g.apartmentId);
+    offset = 0;
+    for (const item of passing) {
+      const outcomes = sent.lines.slice(offset, offset + item.lines.length);
+      offset += item.lines.length;
+      const okCount = outcomes.filter((x) => x.ok).length;
+      if (sent.result.ok && okCount === item.lines.length) {
+        recordSubmission(db, { stayId: item.o.stay.id, kind: "checkin", channel: ALLOGGIATI_CHANNEL, status: "accepted", at, batch: g.account, detail: `${okCount} schedine accepted` });
+        io.out(`${item.o.stay.id}: sent to Alloggiati Web, ${okCount} schedin${okCount === 1 ? "a" : "e"} accepted.`);
+      } else {
+        failures++;
+        const detail = outcomes.map((x, i) => (x.ok ? `guest ${i + 1} accepted` : `guest ${i + 1} refused: ${[x.code, x.description, x.detail].filter(Boolean).join(" · ")}`)).join("; ");
+        recordSubmission(db, { stayId: item.o.stay.id, kind: "checkin", channel: ALLOGGIATI_CHANNEL, status: "rejected", at, batch: g.account, detail: detail || "no answer per schedina" });
+        io.out(`${item.o.stay.id}: Alloggiati Web did not accept everything: ${detail || "no answer per schedina"}. Check on the portal which guests are registered before trying again.`);
+      }
+    }
+  }
+  if (values.applica) {
+    for (const e of applyRetention(db, config, io.now()).erased) io.out(`Erased the personal data of stay ${e.id}: ${e.reason}.`);
+    io.out('The receipt of today can be downloaded from tomorrow: "fairnight ospiti ricevute".');
+  }
+  return failures > 0 ? 1 : 0;
+}
+
+async function fetchReceipts(dir: string, db: Db, config: HostConfig, args: string[], io: Io): Promise<number> {
+  noExtra(args);
+  const today = localDateTime(io.now()).slice(0, 10);
+  const first = addDays(today, -30);
+  const have = new Set(receipts(db).map((r) => `${r.account}#${r.day}`));
+  const wanted = new Map<string, { account: string; day: string }>();
+  for (const row of listStays(db)) {
+    const s = config.listings.find((l) => l.name === row.listing)?.fairguest;
+    if (s?.country !== "IT") continue;
+    for (const sub of submissions(db, row.id)) {
+      if (sub.channel !== ALLOGGIATI_CHANNEL || sub.status !== "accepted") continue;
+      const day = sub.at.slice(0, 10);
+      const account = sub.batch ?? italyAccount(s);
+      if (day >= today || day < first || have.has(`${account}#${day}`)) continue;
+      wanted.set(`${account}#${day}`, { account, day });
+    }
+  }
+  if (wanted.size === 0) {
+    io.out("No Alloggiati Web receipt to download (the service keeps them for the last 30 days, today excluded).");
+    return 0;
+  }
+  const key = await unlockedKey(db, io);
+  const client = alloggiatiClient(io);
+  let missing = 0;
+  const tokens = new Map<string, { user: string; token: string }>();
+  for (const { account, day } of [...wanted.values()].sort((a, b) => a.day.localeCompare(b.day))) {
+    let auth = tokens.get(account);
+    if (!auth) {
+      const c = loadCredentials(db, account, key);
+      if (!c) {
+        missing++;
+        io.out(`No credentials for account "${account}": the receipt of ${day} was not downloaded.`);
+        continue;
+      }
+      auth = { user: c.user, token: (await client.token(c)).token };
+      tokens.set(account, auth);
+    }
+    const r = await client.receipt(auth.user, auth.token, day);
+    if (!r.pdf) {
+      missing++;
+      io.out(`The receipt of ${day} (account ${account}) is not available: ${[r.result.code, r.result.description, r.result.detail].filter(Boolean).join(" · ") || "no reason given"}.`);
+      continue;
+    }
+    io.out(`Saved ${saveReceipt(dir, db, account, day, r.pdf, io.now())}: keep it 5 years (it is deleted by itself after that).`);
+  }
+  return missing > 0 ? 1 : 0;
 }

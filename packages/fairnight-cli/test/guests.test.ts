@@ -180,7 +180,7 @@ describe("deadlines and stays", () => {
     expect(stays.map((s) => s.source_uid)).toEqual(["prova-1@airbnb.example", "prova-2@airbnb.example"]);
     const t = io(dir);
     expect(await main(["ospiti"], t)).toBe(0);
-    expect(t.lines[0]).toBe("Guest communications · now 2099-06-01 09:00 · 24 hours from the booking and from check-in (RD 933/2021, art. 6.3)");
+    expect(t.lines[0]).toBe("Guest communications · now 2099-06-01 09:00 · Spain: 24 hours from the booking and from check-in (RD 933/2021, art. 6.3)");
     expect(t.lines).toContain(
       `open  due 2099-06-11 16:00  casa-prova  ${one(stays).id}  check-in (PV), stay 2099-06-10 → 2099-06-13, 0 guests registered · in 247 h`,
     );

@@ -32,8 +32,8 @@ function oldDatabase(version: 3 | 4 | 5 | 6): string {
 }
 
 describe("schema migrations", () => {
-  it("the latest version is 7: zone data (4), Fairguest (5), rooms of small hotels (6), then Fairhello (7)", () => {
-    expect(SCHEMA_VERSION).toBe(7);
+  it("the latest version is 8: zone data (4), Fairguest (5), rooms of small hotels (6), Fairhello (7), Fairguest in Italy (8)", () => {
+    expect(SCHEMA_VERSION).toBe(8);
   });
 
   it("takes a database from schema 3 to the latest, keeping its data", () => {
@@ -68,17 +68,23 @@ describe("schema migrations", () => {
     const db = openDb(file);
     expect(getMeta(db, "schema_version")).toBe(String(SCHEMA_VERSION));
     expect(db.prepare("SELECT uid, unit, units FROM calendar_events").all()).toEqual([{ uid: "prova-1", unit: null, units: null }]);
+    // Fairguest in Italy: the recognition of the guests and the receipts.
+    expect(hasColumn(db, "guest_stays", "recognized_at")).toBe(true);
+    expect(tables(db)).toContain("guest_receipts");
     db.close();
   });
 
-  it("takes a database from schema 6 to the latest: the guest assistant's tables (Fairhello) appear, nothing else changes", () => {
+  it("takes a database from schema 6 to the latest: the guest assistant's tables (Fairhello) appear, then Fairguest in Italy", () => {
     const file = oldDatabase(6);
     const before = new Database(file, { readonly: true });
     expect(tables(before)).not.toContain("hello_drafts");
     before.close();
     const db = openDb(file);
-    expect(getMeta(db, "schema_version")).toBe("7");
+    expect(getMeta(db, "schema_version")).toBe(String(SCHEMA_VERSION));
     expect(tables(db)).toEqual(expect.arrayContaining(["hello_stays", "hello_messages", "hello_drafts", "hello_runs"]));
+    // Then Fairguest in Italy (8): the recognition of the guests and the receipts.
+    expect(hasColumn(db, "guest_stays", "recognized_at")).toBe(true);
+    expect(tables(db)).toContain("guest_receipts");
     expect(db.prepare("SELECT uid FROM calendar_events").all()).toEqual([{ uid: "prova-1" }]);
     db.close();
   });

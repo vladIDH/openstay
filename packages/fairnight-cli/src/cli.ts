@@ -15,6 +15,7 @@ process.exitCode = await main(process.argv.slice(2), {
   smoobuFetch: (url, init) => fetch(url, init),
   beds24Fetch: (url, init) => fetch(url, init),
   airroiFetch: (url, init) => fetch(url, init),
+  alloggiatiFetch: (url, init) => fetch(url, init),
   system: {
     platform: process.platform,
     home: os.homedir(),

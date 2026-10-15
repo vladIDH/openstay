@@ -26,7 +26,7 @@ import { openDb } from "./db.js";
 import { dbPath, localToday, type Io } from "./io.js";
 import { handleCheckin, type CheckinContext } from "./guests/checkin.js";
 import { handleReplies, type RepliesContext } from "./hello/page.js";
-import { applyRetention, guestsEnabled, prefillFromCalendar } from "./guests/store.js";
+import { applyRetention, guestDeadlines, guestsEnabled, prefillFromCalendar } from "./guests/store.js";
 import { renderPage } from "./page.js";
 import { handlePilot, PAGE_CHECK_MS, pageRunIfDue, type PilotPageContext } from "./pilota-pagina.js";
 import { lastSync, priceOne } from "./price.js";
@@ -63,6 +63,17 @@ function send(res: ServerResponse, status: number, type: string, body: string, e
 
 const json = (res: ServerResponse, status: number, data: unknown) =>
   send(res, status, "application/json; charset=utf-8", JSON.stringify(data));
+
+/**
+ * A reminder for the page when guest communications are late or due within
+ * 24 hours: only how many, never who. Null when there is nothing to say.
+ */
+function guestReminder(db: ReturnType<typeof openDb>, config: HostConfig, now: Date): { late: number; soon: number; italy: boolean } | null {
+  if (!guestsEnabled(db)) return null;
+  const pending = guestDeadlines(db, config, now).filter((d) => d.state === "late" || (d.state === "open" && d.hoursLeft <= 24));
+  if (pending.length === 0) return null;
+  return { late: pending.filter((d) => d.state === "late").length, soon: pending.filter((d) => d.state === "open").length, italy: pending.some((d) => d.country === "IT") };
+}
 
 /** A request from this computer (not from a phone or another computer of the network). */
 export function fromThisComputer(req: IncomingMessage): boolean {
@@ -104,12 +115,13 @@ function suggestionPayload(s: ListingSuggestion) {
   };
 }
 
-export function pricesPayload(dir: string, config: HostConfig, today: string, days: number, options: { local?: boolean } = {}) {
+export function pricesPayload(dir: string, config: HostConfig, today: string, days: number, options: { local?: boolean; now?: Date } = {}) {
   const db = openDb(dbPath(dir));
   try {
     return {
       today,
       days,
+      guests: options.now ? guestReminder(db, config, options.now) : null,
       // "Use this price" works only on this computer; on a phone the page shows the command.
       local: options.local ?? true,
       // The page starts in this language unless the browser has another one saved.
@@ -167,7 +179,7 @@ export function createHandler(opts: ServeOptions): (req: IncomingMessage, res: S
         return;
       }
       if (req.method === "GET" && url.pathname === "/api/data") {
-        json(res, 200, pricesPayload(opts.dir, loadHostConfig(opts.dir), today, opts.days, { local: fromThisComputer(req) }));
+        json(res, 200, pricesPayload(opts.dir, loadHostConfig(opts.dir), today, opts.days, { local: fromThisComputer(req), now: opts.io.now() }));
         return;
       }
       if (req.method === "POST" && url.pathname === "/api/base-price") {

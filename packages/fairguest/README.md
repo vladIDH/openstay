@@ -2,7 +2,7 @@
 
 Guest registration for short-term rentals, on the host's computer. *0.1.0, in development.*
 
-In Spain, Real Decreto 933/2021 requires every host to send the police the details of each guest. Fairguest is the part of [OpenStay](https://github.com/vladIDH/openstay) that handles this. Hosts use it through the `fairnight ospiti` commands and the check-in form of [fairnight-cli](https://github.com/vladIDH/openstay/tree/main/packages/fairnight-cli). This package is the library underneath it: no network, no files, no dependencies, only Node's own `crypto`.
+In Spain (Real Decreto 933/2021) and in Italy (art. 109 TULPS, Alloggiati Web) every host must send the police the details of each guest. Fairguest is the part of [OpenStay](https://github.com/vladIDH/openstay) that handles this. Hosts use it through the `fairnight ospiti` commands and the check-in form of [fairnight-cli](https://github.com/vladIDH/openstay/tree/main/packages/fairnight-cli). This package is the library underneath it: no network, no files, no dependencies, only Node's own `crypto`.
 
 ## What it does
 
@@ -31,6 +31,13 @@ In Spain, Real Decreto 933/2021 requires every host to send the police the detai
 
   One file holds one establishment.
 - **Spain, SES.HOSPEDAJES** (`ES`): validation, deadlines and retention are ready. **The XML is not written yet.** Its XSD schemas are published only inside the SES application, so until they are downloaded, `prepare` fails with `SES_NOT_READY`, a message that says what is missing. Nothing invented is ever sent.
+
+- **Italy, Alloggiati Web** (`IT`), from the official web-service manual (Rev. 01 of 24/01/2022) and the user manual of the Polizia di Stato's portal:
+  - every guest: name, surname, sex, date and place of birth, citizenship; the identity document only for the holder (single guest 16, head of family 17 or of group 18; family members 19 and group members 20 have none);
+  - `schedine` turns a stay into lines of 168 characters with the codes of the official tables (municipalities, states, documents). The tables are not in this package: the caller downloads them from the portal's public page and passes them in (`parseAlloggiatiTables`);
+  - `AlloggiatiClient`: the SOAP 1.2 calls `GenerateToken`, `Authentication_Test`, `Test`, `Send` (and their "Gestione Appartamenti" variants), `Ricevuta`, `Tabella`, through a transport given by the caller. There is no test environment: `Test` checks without registering, on the real service;
+  - deadlines: 24 hours from arrival, 6 for a stay of 24 hours or less; no booking communication;
+  - retention: the data goes as soon as Alloggiati Web accepted it; only the receipt is kept, 5 years.
 
 **Never collected:** card numbers, IBANs, card holders. They have no place in the types, and `parseGuest` ignores any field it does not know.
 

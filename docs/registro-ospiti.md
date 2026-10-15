@@ -11,6 +11,7 @@ OpenStay è il contenitore; Fairnight è il modulo dei prezzi. **Fairguest** è 
 - **Nome:** Fairguest (sezione 6).
 - **Prima versione: solo Spagna**, cioè SES.HOSPEDAJES più il file da caricare sul portale dei Mossos per la Catalogna.
 - **Versioni successive:** Italia (Alloggiati Web + Istat/ROSS1000) e Portogallo (SIBA). Tutto quello che abbiamo trovato è nella sezione 8.
+- **15 ottobre 2026: si parte con l'Italia** (ramo `fairguest-it`). Alloggiati Web è nel codice: guida per l'host in [fairguest-italia.md](fairguest-italia.md) (italiano) e [fairguest-italia.es.md](fairguest-italia.es.md) (spagnolo). Istat, link a distanza e foto del documento seguono in PR separate.
 
 ## In breve
 
@@ -420,7 +421,7 @@ Fonti sul [portale della Polizia di Stato](https://alloggiatiweb.poliziadistato.
 - Se il servizio non funziona: fax o PEC alla Questura (art. 3).
 
 **Rischi**
-- **Riconoscimento «de visu».** La circolare del Capo della Polizia del 18/11/2024 chiede di identificare gli ospiti di persona. Il TAR Lazio l'ha annullata (maggio 2025), ma il Consiglio di Stato (sez. III, n. 9101/2025) l'ha rimessa in vigore **[NV: verificato solo su stampa]**. Il modulo **non deve promettere il check-in da remoto**: registra e invia, il riconoscimento resta all'host.
+- **Riconoscimento «de visu».** La circolare del Capo della Polizia del 18/11/2024 chiede di identificare gli ospiti di persona. Il TAR Lazio l'ha annullata (maggio 2025), ma il Consiglio di Stato (sez. III, n. 9101/2025, depositata il 21/11/2025) l'ha rimessa in vigore: sentenza letta sul sito della giustizia amministrativa il 15/10/2026. Ammette il collegamento video dal vivo. Nel codice: niente invio senza `fairnight ospiti riconosciuto`. Il modulo **non deve promettere il check-in da remoto**: registra e invia, il riconoscimento resta all'host.
 - **Credenziali fragili:** una sola WSKEY al giorno, da rifare a ogni cambio password. La scheda codici serve solo per il sito.
 - **Codici dei comuni** da tenere aggiornati: con una tabella vecchia le schedine vengono scartate.
 - **Nessun ambiente di prova:** ogni errore si scopre su un'utenza vera. Il `Test` riduce il rischio.

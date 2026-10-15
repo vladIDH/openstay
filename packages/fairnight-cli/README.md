@@ -178,7 +178,8 @@ In Spain every host must send the police the details of each guest (Real Decreto
 
 Where the data goes:
 - **SES.HOSPEDAJES** for most of Spain (`"country": "ES"`);
-- the **Mossos d'Esquadra** for Catalonia (`"country": "ES-CT"`).
+- the **Mossos d'Esquadra** for Catalonia (`"country": "ES-CT"`);
+- **Alloggiati Web** of the Polizia di Stato for Italy (`"country": "IT"`): the guide is [docs/fairguest-italia.md](../../docs/fairguest-italia.md) (Italian) and [docs/fairguest-italia.es.md](../../docs/fairguest-italia.es.md) (Spanish). In short: `fairnight ospiti credenziali` saves the Alloggiati Web user, password and key sealed; `fairnight ospiti riconosciuto <stay>` records that you saw the guests in person or on a live video call; `fairnight ospiti invia --applica` checks and sends the schedine of today's and yesterday's arrivals; `fairnight ospiti ricevute` keeps the receipts 5 years.
 
 **1. Tell each listing where its guests are communicated.** Add a `fairguest` block in `fairnight.config.json`:
 

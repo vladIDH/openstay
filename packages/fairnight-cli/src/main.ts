@@ -22,7 +22,7 @@ import { connect, importFromSmoobu, push } from "./smoobu.js";
 import { connect as connectBeds24, creditsLine, importFromBeds24, push as pushBeds24 } from "./beds24.js";
 import { Beds24Error } from "fairnight-beds24";
 import { AirRoiError, InsideAirbnbError } from "fairnight-market";
-import { connectAirRoi, deleteMarketData, importAirRoi, importFile, marketStatus } from "./mercato.js";
+import { connectAirRoi, deleteMarketData, importAirRoi, importFile, importIne, importIstac, marketStatus } from "./mercato.js";
 import { basePriceCommand } from "./prezzo-base.js";
 import { formatFeedReport, syncEverything } from "./sync-all.js";
 import { GUEST_USAGE, runGuests } from "./guests/commands.js";
@@ -48,6 +48,10 @@ Usage:
                                                    or from Inside Airbnb files you downloaded (calendar.csv.gz)
                                                    [--fonte csv|insideairbnb] [--annunci listings.csv.gz --tipo T --camere N --ospiti N --quartiere Q] [--dry-run]
   fairnight mercato importa --fonte airroi         AirROI zone metrics with your own key (off until AirROI confirms its terms) [--zona <name>]
+  fairnight mercato importa --fonte istac          ISTAC holiday homes, Canary Islands: average daily rate by municipality, free
+                                                   --zona <name> --comune <code, e.g. 38001> [--ospiti N] [--dry-run]
+  fairnight mercato importa --fonte ine            INE tourist apartments: season by tourist point (off while INE's licence is unclear)
+                                                   --zona <name> --punto <name, e.g. Adeje> [--dry-run]
   fairnight mercato collega                        save your own AirROI API key (asked, never shown)
   fairnight mercato prezzo-base                    the base price the zone data suggests, and why [--listing <name>] [--applica]
   fairnight mercato stato                          zone data, sources, which listings use them
@@ -85,6 +89,8 @@ const OPTIONS = {
   annunci: { type: "string" },
   camere: { type: "string" },
   ospiti: { type: "string" },
+  comune: { type: "string" },
+  punto: { type: "string" },
   quartiere: { type: "string" },
   help: { type: "boolean", short: "h" },
 } as const;
@@ -430,6 +436,8 @@ async function runMercato(
     tipo?: string;
     camere?: string;
     ospiti?: string;
+    comune?: string;
+    punto?: string;
     quartiere?: string;
     listing?: string;
     applica?: boolean;
@@ -442,22 +450,40 @@ async function runMercato(
   switch (sub) {
     case "importa":
     case "import": {
+      let guests: number | undefined;
+      if (values.ospiti !== undefined) {
+        guests = Number(values.ospiti);
+        if (!Number.isInteger(guests) || guests < 1) throw new UsageError(`--ospiti must be a whole number of guests, got "${values.ospiti}"`);
+      }
+      const dryRun = values["dry-run"] ?? false;
       if (values.fonte === "airroi") {
         noExtra(extra);
         return importAirRoi(dir, io, values.zona !== undefined ? { area: values.zona } : {});
       }
+      if (values.fonte === "istac") {
+        noExtra(extra);
+        return importIstac(dir, io, {
+          ...(values.zona !== undefined ? { area: values.zona } : {}),
+          ...(values.comune !== undefined ? { municipality: values.comune } : {}),
+          ...(guests !== undefined ? { guests } : {}),
+          dryRun,
+        });
+      }
+      if (values.fonte === "ine") {
+        noExtra(extra);
+        return importIne(dir, io, {
+          ...(values.zona !== undefined ? { area: values.zona } : {}),
+          ...(values.punto !== undefined ? { point: values.punto } : {}),
+          dryRun,
+        });
+      }
       const [file, ...more] = extra;
-      if (file === undefined) throw new UsageError("Which file? fairnight mercato importa <file> --zona <name> (or --fonte airroi).");
+      if (file === undefined) throw new UsageError("Which file? fairnight mercato importa <file> --zona <name> (or --fonte airroi, istac or ine).");
       noExtra(more);
       let bedrooms: number | undefined;
       if (values.camere !== undefined) {
         bedrooms = Number(values.camere);
         if (!Number.isInteger(bedrooms) || bedrooms < 0) throw new UsageError(`--camere must be a whole number of bedrooms, got "${values.camere}"`);
-      }
-      let guests: number | undefined;
-      if (values.ospiti !== undefined) {
-        guests = Number(values.ospiti);
-        if (!Number.isInteger(guests) || guests < 1) throw new UsageError(`--ospiti must be a whole number of guests, got "${values.ospiti}"`);
       }
       return importFile(dir, io, {
         file,
@@ -470,7 +496,7 @@ async function runMercato(
           ...(guests !== undefined ? { guests } : {}),
           ...(values.quartiere !== undefined ? { neighbourhood: values.quartiere } : {}),
         },
-        dryRun: values["dry-run"] ?? false,
+        dryRun,
       });
     }
     case "collega":

@@ -27,6 +27,7 @@ export {
   ISTAC_BASE_URL,
   ISTAC_DATASET,
   istacBand,
+  istacBandGuests,
   IstacClient,
   istacToDays,
   parseIstacAdrCsv,

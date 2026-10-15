@@ -41,6 +41,14 @@ export function istacBand(guests: number | undefined): IstacBand {
   return "GT8";
 }
 
+/** The band as a range of guests: 1–4, 5–8, 9 or more; null for every size. */
+export function istacBandGuests(band: IstacBand): { guestsFrom: number; guestsTo?: number } | null {
+  if (band === "1T4") return { guestsFrom: 1, guestsTo: 4 };
+  if (band === "5T8") return { guestsFrom: 5, guestsTo: 8 };
+  if (band === "GT8") return { guestsFrom: 9 };
+  return null;
+}
+
 export function describeIstacBand(band: IstacBand): string {
   return { _T: "every size", "1T4": "1 to 4 guests", "5T8": "5 to 8 guests", GT8: "more than 8 guests" }[band];
 }

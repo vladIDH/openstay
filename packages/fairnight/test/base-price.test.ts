@@ -97,6 +97,8 @@ describe("suggested base price", () => {
     expect(describeComparables(undefined)).toBe("");
     expect(describeComparables({ bedrooms: 1, guests: 1 })).toBe("1 bedroom, 1 guest");
     expect(describeComparables({ neighbourhood: "Costa Adeje" })).toBe("in Costa Adeje");
+    expect(describeComparables({ roomType: "whole home", guestsFrom: 1, guestsTo: 4 })).toBe("1–4 guests, whole home");
+    expect(describeComparables({ guestsFrom: 9 })).toBe("9 or more guests");
   });
 
   it("never changes the data it is given", () => {

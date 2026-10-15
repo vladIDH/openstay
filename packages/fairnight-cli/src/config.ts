@@ -111,6 +111,8 @@ export interface MarketSettings {
     /** Zone name → AirROI market. */
     areas?: Record<string, AirRoiArea>;
   };
+  /** INE tourist apartments: off while INE's licence is unclear (CC BY 4.0 or CC BY-SA 4.0). */
+  ine?: { enabled: boolean };
 }
 
 export interface HostConfig {
@@ -131,8 +133,17 @@ function checkMarket(v: unknown, issues: ConfigIssue[]): MarketSettings | null {
     issues.push({ path, message: "must be an object" });
     return null;
   }
-  unknownFields(v, path, ["airroi"], issues);
-  if (v.airroi === undefined) return {};
+  unknownFields(v, path, ["airroi", "ine"], issues);
+  let ine: MarketSettings["ine"];
+  if (v.ine !== undefined) {
+    if (!isObj(v.ine)) issues.push({ path: `${path}.ine`, message: "must be an object with enabled" });
+    else {
+      unknownFields(v.ine, `${path}.ine`, ["enabled"], issues);
+      if (typeof v.ine.enabled !== "boolean") issues.push({ path: `${path}.ine.enabled`, message: `must be true or false, got ${JSON.stringify(v.ine.enabled)}` });
+      ine = { enabled: v.ine.enabled === true };
+    }
+  }
+  if (v.airroi === undefined) return ine ? { ine } : {};
   const ap = `${path}.airroi`;
   const a = v.airroi;
   if (!isObj(a)) {
@@ -166,7 +177,7 @@ function checkMarket(v: unknown, issues: ConfigIssue[]): MarketSettings | null {
       }
     }
   }
-  return { airroi: { enabled: a.enabled === true, ...(a.areas !== undefined ? { areas } : {}) } };
+  return { airroi: { enabled: a.enabled === true, ...(a.areas !== undefined ? { areas } : {}) }, ...(ine ? { ine } : {}) };
 }
 
 type Obj = Record<string, unknown>;

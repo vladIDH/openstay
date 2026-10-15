@@ -17,6 +17,17 @@ import {
   AIRROI_ATTRIBUTION,
   AIRROI_MAX_DAYS,
   AirRoiClient,
+  describeIstacBand,
+  INE_ATTRIBUTION,
+  IneClient,
+  inePoints,
+  ineToDays,
+  ISTAC_ATTRIBUTION,
+  istacBand,
+  istacBandGuests,
+  IstacClient,
+  istacToDays,
+  parseIneTable,
   INSIDE_AIRBNB_ATTRIBUTION,
   INSIDE_AIRBNB_ESTIMATE_NOTE,
   InsideAirbnbCalendar,
@@ -34,6 +45,9 @@ import { deleteMarket, listMarketAreas, loadComparables, purgeExpiredMarket, sav
 
 export const FILE_SOURCES = ["csv", "insideairbnb"] as const;
 export type FileSource = (typeof FILE_SOURCES)[number];
+
+export const INE_OFF =
+  "INE is switched off (market.ine.enabled is false or missing in fairnight.config.json): INE's site gives two different licences (CC BY 4.0 in the legal notice, CC BY-SA 4.0 in the footer). Nothing was asked or saved.";
 
 export const AIRROI_OFF =
   "AirROI is switched off (market.airroi.enabled is false in fairnight.config.json): in attesa di conferma scritta da AirROI sui termini d'uso. Nothing was asked, sent or saved.";
@@ -126,7 +140,7 @@ export async function importFile(dir: string, io: Io, options: FileImportOptions
   const area = checkArea(options.area);
   const file = path.resolve(io.cwd, options.file);
   if (options.source !== undefined && !(FILE_SOURCES as readonly string[]).includes(options.source)) {
-    throw new SetupError(`--fonte must be csv, insideairbnb or airroi, got "${options.source}".`);
+    throw new SetupError(`--fonte must be csv, insideairbnb, airroi, istac or ine, got "${options.source}".`);
   }
   const source = (options.source as FileSource | undefined) ?? (await detectSource(file));
   const today = localToday(io.now());
@@ -309,6 +323,107 @@ export async function importAirRoi(dir: string, io: Io, options: { area?: string
   return 0;
 }
 
+// ---------------------------------------------------------------- ISTAC and INE (open data)
+
+const openDataFetch = (io: Io) => io.openDataFetch ?? ((url: string, init: Parameters<NonNullable<Io["openDataFetch"]>>[1]) => fetch(url, init));
+
+/** ISTAC holiday homes: the ADR of one Canary Islands municipality, for homes of the listing's size. */
+export async function importIstac(dir: string, io: Io, options: { area?: string; municipality?: string; guests?: number; dryRun: boolean }): Promise<number> {
+  const config = loadHostConfig(dir);
+  const area = checkArea(options.area);
+  if (options.municipality === undefined) throw new SetupError("Which municipality? Add --comune <code>, e.g. --comune 38001 for Adeje (the INE code, see docs/fonti-mercato.md).");
+  const band = istacBand(options.guests);
+  const client = new IstacClient({ fetch: openDataFetch(io), ...(io.istacBaseUrl ? { baseUrl: io.istacBaseUrl } : {}), ...(io.sleep ? { sleep: io.sleep } : {}) });
+  const today = localToday(io.now());
+  let adr;
+  try {
+    adr = await client.adr(options.municipality, band);
+  } catch (e) {
+    throw new SetupError((e as Error).message);
+  }
+  if (adr.months.length === 0) {
+    io.err(`ISTAC has no average daily rate for municipality ${options.municipality} (${describeIstacBand(band)}): nothing was imported.`);
+    return 1;
+  }
+  const first = adr.months[0]?.month.slice(0, 7) as string;
+  const last = adr.months.at(-1)?.month.slice(0, 7) as string;
+  const days = istacToDays(adr, today, AIRROI_DAYS);
+  const where = adr.name ?? options.municipality;
+  io.out(`Zone "${area}": ${options.dryRun ? "would import" : "imported"} the average daily rate of the holiday homes of ${where} (${describeIstacBand(band)}), ${adr.months.length} months ${first} → ${last}, spread over the next ${days.length} nights.`);
+  io.out(`  ${ISTAC_ATTRIBUTION}, data up to ${last}. Only whole homes; ISTAC's booked-homes rate is not used.`);
+  if (!options.dryRun) {
+    const db = openDb(dbPath(dir));
+    try {
+      saveMarket(db, {
+        area,
+        source: "istac",
+        attribution: `${ISTAC_ATTRIBUTION}, data up to ${last}`,
+        estimated: false,
+        readOn: today,
+        importedAt: io.now().toISOString(),
+        note: `ISTAC monthly figures ${first} → ${last} for ${where}, each night uses the same month`,
+        comparables: { roomType: "whole home", ...(istacBandGuests(band) ?? {}) },
+        days,
+      });
+    } finally {
+      db.close();
+    }
+    afterImport(io, config, area);
+  }
+  io.out(`ISTAC calls: ${client.calls}.`);
+  return 0;
+}
+
+/** INE tourist apartments: the occupancy of one tourist point, as the zone's season. Off while the licence is unclear. */
+export async function importIne(dir: string, io: Io, options: { area?: string; point?: string; dryRun: boolean }): Promise<number> {
+  const config = loadHostConfig(dir);
+  if (config.market?.ine?.enabled !== true) {
+    io.err(INE_OFF);
+    return 1;
+  }
+  const area = checkArea(options.area);
+  if (options.point === undefined) throw new SetupError('Which tourist point? Add --punto <name>, e.g. --punto Adeje (as INE names it).');
+  const client = new IneClient({ fetch: openDataFetch(io), ...(io.ineBaseUrl ? { baseUrl: io.ineBaseUrl } : {}), ...(io.sleep ? { sleep: io.sleep } : {}) });
+  const today = localToday(io.now());
+  let table: unknown;
+  try {
+    table = await client.table();
+  } catch (e) {
+    throw new SetupError((e as Error).message);
+  }
+  const point = parseIneTable(table, options.point);
+  if (point === null || point.months.length === 0) {
+    const names = inePoints(table);
+    io.err(`INE has no tourist point called "${options.point}". Some of its names: ${names.slice(0, 12).join(", ")}${names.length > 12 ? "…" : ""}.`);
+    return 1;
+  }
+  const first = point.months[0]?.month.slice(0, 7) as string;
+  const last = point.months.at(-1)?.month.slice(0, 7) as string;
+  const days = ineToDays(point, today, AIRROI_DAYS);
+  io.out(`Zone "${area}": ${options.dryRun ? "would import" : "imported"} the occupancy of the tourist apartments of ${point.point}, ${point.months.length} months ${first} → ${last}, spread over the next ${days.length} nights (season only, no prices).`);
+  io.out(`  ${INE_ATTRIBUTION} (data up to ${last}).`);
+  if (!options.dryRun) {
+    const db = openDb(dbPath(dir));
+    try {
+      saveMarket(db, {
+        area,
+        source: "ine",
+        attribution: `${INE_ATTRIBUTION}, data up to ${last}`,
+        estimated: false,
+        readOn: today,
+        importedAt: io.now().toISOString(),
+        note: `INE monthly occupancy ${first} → ${last} of the tourist apartments of ${point.point}, each night uses the same month`,
+        days,
+      });
+    } finally {
+      db.close();
+    }
+    afterImport(io, config, area);
+  }
+  io.out(`INE calls: ${client.calls}.`);
+  return 0;
+}
+
 // ---------------------------------------------------------------- stato
 
 export function marketStatus(dir: string, io: Io): number {
@@ -359,8 +474,8 @@ export function marketStatus(dir: string, io: Io): number {
 
 export function deleteMarketData(dir: string, io: Io, options: { area?: string; source?: string }): number {
   if (options.area !== undefined) checkArea(options.area);
-  if (options.source !== undefined && !["csv", "insideairbnb", "airroi"].includes(options.source)) {
-    throw new SetupError(`--fonte must be csv, insideairbnb or airroi, got "${options.source}".`);
+  if (options.source !== undefined && !["csv", "insideairbnb", "airroi", "istac", "ine"].includes(options.source)) {
+    throw new SetupError(`--fonte must be csv, insideairbnb, airroi, istac or ine, got "${options.source}".`);
   }
   if (!existsSync(dbPath(dir))) {
     io.out("No database here: there is no zone data to delete.");

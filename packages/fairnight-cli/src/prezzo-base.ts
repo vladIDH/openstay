@@ -28,11 +28,13 @@ export interface ListingSuggestion {
   comparables: ComparableHomes | null;
   /** Things to check before using the suggestion. */
   warnings: Warning[];
+  /** What the zone's data is, as written at import (e.g. which months a monthly source measured). */
+  note: string | null;
 }
 
 export type Warning =
   | { kind: "whole-zone" }
-  | { kind: "guests-differ"; listing: number; zone: number }
+  | { kind: "guests-differ"; listing: number; zone: string }
   | { kind: "guests-unknown"; listing: number }
   | { kind: "below-floor"; floor: number }
   | { kind: "above-ceiling"; ceiling: number };
@@ -42,7 +44,7 @@ export function warningText(w: Warning): string {
     case "whole-zone":
       return "The zone's figures are for every home of the zone, not only homes like yours: import them with --camere and --ospiti for a closer figure.";
     case "guests-differ":
-      return `The zone's homes take ${w.zone} guests, this listing takes ${w.listing}.`;
+      return `The zone's homes take ${w.zone}, this listing takes ${w.listing}.`;
     case "guests-unknown":
       return `This listing takes ${w.listing} guests, but the zone's figures are not limited to homes for ${w.listing} guests.`;
     case "below-floor":
@@ -54,9 +56,9 @@ export function warningText(w: Warning): string {
 
 export function suggestionFor(db: Db, listing: HostListing, today: string): ListingSuggestion {
   const base = { listing: listing.name, title: listing.pricing.name ?? listing.name, area: listing.marketArea ?? null };
-  if (listing.marketArea === undefined) return { ...base, result: null, missing: "no-zone", comparables: null, warnings: [] };
+  if (listing.marketArea === undefined) return { ...base, result: null, missing: "no-zone", comparables: null, warnings: [], note: null };
   const market = loadMarket(db, listing.marketArea, today);
-  if (!market) return { ...base, result: null, missing: "no-data", comparables: null, warnings: [] };
+  if (!market) return { ...base, result: null, missing: "no-data", comparables: null, warnings: [], note: null };
   const comparables = loadComparables(db, listing.marketArea);
   const result = suggestBasePrice(
     market,
@@ -65,19 +67,23 @@ export function suggestionFor(db: Db, listing: HostListing, today: string): List
   );
   const warnings: Warning[] = [];
   if (comparables === null || describeComparables(comparables) === "") warnings.push({ kind: "whole-zone" });
-  if (listing.guests !== undefined) {
-    if (comparables?.guests === undefined) {
-      if (comparables !== null) warnings.push({ kind: "guests-unknown", listing: listing.guests });
-    } else if (comparables.guests !== listing.guests) {
-      warnings.push({ kind: "guests-differ", listing: listing.guests, zone: comparables.guests });
-    }
+  if (listing.guests !== undefined && comparables !== null) {
+    const g = listing.guests;
+    if (comparables.guests !== undefined) {
+      if (comparables.guests !== g) warnings.push({ kind: "guests-differ", listing: g, zone: describeComparables({ guests: comparables.guests }) });
+    } else if (comparables.guestsFrom !== undefined) {
+      if (g < comparables.guestsFrom || (comparables.guestsTo !== undefined && g > comparables.guestsTo)) {
+        warnings.push({ kind: "guests-differ", listing: g, zone: describeComparables({ guestsFrom: comparables.guestsFrom, ...(comparables.guestsTo !== undefined ? { guestsTo: comparables.guestsTo } : {}) }) });
+      }
+    } else warnings.push({ kind: "guests-unknown", listing: g });
   }
   const limits = listing.pricing.factors.limits;
   if (result.ok && limits?.enabled) {
     if (result.suggested < limits.floorPrice) warnings.push({ kind: "below-floor", floor: limits.floorPrice });
     if (result.suggested > limits.ceilingPrice) warnings.push({ kind: "above-ceiling", ceiling: limits.ceilingPrice });
   }
-  return { ...base, result, missing: null, comparables, warnings };
+  const row = db.prepare("SELECT note FROM market_areas WHERE area = ?").get(listing.marketArea) as { note: string | null } | undefined;
+  return { ...base, result, missing: null, comparables, warnings, note: row?.note ?? null };
 }
 
 /** Write a new base price for one listing in fairnight.config.json (the old file is kept as .bak). */
@@ -122,6 +128,7 @@ export function basePriceCommand(dir: string, io: Io, options: { listing?: strin
     }
     const r = s.result as BasePriceResult;
     io.out(`  ${r.explanation}`);
+    if (s.note) io.out(`  Zone data: ${s.note}.`);
     if (r.ok) for (const w of s.warnings) io.out(`  Check: ${warningText(w)}`);
   }
 

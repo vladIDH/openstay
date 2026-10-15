@@ -48,6 +48,9 @@ export interface BasePriceMonth {
 export interface ComparableHomes {
   bedrooms?: number;
   guests?: number;
+  /** A range of guests instead of one number (e.g. ISTAC's sizes 1–4, 5–8, 9 or more). */
+  guestsFrom?: number;
+  guestsTo?: number;
   roomType?: string;
   neighbourhood?: string;
 }
@@ -104,6 +107,7 @@ export function describeComparables(c: ComparableHomes | undefined): string {
   const parts: string[] = [];
   if (c.bedrooms !== undefined) parts.push(c.bedrooms === 1 ? "1 bedroom" : `${c.bedrooms} bedrooms`);
   if (c.guests !== undefined) parts.push(c.guests === 1 ? "1 guest" : `${c.guests} guests`);
+  else if (c.guestsFrom !== undefined) parts.push(c.guestsTo !== undefined ? `${c.guestsFrom}–${c.guestsTo} guests` : `${c.guestsFrom} or more guests`);
   if (c.roomType !== undefined) parts.push(c.roomType);
   if (c.neighbourhood !== undefined) parts.push(`in ${c.neighbourhood}`);
   return parts.join(", ");

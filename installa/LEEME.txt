@@ -1,0 +1,23 @@
+Fairnight: los precios de tus noches, calculados en tu ordenador.
+
+Para instalarlo o actualizarlo hace falta conexión a internet y Node.js 22 o más reciente:
+si falta, la instalación lo dice y explica cómo ponerlo. Las preguntas de la instalación son en italiano.
+
+WINDOWS
+1. Si has abierto el zip con doble clic, primero extrae la carpeta: clic derecho en el zip, «Extraer todo...», «Extraer».
+2. En la carpeta extraída, doble clic en «Installa Fairnight (Windows)».
+3. Si aparece «Abrir archivo - Advertencia de seguridad», haz clic en «Ejecutar».
+   Si aparece la ventana azul «Windows protegió su PC», haz clic en «Más información» y luego en «Ejecutar de todas formas».
+   Pasa con los programas gratuitos que no pagan un certificado de firma.
+4. Se abre una ventana negra: la primera vez tarda 2-4 minutos y parece parada. Es normal, déjala abierta.
+
+MAC
+1. Doble clic en el zip: el Mac extrae la carpeta solo.
+2. Clic derecho (o Ctrl+clic) en «Installa Fairnight (Mac)», luego «Abrir» y otra vez «Abrir».
+   Si el Mac no muestra «Abrir»: Ajustes del Sistema › Privacidad y seguridad › «Abrir igualmente».
+
+Tus datos se quedan solo en tu ordenador, en la carpeta Fairnight de tu usuario.
+Allí encuentras también una guía breve (LEEME.txt o LEGGIMI.txt) y el informe de la instalación (installazione.log).
+
+Si algo no funciona: escríbenos a hello@khlumen.com y adjunta el archivo installazione.log.
+Guía completa con capturas (en italiano): https://github.com/vladIDH/openstay/blob/main/docs/installa.md

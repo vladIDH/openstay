@@ -5,7 +5,7 @@
  * webSeal the browser page uses. Invented data only.
  */
 import { createHash } from "node:crypto";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { padded, readLinkFragment, relayPlace, webSeal } from "fairguest";
@@ -168,6 +168,31 @@ describe("fairnight ospiti link", () => {
     const show = io();
     expect(await main(["ospiti", "mostra", stay.id], show)).toBe(0);
     expect(show.lines.join("\n")).toMatch(/guests\[0\]\.birthDate: the date of birth is required/);
+  });
+
+  it("Catalonia: a guest from the link goes into the Mossos file like any other", async () => {
+    const { relay, io, stay } = await ready("ES-CT");
+    const t = io();
+    await main(["ospiti", "link", stay.id], t);
+    await relay.guestPosts(t.lines[0] as string, {
+      guest: {
+        givenName: "Ospite",
+        surname1: "Prueba",
+        surname2: "Ejemplo",
+        birthDate: "2060-03-15",
+        sex: "female",
+        nationality: "ESP",
+        document: { type: "dni", number: "00000000T", support: "ZZZ000000" },
+        address: { country: "ESP", street: "Calle de Prueba 1", postalCode: "08000", municipalityCode: "080000" },
+        email: "ospite.prova@example.com",
+      },
+      payment: "platform",
+    });
+    await main(["ospiti", "scarica"], io());
+    const prep = io();
+    expect(await main(["ospiti", "prepara", stay.id, "--out", "."], prep)).toBe(0);
+    const file = /Wrote (.+): 1 traveller line/.exec(prep.lines.join(String.fromCharCode(10)))?.[1] as string;
+    expect(readFileSync(file, "latin1").split(String.fromCharCode(13, 10))[1]).toMatch(/^2\|00000000T\|\|D\|\|PRUEBA\|EJEMPLO\|OSPITE\|F\|/);
   });
 
   it("deletes the box once the stay is over", async () => {

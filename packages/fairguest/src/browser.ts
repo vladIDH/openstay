@@ -12,7 +12,7 @@ export { LANGS, pickLang, WORDS } from "./form/words.js";
 export type { Lang, Words } from "./form/words.js";
 export { errorsByField, esc, FORM_KEYS, guestInput, LOCK, renderForm, stayDay, stepsBar, STYLE, TICK } from "./form/render.js";
 export type { FormState } from "./form/render.js";
-export { guestFromMrz, parseMrz } from "./mrz.js";
+export { formValuesFromMrz, guestFromMrz, parseMrz } from "./mrz.js";
 export type { MrzFields } from "./mrz.js";
 export { padded, webSeal } from "./web-seal.js";
 export type { X25519Fallback } from "./web-seal.js";

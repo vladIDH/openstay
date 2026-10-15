@@ -12,6 +12,31 @@
 import { isCountryCode } from "./countries-iso.js";
 import type { DocumentType, Guest, Sex } from "./types.js";
 
+/**
+ * The check-in form's fields from what the MRZ said, over what the guest
+ * already typed; the guest checks them. `offered` are the document types of
+ * the listing's country: a type the form does not offer becomes the closest one
+ * it does (an identity card, else "other").
+ */
+export function formValuesFromMrz(g: Partial<Guest>, offered: readonly DocumentType[], before: Record<string, string>): Record<string, string> {
+  const v = { ...before };
+  if (g.givenName) v.givenName = g.givenName;
+  if (g.surname1) v.surname1 = g.surname1;
+  if (g.surname2) v.surname2 = g.surname2;
+  if (g.birthDate) v.birthDate = g.birthDate;
+  if (g.sex && g.sex !== "other") v.sex = g.sex;
+  if (g.nationality) v.nationality = g.nationality;
+  if (g.document) {
+    const t = g.document.type;
+    v.docType = offered.includes(t) ? t : offered.includes("id_card") ? "id_card" : offered.includes("other") ? "other" : (offered[0] ?? "");
+    if (g.document.number) v.docNumber = g.document.number;
+    if (g.document.support) v.docSupport = g.document.support;
+    if (g.document.issuedIn?.country) v.docCountry = g.document.issuedIn.country;
+    if (g.document.spanish) v.docSpanish = "1";
+  }
+  return v;
+}
+
 export type MrzFormat = "TD1" | "TD2" | "TD3";
 
 export interface MrzFields {

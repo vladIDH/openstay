@@ -12,6 +12,7 @@ import {
   errorsByField,
   esc,
   FORM_KEYS,
+  formValuesFromMrz,
   guestFromMrz,
   guestInput,
   isPaymentType,
@@ -31,7 +32,6 @@ import {
   TICK,
   webSeal,
   WORDS,
-  type Guest,
   type Lang,
   type LinkPayload,
   type Problem,
@@ -138,27 +138,6 @@ function currentValues(form: HTMLFormElement): Record<string, string> {
   return values;
 }
 
-/** The form's fields from what the MRZ said; the guest checks them. */
-function valuesFromMrz(g: Partial<Guest>, before: Record<string, string>): Record<string, string> {
-  const v = { ...before };
-  if (g.givenName) v.givenName = g.givenName;
-  if (g.surname1) v.surname1 = g.surname1;
-  if (g.surname2) v.surname2 = g.surname2;
-  if (g.birthDate) v.birthDate = g.birthDate;
-  if (g.sex && g.sex !== "other") v.sex = g.sex;
-  if (g.nationality) v.nationality = g.nationality;
-  if (g.document) {
-    const offered = registryFor(link?.c ?? "ES").documentTypes;
-    if (offered.includes(g.document.type)) v.docType = g.document.type;
-    else if (g.document.type === "electronic_id" || g.document.type === "dni") v.docType = offered.includes("id_card") ? "id_card" : "other";
-    if (g.document.number) v.docNumber = g.document.number;
-    if (g.document.support) v.docSupport = g.document.support;
-    if (g.document.issuedIn?.country) v.docCountry = g.document.issuedIn.country;
-    if (g.document.spanish) v.docSpanish = "1";
-  }
-  return v;
-}
-
 function wire(): void {
   const form = document.getElementById("form") as HTMLFormElement | null;
   const photo = document.getElementById("photo") as HTMLInputElement | null;
@@ -173,7 +152,7 @@ function wire(): void {
       const { readDocument } = await import("./ocr.js");
       const m = await readDocument(file, today());
       if (!m) return showForm({ values: before, errors: new Map(), photoNote: w.remote.readFail });
-      showForm({ values: valuesFromMrz(guestFromMrz(m), before), errors: new Map(), photoNote: m.valid ? w.remote.readOk : w.remote.readPartial });
+      showForm({ values: formValuesFromMrz(guestFromMrz(m), registryFor(link?.c ?? "ES").documentTypes, before), errors: new Map(), photoNote: m.valid ? w.remote.readOk : w.remote.readPartial });
     } catch {
       showForm({ values: before, errors: new Map(), photoNote: w.remote.readFail });
     } finally {

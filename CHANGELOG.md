@@ -53,6 +53,11 @@ Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web).
 - fairnight-cli: the calendar page shows how many guest communications are late or due within 24 hours.
 - docs: guide for the host in Italian and Spanish (docs/fairguest-italia.md, docs/fairguest-italia.es.md).
 
+### Spain: the same link and photo for SES.HOSPEDAJES and the Mossos (branch fairguest-it-spagna)
+
+- fairguest: `formValuesFromMrz` fills the form of the listing's country from the MRZ (Spanish DNI with its support number; a document the form does not offer becomes the closest one it does).
+- Tested from the link to the Mossos file; guide for Spanish hosts in Spanish and Italian (docs/fairguest-espana.es.md, docs/fairguest-spagna.md).
+
 ### Istat, the regional tourist movement (branch fairguest-it-istat)
 
 - fairguest: `ISTAT_REGIONS`, the official map of 21 territories (13 with the ROSS1000 web service, Trento and Umbria by file, Puglia with the Alloggiati file, the rest by hand); `istatStay` (the statistical record, no name and no document); `rossFile` and `Ross1000Client` (SOAP inviaMovimentazione, HTTP Basic, result per day); `trentoCsv`, `umbriaDay` (C/59), `monthSummary`.

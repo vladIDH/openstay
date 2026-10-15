@@ -11,7 +11,7 @@ OpenStay è il contenitore; Fairnight è il modulo dei prezzi. **Fairguest** è 
 - **Nome:** Fairguest (sezione 6).
 - **Prima versione: solo Spagna**, cioè SES.HOSPEDAJES più il file da caricare sul portale dei Mossos per la Catalogna.
 - **Versioni successive:** Italia (Alloggiati Web + Istat/ROSS1000) e Portogallo (SIBA). Tutto quello che abbiamo trovato è nella sezione 8.
-- **15 ottobre 2026: si parte con l'Italia** (ramo `fairguest-it`). Alloggiati Web è nel codice: guida per l'host in [fairguest-italia.md](fairguest-italia.md) (italiano) e [fairguest-italia.es.md](fairguest-italia.es.md) (spagnolo). Istat, link a distanza e foto del documento seguono in PR separate.
+- **15 ottobre 2026: si parte con l'Italia** (ramo `fairguest-it`). Alloggiati Web è nel codice: guida per l'host in [fairguest-italia.md](fairguest-italia.md) (italiano) e [fairguest-italia.es.md](fairguest-italia.es.md) (spagnolo). Istat, link a distanza e foto del documento seguono in PR separate. Per la Spagna, link e foto: [fairguest-espana.es.md](fairguest-espana.es.md) e [fairguest-spagna.md](fairguest-spagna.md).
 
 ## In breve
 

@@ -6,6 +6,8 @@
  * block. No guest names, phone numbers or descriptions from the calendars.
  * The guest registration (Fairguest, the guest_* tables) keeps every personal
  * field encrypted: in clear there are only random ids, dates and states.
+ * The guest assistant (Fairhello, the hello_* tables) keeps the messages of
+ * current and recent stays, and erases them some days after check-out.
  */
 import { mkdirSync } from "node:fs";
 import path from "node:path";
@@ -14,7 +16,7 @@ import { SetupError } from "./config.js";
 
 export type Db = Database.Database;
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (
@@ -188,6 +190,76 @@ CREATE TABLE IF NOT EXISTS guest_submissions (
   file     TEXT,
   detail   TEXT
 );
+
+-- Version 7 (Fairhello, the guest assistant). Messages read from Smoobu or
+-- Beds24 and the drafts written for them. Erased retentionDays after
+-- check-out (fairhello.json, default 60): the stay row stays, without them.
+CREATE TABLE IF NOT EXISTS hello_stays (
+  -- "smoobu:<booking id>" or "beds24:<booking id>"
+  id           TEXT PRIMARY KEY,
+  listing      TEXT NOT NULL,
+  source       TEXT NOT NULL CHECK (source IN ('smoobu', 'beds24')),
+  booking_id   INTEGER NOT NULL,
+  check_in     TEXT NOT NULL,
+  check_out    TEXT NOT NULL,
+  -- the guest's language: from the channel, or from the first draft
+  language     TEXT,
+  channel      TEXT,
+  guests       INTEGER,
+  seen_at      TEXT NOT NULL,
+  cancelled_at TEXT,
+  erased_at    TEXT
+);
+
+CREATE TABLE IF NOT EXISTS hello_messages (
+  stay_id  TEXT NOT NULL REFERENCES hello_stays (id),
+  -- the channel's id of the message, and its order in the conversation
+  id       TEXT NOT NULL,
+  seq      INTEGER NOT NULL,
+  sender   TEXT NOT NULL CHECK (sender IN ('guest', 'host', 'system')),
+  text     TEXT NOT NULL,
+  -- when it was written, if the channel says it (Beds24 does, Smoobu does not)
+  sent_at  TEXT,
+  seen_at  TEXT NOT NULL,
+  PRIMARY KEY (stay_id, id)
+);
+
+-- One draft per guest message. Nothing is sent without the host: waiting →
+-- (approved) → sending → sent, or discarded, or failed (can be tried again).
+CREATE TABLE IF NOT EXISTS hello_drafts (
+  id          INTEGER PRIMARY KEY,
+  stay_id     TEXT NOT NULL REFERENCES hello_stays (id),
+  -- the guest message it answers
+  message_id  TEXT NOT NULL,
+  text        TEXT NOT NULL,
+  -- the host's version, when changed: this one is sent
+  edited_text TEXT,
+  language    TEXT,
+  needs_host  INTEGER NOT NULL DEFAULT 0,
+  note        TEXT,
+  -- JSON list: "price" (cannot be approved unedited), money, complaint, cancellation, emergency
+  flags       TEXT NOT NULL DEFAULT '[]',
+  model       TEXT NOT NULL,
+  status      TEXT NOT NULL CHECK (status IN ('waiting', 'approved', 'sending', 'sent', 'discarded', 'failed')),
+  created_at  TEXT NOT NULL,
+  decided_at  TEXT,
+  sent_at     TEXT,
+  error       TEXT,
+  UNIQUE (stay_id, message_id)
+);
+
+-- Every reading of the messages, with what the model cost in tokens.
+CREATE TABLE IF NOT EXISTS hello_runs (
+  id            INTEGER PRIMARY KEY,
+  at            TEXT NOT NULL,
+  stays         INTEGER NOT NULL DEFAULT 0,
+  new_messages  INTEGER NOT NULL DEFAULT 0,
+  drafts        INTEGER NOT NULL DEFAULT 0,
+  input_tokens  INTEGER NOT NULL DEFAULT 0,
+  output_tokens INTEGER NOT NULL DEFAULT 0,
+  cached_tokens INTEGER NOT NULL DEFAULT 0,
+  error         TEXT
+);
 `;
 
 /**
@@ -212,6 +284,7 @@ const MIGRATIONS: { to: number; run(db: Database.Database): void }[] = [
       if (!hasColumn(db, "calendar_events", "units")) db.exec("ALTER TABLE calendar_events ADD COLUMN units INTEGER");
     },
   },
+  { to: 7, run: () => {} }, // Fairhello: new tables only
 ];
 
 function upgrade(db: Database.Database): void {

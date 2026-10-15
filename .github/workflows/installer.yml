@@ -97,8 +97,11 @@ jobs:
           for i in $(seq 1 20); do curl -sf http://127.0.0.1:4321/api/ping > ping.json && break; sleep 1; done
           cat apri.txt
           grep -q '"app":"fairnight"' ping.json
-          curl -sf http://127.0.0.1:4321/api/data | grep -q '"name":"casa-prova"'
-          curl -sf http://127.0.0.1:4321/ | grep -q "<title>Fairnight"
+          # Saved to a file first: "curl | grep -q" fails with pipefail when grep stops reading early (curl exit 23).
+          curl -sf http://127.0.0.1:4321/api/data -o data.json
+          grep -q '"name":"casa-prova"' data.json
+          curl -sf http://127.0.0.1:4321/ -o page.html
+          grep -q "<title>Fairnight" page.html
           # A second "apri" finds the first one instead of starting another
           node "$FN" apri --dir "$FOLDER" --senza-browser | tee second.txt
           grep -q "Fairnight è già acceso: http://localhost:4321" second.txt

@@ -61,7 +61,7 @@ describe("settings", () => {
   });
 
   it("reports every problem", () => {
-    const r = validateGuestSettings({ country: "IT", establishment: "", checkInTime: "25:00", rooms: 0, extra: 1 }, "f");
+    const r = validateGuestSettings({ country: "PT", establishment: "", checkInTime: "25:00", rooms: 0, extra: 1 }, "f");
     expect(r.value).toBeNull();
     expect(r.issues.map((i) => i.path)).toEqual(["f.extra", "f.country", "f.establishment", "f.checkInTime", "f.rooms"]);
   });

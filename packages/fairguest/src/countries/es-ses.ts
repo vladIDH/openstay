@@ -7,9 +7,9 @@
  * downloaded (docs/registro-ospiti.md, section 7b) `prepare` refuses, so that
  * nothing invented can ever be sent.
  */
-import { spainDeadlines, spainRetention } from "../spain.js";
+import { SPAIN_DOCUMENT_TYPES, spainDeadlines, spainRetention } from "../spain.js";
 import { NotAvailableError, type Registry } from "../types.js";
-import { spainRules } from "../validate.js";
+import { guestRules, spainRules } from "../validate.js";
 
 export const SES_NOT_READY =
   "SES.HOSPEDAJES: the XML for the web service is not written yet. It needs the Ministry's XSD schemas, which are published only inside the SES application " +
@@ -19,7 +19,9 @@ export const SES_NOT_READY =
 export const sesRegistry: Registry = {
   country: "ES",
   authority: "SES.HOSPEDAJES (Ministerio del Interior)",
+  documentTypes: SPAIN_DOCUMENT_TYPES,
   validate: (stay, kind) => spainRules(stay, kind, 18),
+  checkGuest: (g, i, checkIn) => guestRules(g, i, checkIn, 18, { skipMunicipalityCode: true }),
   deadlines: spainDeadlines,
   prepare() {
     throw new NotAvailableError(SES_NOT_READY);

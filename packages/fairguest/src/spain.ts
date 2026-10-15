@@ -5,7 +5,7 @@
  * the Mossos manual (v8, May 2025) repeats for payment and kinship.
  */
 import { addDays, addHours, addYears } from "./dates.js";
-import type { Deadline, DocumentType, HostDuty, Kinship, PaymentType, RetentionRule, Sex, SubmissionRecord } from "./types.js";
+import type { Deadline, DeadlineInput, DocumentType, HostDuty, Kinship, PaymentType, RetentionRule, Sex, SubmissionRecord } from "./types.js";
 
 /** Payment types: the same five-letter codes for SES and the Mossos. */
 export const PAYMENT_CODES: Record<PaymentType, string> = {
@@ -39,7 +39,17 @@ export const KINSHIP_CODES: Record<Kinship, string> = {
 };
 
 /** SES codes (bulk-upload instructions); the Mossos use other letters, see es-mossos. */
-export const SES_DOCUMENT_CODES: Record<DocumentType, string> = { dni: "NIF", nie: "NIE", passport: "PAS", other: "OTRO" };
+export const SES_DOCUMENT_CODES: Record<DocumentType, string> = {
+  dni: "NIF",
+  nie: "NIE",
+  passport: "PAS",
+  id_card: "OTRO",
+  electronic_id: "OTRO",
+  driving_licence: "OTRO",
+  other: "OTRO",
+};
+/** The document types the Spanish check-in form offers. */
+export const SPAIN_DOCUMENT_TYPES: readonly DocumentType[] = ["dni", "nie", "passport", "other"];
 export const SES_SEX_CODES: Record<Sex, string> = { male: "H", female: "M", other: "O" };
 
 /**
@@ -48,7 +58,7 @@ export const SES_SEX_CODES: Record<Sex, string> = { male: "H", female: "M", othe
  * When the hour is not known the count starts at midnight, so the date shown
  * is never later than the real one.
  */
-export function spainDeadlines(s: { checkIn: string; checkInTime?: string; bookedAt?: string | null; seenAt: string }): Deadline[] {
+export function spainDeadlines(s: DeadlineInput): Deadline[] {
   const reservation: Deadline = s.bookedAt
     ? s.bookedAt.length > 10
       ? { kind: "reservation", due: addHours(s.bookedAt, 24), from: `the booking (${s.bookedAt.replace("T", " ")})` }

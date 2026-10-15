@@ -6,7 +6,7 @@
 import { isCountryCode } from "./countries-iso.js";
 import { ageOn, isDate } from "./dates.js";
 import { DOCUMENT_TYPES, KINSHIPS, PAYMENT_TYPES, SEXES } from "./types.js";
-import type { Address, DocumentType, Guest, IdentityDocument, Kind, Kinship, PaymentType, Problem, Sex, Stay } from "./types.js";
+import type { Address, DocumentType, Guest, IdentityDocument, Kind, Kinship, PaymentType, Place, Problem, Sex, Stay } from "./types.js";
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -85,6 +85,10 @@ export function parseGuest(input: unknown, today: string, path = "guest"): Parse
     else add("nationality", "must be a country code like ESP or ITA (ISO 3166-1 alpha-3)");
   }
 
+  if (input.birthPlace !== undefined && input.birthPlace !== null) {
+    const b = parsePlace(input.birthPlace, `${path}.birthPlace`, problems);
+    if (b) guest.birthPlace = b;
+  }
   if (input.document !== undefined && input.document !== null) {
     const d = parseDocument(input.document, today, `${path}.document`, problems);
     if (d) guest.document = d;
@@ -140,7 +144,36 @@ function parseDocument(input: unknown, today: string, path: string, problems: Pr
     else doc.issuedOn = issued;
   }
   if (input.spanish === true) doc.spanish = true;
+  if (input.issuedIn !== undefined && input.issuedIn !== null) {
+    const p = parsePlace(input.issuedIn, `${path}.issuedIn`, problems);
+    if (p) doc.issuedIn = p;
+  }
   return doc;
+}
+
+/** A country, and in it a town (and, in Italy, a province). Empty when nothing was given. */
+function parsePlace(input: unknown, path: string, problems: Problem[]): Place | null {
+  const add = (p: string, message: string) => problems.push({ path: `${path}.${p}`, message });
+  if (!isObj(input)) {
+    problems.push({ path, message: "must be an object with country" });
+    return null;
+  }
+  const country = text(input.country)?.toUpperCase();
+  const locality = text(input.locality);
+  const province = text(input.province)?.toUpperCase();
+  if ([country, locality, province].every((v) => v === undefined)) return null;
+  if (country === undefined || !isCountryCode(country)) add("country", "must be a country code like ESP or ITA (ISO 3166-1 alpha-3)");
+  const place: Place = { country: country ?? "" };
+  if (locality !== undefined) {
+    if (locality.length > 60) add("locality", "must be at most 60 characters");
+    else if (!NAME.test(locality)) add("locality", "may contain only letters, spaces, apostrophes, dots and dashes");
+    else place.locality = locality;
+  }
+  if (province !== undefined) {
+    if (/^[A-Z]{2}$/.test(province)) place.province = province;
+    else add("province", "must be the two letters of the province, like RM or MI");
+  }
+  return place;
 }
 
 function parseAddress(input: unknown, path: string, problems: Problem[]): Address | null {

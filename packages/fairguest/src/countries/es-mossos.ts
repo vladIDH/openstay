@@ -14,13 +14,13 @@
  * We write one file per establishment, never the record 0 of hotel groups. The
  * file is never sent by Fairguest: the host uploads it.
  */
-import { KINSHIP_CODES, PAYMENT_CODES, spainDeadlines, spainRetention } from "../spain.js";
+import { KINSHIP_CODES, PAYMENT_CODES, SPAIN_DOCUMENT_TYPES, spainDeadlines, spainRetention } from "../spain.js";
 import { NotAvailableError, type DocumentType, type Guest, type Kind, type Problem, type Registry, type Sex, type Stay, type Submission } from "../types.js";
-import { spainRules } from "../validate.js";
+import { guestRules, spainRules } from "../validate.js";
 
 export const MOSSOS_PORTAL = "https://registreviatgers.mossos.gencat.cat";
 
-const DOCUMENT_CODES: Record<DocumentType, string> = { dni: "D", nie: "N", passport: "P", other: "O" };
+const DOCUMENT_CODES: Record<DocumentType, string> = { dni: "D", nie: "N", passport: "P", id_card: "O", electronic_id: "O", driving_licence: "O", other: "O" };
 const SEX_CODES: Record<Sex, string> = { female: "F", male: "M", other: "O" };
 
 /** Western European alphabet only: what fits in ISO-8859-1. */
@@ -118,7 +118,10 @@ export function mossosFile(stays: Stay[], kind: Kind, at: string, sequence: numb
 export const mossosRegistry: Registry & { file: typeof mossosFile } = {
   country: "ES-CT",
   authority: "Mossos d'Esquadra (registreviatgers.mossos.gencat.cat)",
+  documentTypes: SPAIN_DOCUMENT_TYPES,
   validate: mossosRules,
+  // The form cannot ask for the INE code (a guest does not know it): the host adds it.
+  checkGuest: (g, i, checkIn) => guestRules(g, i, checkIn, 14, { skipMunicipalityCode: true }),
   deadlines: spainDeadlines,
   /** Use `file` to get the bytes with a sequence number; `prepare` uses sequence 1. */
   prepare(stays: Stay[], kind: Kind, at: string): Submission {

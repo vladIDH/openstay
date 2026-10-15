@@ -89,6 +89,24 @@ fairnight beds24 spingi           # shows what would change; add --applica to wr
 - **Credits.** Beds24 counts credits (100 every 5 minutes by default). Fairnight never uses more than half of them and prints, after each command, how many it used and how many are left.
 - **Rooms with several identical units** (`qty` > 1) become a room type with one price: see [Small hotels](#small-hotels-piccoli-hotel).
 
+## Autopilot
+
+With Smoobu or Beds24 connected, Fairnight can keep the prices up to date on its own, every day, **only for the listings you turn it on for** (off by default). *In development for 0.2.0.*
+
+- **Every day** it reads the calendars and bookings, prices the next 90 nights, writes the ones that changed to Smoobu or Beds24 and reads them back. On Windows it is a task of your user in Task Scheduler, on a Mac a LaunchAgent: at 06:00 and when you sign in. If the computer was off, it runs when it is back on. While the calendar page is open it also does the day's run if it was missed.
+- **Limits.** A price moves at most 15% a day from the price on the channel (a far price is reached over several days), never under your lowest or over your highest price, which the autopilot needs. Nothing is written for a listing whose calendars could not be read that day. After 3 failed runs in a row, or more than 5 nights that do not match when read back, the listing pauses until you resume it.
+- **You see what it did.** The calendar page says "today: changed 12 nights on Smoobu, all read back" and why each night changed. `fairnight pilota registro` lists every night written (`--out file.csv` for all of them).
+- **Turning it on** shows first what would change now: on the calendar page (only on the computer Fairnight runs on), in "Cambia impostazioni", or with `fairnight pilota accendi <listing>`.
+
+![The autopilot on the calendar page: the last run, each night before and after, and why (invented data)](docs/images/pilota/pilota-desktop.png)
+
+```
+fairnight pilota prova            # what a run would write now, writing nothing
+fairnight pilota accendi loft     # shows the preview, asks, turns it on
+fairnight pilota pianifica        # runs it every day on this computer (--ora 06:00); "togli" removes it
+fairnight pilota stato            # on, off or paused, last run
+```
+
 ## Small hotels (piccoli hotel)
 
 Fairnight prices homes **and small hotels**. In a hotel a room type ("Double") has several identical rooms sold at one price: in Fairnight it is one listing with `"units": 6` in its pricing. The price stays one per night; what changes is how nights are counted.

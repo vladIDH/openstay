@@ -26,6 +26,7 @@ import { connectAirRoi, deleteMarketData, importAirRoi, importFile, importIne, i
 import { basePriceCommand } from "./prezzo-base.js";
 import { formatFeedReport, syncEverything } from "./sync-all.js";
 import { GUEST_USAGE, runGuests } from "./guests/commands.js";
+import { runPilotCommand } from "./pilota-comandi.js";
 import { HELLO_USAGE, runHello } from "./hello/commands.js";
 
 export const USAGE = `Fairnight: dynamic prices for short-term rentals, on your own computer.
@@ -57,6 +58,15 @@ Usage:
   fairnight mercato prezzo-base                    the base price the zone data suggests, and why [--listing <name>] [--applica]
   fairnight mercato stato                          zone data, sources, which listings use them
   fairnight mercato cancella                       delete zone data [--zona <name>] [--fonte csv|insideairbnb|airroi]
+
+Autopilot (every day: read the calendars, price, write to Smoobu or Beds24 where it is on, read back):
+  fairnight pilota giro                            one run now [--pianificato: skip if today's run is done, log to data/pilota.log]
+  fairnight pilota prova                           what a run would write, writing nothing [--listing <name>]
+  fairnight pilota stato                           on or off, paused, last run, daily task of this computer
+  fairnight pilota accendi|spegni <name>           turn it on (shows the preview and asks first) or off; off by default
+  fairnight pilota riprendi <name>                 start a paused listing again
+  fairnight pilota registro                        the nights written and why [--listing <name>] [--out file.csv]
+  fairnight pilota pianifica [--ora 06:00]         run it every day on this computer (Windows, Mac); "togli" removes it
 
 Guest registration (Fairguest, Spain: SES.HOSPEDAJES and Mossos d'Esquadra):
 ${GUEST_USAGE}
@@ -96,6 +106,8 @@ const OPTIONS = {
   comune: { type: "string" },
   punto: { type: "string" },
   quartiere: { type: "string" },
+  pianificato: { type: "boolean" },
+  ora: { type: "string" },
   "senza-bozze": { type: "boolean" },
   help: { type: "boolean", short: "h" },
 } as const;
@@ -156,6 +168,9 @@ export async function main(argv: string[], io: Io): Promise<number> {
       case "mercato":
       case "market":
         return await runMercato(dir, values, rest, io);
+      case "pilota":
+      case "autopilot":
+        return await runPilotCommand(dir, values, rest, io);
       case "ospiti":
       case "guests":
         return await runGuests(dir, values, rest, io);

@@ -151,7 +151,8 @@ Ogni ramo che cambia `packages/fairnight-cli/src/db.ts` alza `SCHEMA_VERSION` di
 |---|---|---|
 | 1–6 | calendari, Smoobu, Beds24, zone, Fairguest, piccoli hotel | in main |
 | 7 | Fairhello: tabelle `hello_*` | in main (merge della PR #12, 15 ottobre 2026) |
-| 8 | il primo che entra tra `fairguest-it` e `pilota` | da fare: oggi `fairguest-it` usa 7 e va rinumerato |
-| 9 | il secondo dei due | da fare: `pilota` aggiunge tabelle senza alzare la versione, e deve farlo |
+| 8 | `fairguest-it` | da fare: oggi usa 7 e va rinumerato |
+
+Il pilota automatico (`pilota`) aggiunge solo tabelle nuove (`pilot_runs`, `pilot_changes`, `pilot_state`) con `CREATE TABLE IF NOT EXISTS`, create all'apertura del database: per scelta di Vlad (15 ottobre 2026) non prende un numero di schema.
 
 Chi rinumera aggiorna anche `test/db.test.ts`: la versione attesa e un fixture `schema-<n-1>.sql` con lo schema esatto della versione precedente.

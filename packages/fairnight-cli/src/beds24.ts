@@ -9,9 +9,21 @@
  * Writing: the chosen price field and minStay only, ONLY with --applica.
  */
 import { existsSync } from "node:fs";
-import { Beds24Client, Beds24Error, buildWrites, mapBookings, nightsOf, planPush, probePair, type CreditState, type RangeEnd, type Room } from "fairnight-beds24";
+import {
+  Beds24Client,
+  Beds24Error,
+  buildWrites,
+  mapBookings,
+  nightsOf,
+  planPush,
+  probePair,
+  type CreditState,
+  type DiffRow,
+  type RangeEnd,
+  type Room,
+} from "fairnight-beds24";
 import { noteChannelGuests } from "./guests/store.js";
-import { addDays, appendListings, daysBetween, diffTable, emptyReport, HISTORY_DAYS, recordRun, slugify, storeStays } from "./channel.js";
+import { addDays, appendListings, daysBetween, emptyReport, HISTORY_DAYS, recordRun, showAndWrite, slugify, storeStays, type PushTarget } from "./channel.js";
 import { beds24Room, isBeds24, loadHostConfig, SetupError, unitsOf, type HostListing } from "./config.js";
 import { BEDS24_CREDENTIALS_FILE, loadBeds24Credentials, saveBeds24Credentials, saveBeds24Token } from "./beds24-credentials.js";
 import { getMeta, openDb, setMeta, type Db } from "./db.js";
@@ -172,7 +184,97 @@ export async function importFromBeds24(dir: string, io: Io): Promise<ImportSumma
   }
 }
 
-// ---------------------------------------------------------------- spingi
+/// ---------------------------------------------------------------- spingi
+
+type PriceField = Parameters<Beds24Client["getCalendar"]>[3];
+
+/**
+ * One listing on Beds24 as a push target: its room and price field. The
+ * date-range check runs on the first real write and is kept in the database.
+ */
+export function beds24Target(db: Db, listing: HostListing, client: Beds24Client, now: () => Date): PushTarget<DiffRow> {
+  const { roomId, priceField } = beds24Room(listing) as { roomId: number; priceField: PriceField };
+  // Credits are counted from the read of the plan, as the push table always did.
+  let creditsBefore = client.credits.used;
+  return {
+    feed: BEDS24_FEED,
+    label: "Beds24",
+    isChannelError: (e) => e instanceof Beds24Error,
+
+    async plan(quotes, from, to) {
+      creditsBefore = client.credits.used;
+      const current = (await client.getCalendar([roomId], from, to, priceField))[roomId] ?? {};
+      const plan = planPush(quotes, current);
+      const units = unitsOf(listing) > 1 ? `, ${unitsOf(listing)} units, one price` : "";
+      return {
+        header: `${listing.name} → Beds24 room ${roomId} (${priceField}${units}) · ${from} → ${to} · prices in ${listing.pricing.currency}`,
+        changes: plan.changes,
+        unchanged: plan.unchanged,
+        leftAlone: [...plan.unavailableOnBeds24, ...(plan.unitsMismatch ?? []).map((m) => m.date)],
+        leftAloneNote:
+          (plan.unavailableOnBeds24.length > 0
+            ? ` · ${plan.unavailableOnBeds24.length} free here but unavailable on Beds24, left alone (run "fairnight beds24 importa")`
+            : "") +
+          (plan.unitsMismatch
+            ? ` · ${plan.unitsMismatch.length} with a different number of units free on Beds24, left alone (run "fairnight beds24 importa")`
+            : ""),
+        details: (plan.unitsMismatch ?? []).map((m) => `  ${m.date}: ${m.free} free here, ${m.numAvail} free on Beds24`),
+      };
+    },
+
+    async write(changes, from, to) {
+      const lines: string[] = [];
+      let rows: readonly DiffRow[] = changes;
+      let writes = 0;
+      const refused: { date: string; why: string }[] = [];
+      let rangeEnd = (getMeta(db, RANGE_END_KEY) as RangeEnd | null) ?? "unknown";
+      const record = (mismatches: number, error: string | null) =>
+        db
+          .prepare("INSERT INTO beds24_pushes (listing, room_id, at, nights, writes, refused, mismatches, credits, error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+          .run(listing.name, roomId, now().toISOString(), changes.length, writes, refused.length, mismatches, client.credits.used - creditsBefore, error);
+      try {
+        if (rangeEnd === "unknown") {
+          // The spec does not say whether "to" is included. Check it once with two equal nights.
+          const pair = probePair(rows);
+          if (pair) {
+            const [a, b] = pair;
+            const [probe] = await client.writeCalendar([{ roomId, from: a.date, to: b.date, price: a.newPrice, minStay: a.newMinStay }], priceField);
+            writes++;
+            if (probe?.ok) {
+              const back = (await client.getCalendar([roomId], b.date, b.date, priceField))[roomId]?.[b.date];
+              rangeEnd = back?.price === b.newPrice && back.minStay === b.newMinStay ? "inclusive" : "exclusive";
+              setMeta(db, RANGE_END_KEY, rangeEnd);
+              setMeta(db, RANGE_CHECKED_KEY, localToday(now()));
+              lines.push(
+                rangeEnd === "inclusive"
+                  ? `Checked once how Beds24 reads a date range (${a.date} to ${b.date}): the last day IS written. From now on, runs of equal nights go in ranges of up to 7.`
+                  : `Checked once how Beds24 reads a date range (${a.date} to ${b.date}): the last day is NOT written. Fairnight keeps writing one night per element.`,
+              );
+              rows = rows.filter((r) => r.date !== a.date && (rangeEnd !== "inclusive" || r.date !== b.date));
+            }
+          }
+        }
+        const results = await client.writeCalendar(buildWrites(roomId, rows, rangeEnd), priceField);
+        writes += results.length;
+        for (const r of results) if (!r.ok) for (const d of nightsOf(r.write)) refused.push({ date: d, why: r.errors.join("; ") });
+        const after = (await client.getCalendar([roomId], from, to, priceField))[roomId] ?? {};
+        const wrong = changes.filter((r) => after[r.date]?.price !== r.newPrice || after[r.date]?.minStay !== r.newMinStay).map((r) => r.date);
+        record(wrong.length, null);
+        lines.push(`Sent to Beds24: ${changes.length} nights in ${writes} calendar writes.`);
+        for (const r of refused) lines.push(`  not written: ${r.date} — Beds24 says: ${r.why}`);
+        lines.push(
+          wrong.length === 0 ? "Read back from Beds24: every night matches." : `Read back from Beds24: ${wrong.length} night${wrong.length === 1 ? "" : "s"} do not match: ${wrong.join(", ")}.`,
+        );
+        return { nights: changes.length, operations: writes, refused, wrong, lines };
+      } catch (e) {
+        if (!(e instanceof Beds24Error)) throw e;
+        record(0, e.message);
+        lines.push(`Stopped: ${e.message}`);
+        return { nights: changes.length, operations: writes, refused, wrong: [], error: e.message, lines };
+      }
+    },
+  };
+}
 
 export interface PushOptions {
   apply: boolean;
@@ -205,104 +307,20 @@ export async function push(dir: string, io: Io, opts: PushOptions): Promise<numb
   let failed = 0;
   let total = 0;
   try {
-    let rangeEnd = (getMeta(db, RANGE_END_KEY) as RangeEnd | null) ?? "unknown";
     for (const listing of listings) {
-      const { roomId, priceField } = beds24Room(listing) as { roomId: number; priceField: Parameters<Beds24Client["getCalendar"]>[3] };
-      const creditsBefore = client.credits.used;
       const quotes = priceOne(db, listing, today, daysBetween(today, to) + 1, { useBeds24History: opts.useBeds24History ?? false }).nights.filter((n) => n.date >= from);
-      let current;
+      const target = beds24Target(db, listing, client, () => io.now());
+      let plan;
       try {
-        current = (await client.getCalendar([roomId], from, to, priceField))[roomId] ?? {};
+        plan = await target.plan(quotes, from, to);
       } catch (e) {
         if (!(e instanceof Beds24Error)) throw e;
         failed++;
-        io.out(`${listing.name} → Beds24 room ${roomId}: NOT READ — ${e.message}`);
+        io.out(`${listing.name} → Beds24 room ${beds24Room(listing)?.roomId}: NOT READ — ${e.message}`);
         continue;
       }
-      const plan = planPush(quotes, current);
-      const units = unitsOf(listing) > 1 ? `, ${unitsOf(listing)} units, one price` : "";
-      io.out(`${listing.name} → Beds24 room ${roomId} (${priceField}${units}) · ${from} → ${to} · prices in ${listing.pricing.currency}`);
-      if (plan.changes.length > 0) for (const line of diffTable(plan.changes, "Beds24")) io.out(line);
-      io.out(
-        `${plan.changes.length} night${plan.changes.length === 1 ? "" : "s"} to change · ${plan.unchanged} already right` +
-          (plan.unavailableOnBeds24.length > 0
-            ? ` · ${plan.unavailableOnBeds24.length} free here but unavailable on Beds24, left alone (run "fairnight beds24 importa")`
-            : "") +
-          (plan.unitsMismatch
-            ? ` · ${plan.unitsMismatch.length} with a different number of units free on Beds24, left alone (run "fairnight beds24 importa")`
-            : ""),
-      );
-      for (const m of plan.unitsMismatch ?? []) io.out(`  ${m.date}: ${m.free} free here, ${m.numAvail} free on Beds24`);
       total += plan.changes.length;
-      if (!opts.apply || plan.changes.length === 0) {
-        io.out("");
-        continue;
-      }
-
-      let rows = plan.changes;
-      let writes = 0;
-      const refused: { date: string; why: string }[] = [];
-      try {
-        if (rangeEnd === "unknown") {
-          // The spec does not say whether "to" is included. Check it once with two equal nights.
-          const pair = probePair(rows);
-          if (pair) {
-            const [a, b] = pair;
-            const [probe] = await client.writeCalendar([{ roomId, from: a.date, to: b.date, price: a.newPrice, minStay: a.newMinStay }], priceField);
-            writes++;
-            if (probe?.ok) {
-              const back = (await client.getCalendar([roomId], b.date, b.date, priceField))[roomId]?.[b.date];
-              rangeEnd = back?.price === b.newPrice && back.minStay === b.newMinStay ? "inclusive" : "exclusive";
-              setMeta(db, RANGE_END_KEY, rangeEnd);
-              setMeta(db, RANGE_CHECKED_KEY, today);
-              io.out(
-                rangeEnd === "inclusive"
-                  ? `Checked once how Beds24 reads a date range (${a.date} to ${b.date}): the last day IS written. From now on, runs of equal nights go in ranges of up to 7.`
-                  : `Checked once how Beds24 reads a date range (${a.date} to ${b.date}): the last day is NOT written. Fairnight keeps writing one night per element.`,
-              );
-              rows = rows.filter((r) => r.date !== a.date && (rangeEnd !== "inclusive" || r.date !== b.date));
-            }
-          }
-        }
-        const results = await client.writeCalendar(buildWrites(roomId, rows, rangeEnd), priceField);
-        writes += results.length;
-        for (const r of results) if (!r.ok) for (const d of nightsOf(r.write)) refused.push({ date: d, why: r.errors.join("; ") });
-        const after = (await client.getCalendar([roomId], from, to, priceField))[roomId] ?? {};
-        const wrong = plan.changes.filter((r) => after[r.date]?.price !== r.newPrice || after[r.date]?.minStay !== r.newMinStay);
-        const spent = client.credits.used - creditsBefore;
-        db.prepare("INSERT INTO beds24_pushes (listing, room_id, at, nights, writes, refused, mismatches, credits, error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)").run(
-          listing.name,
-          roomId,
-          io.now().toISOString(),
-          plan.changes.length,
-          writes,
-          refused.length,
-          wrong.length,
-          spent,
-        );
-        io.out(`Sent to Beds24: ${plan.changes.length} nights in ${writes} calendar writes.`);
-        for (const r of refused) io.out(`  not written: ${r.date} — Beds24 says: ${r.why}`);
-        if (wrong.length === 0) io.out("Read back from Beds24: every night matches.");
-        else {
-          failed++;
-          io.out(`Read back from Beds24: ${wrong.length} night${wrong.length === 1 ? "" : "s"} do not match: ${wrong.map((r) => r.date).join(", ")}.`);
-        }
-      } catch (e) {
-        if (!(e instanceof Beds24Error)) throw e;
-        failed++;
-        db.prepare("INSERT INTO beds24_pushes (listing, room_id, at, nights, writes, refused, mismatches, credits, error) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)").run(
-          listing.name,
-          roomId,
-          io.now().toISOString(),
-          plan.changes.length,
-          writes,
-          refused.length,
-          client.credits.used - creditsBefore,
-          e.message,
-        );
-        io.out(`Stopped: ${e.message}`);
-      }
-      io.out("");
+      if (await showAndWrite(io, target, plan, from, to, opts.apply)) failed++;
     }
   } finally {
     db.close();

@@ -31,7 +31,7 @@ Draft replies to guests, approved by the host before anything is sent. Everythin
   - Fairnight's price of the free nights nearby, shown to the host only.
 - Before sending: the conversation is read again, freshness is checked, a draft with a price is blocked until the host edits it, and it is claimed once.
 - Database schema 7: `hello_stays`, `hello_messages`, `hello_drafts`, `hello_runs`. Messages are erased 60 days after check-out.
-- **Schema numbers taken next:** the open branches `fairguest-it` and `pilota` use schema 8 and 9, in the order they reach main (the first to merge takes 8). Details in `docs/piano.md`.
+- **Schema numbers taken next:** `fairguest-it` takes schema 8. The autopilot (`pilota`) only adds new tables, created when the database is opened, and takes no schema number. Details in `docs/piano.md`.
 - Secret scan: the Anthropic key file and `ANTHROPIC_API_KEY`.
 
 ### fairnight-mcp
@@ -175,6 +175,13 @@ Guest registration for Spain (Real Decreto 933/2021). Everything runs on the hos
 - The guests' check-in form, made for a phone: three steps on screen (details, document, confirmation), a line on what happens to the data, a message for each kind of field next to it, light or dark with the phone. Same fields, same checks, same data saved.
 - The calendar page in Italian, Spanish and English: `language` in `fairnight.config.json` (English when missing), a small IT · ES · EN menu saved in the browser, dates, weekdays and prices formatted with `Intl`, the price rules said from the engine's `params`, the engine's English text folded at the bottom of the night panel. `fairnight configura` asks the language once, proposing it from the town (Italy → it, Spain and the Canary Islands → es) or from the computer's language.
 - Small hotels: `beds24 importa` imports rooms with `qty` > 1 as a room type (`units`) and warns when `qty` changes; a listing with `units` can list up to that many Smoobu apartments; an iCal calendar of a room type names its room (`unit`), and calendars of a whole room type are refused. `fairnight price` and the calendar page show the rooms free. Database schema 6: `unit` and `units` of each stored stay.
+- Autopilot, off by default per listing (`pilot` in `fairnight.config.json`): `fairnight pilota giro | prova | stato | accendi | spegni | riprendi | registro | pianifica | togli`.
+  - One run reads, prices the next 90 nights, writes to Smoobu or Beds24 where it is on, reads back.
+  - Limits: at most 15% a day from the price on the channel, never outside the lowest and highest price (needed), nothing written when a calendar could not be read, pause after 3 failed runs or more than 5 nights not matching.
+  - The daily run: a Task Scheduler task on Windows, a LaunchAgent on a Mac, at the chosen time and at sign-in; the open calendar page does the run if it was missed.
+  - Log of every night written with its reason (`pilot_runs`, `pilot_changes`, `pilot_state`, new tables only), kept 400 days.
+  - The calendar page shows the last run and why each night changed, and switches the autopilot on (after a preview) from this computer only. `fairnight configura` asks about it for houses on Smoobu or Beds24.
+- The write step of `smoobu spingi` and `beds24 spingi` moved into `channel.ts` (push targets), shared with the autopilot.
 
 ### fairnight-mcp
 

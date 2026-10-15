@@ -12,8 +12,10 @@
  *   find a calendar that is already running instead of starting a second one
  * - GET/POST /checkin/<code>  the guest check-in form (Fairguest), local network only
  * - GET/POST /risposte  the replies to guests to approve (Fairhello), this computer only
- * The page never writes anything except through "Recalculate", which runs the
- * same sync as `fairnight sync`, and "Use this price" (POST /api/base-price).
+ * - GET/POST /api/pilot…  the autopilot: its state, and its switches for this computer only (pilota-pagina.ts)
+ * The calendar page writes only through "Recalculate", which runs the same
+ * sync as `fairnight sync`, "Use this price" (POST /api/base-price) and the
+ * autopilot switches.
  */
 import { createHash, randomBytes } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
@@ -26,6 +28,7 @@ import { handleCheckin, type CheckinContext } from "./guests/checkin.js";
 import { handleReplies, type RepliesContext } from "./hello/page.js";
 import { applyRetention, guestsEnabled, prefillFromCalendar } from "./guests/store.js";
 import { renderPage } from "./page.js";
+import { handlePilot, PAGE_CHECK_MS, pageRunIfDue, type PilotPageContext } from "./pilota-pagina.js";
 import { lastSync, priceOne } from "./price.js";
 import { suggestionFor, writeBasePrice, type ListingSuggestion } from "./prezzo-base.js";
 import { syncEverything } from "./sync-all.js";
@@ -38,6 +41,8 @@ export interface ServeOptions {
   today?: string;
   /** No startup lines: `fairnight apri` prints its own, in Italian. */
   quiet?: boolean;
+  /** Shared with the autopilot switches; made by createHandler when missing. */
+  pilot?: PilotPageContext;
 }
 
 /** Identifies the folder a running calendar serves, without showing its path on the network. */
@@ -140,6 +145,7 @@ export function pricesPayload(dir: string, config: HostConfig, today: string, da
 export function createHandler(opts: ServeOptions): (req: IncomingMessage, res: ServerResponse) => void {
   let refreshing: Promise<unknown> | null = null;
   const checkin: CheckinContext = { dir: opts.dir, io: opts.io, secret: randomBytes(32), failures: new Map() };
+  const pilot = opts.pilot ?? { dir: opts.dir, io: opts.io, previews: new Map(), busy: false };
   const replies: RepliesContext = { dir: opts.dir, io: opts.io, secret: randomBytes(32), ...(opts.today !== undefined ? { today: opts.today } : {}) };
 
   return (req, res) => {
@@ -147,6 +153,7 @@ export function createHandler(opts: ServeOptions): (req: IncomingMessage, res: S
     const today = opts.today ?? localToday(opts.io.now());
     const run = async () => {
       if (await handleCheckin(req, res, url, checkin, randomBytes(16).toString("base64"))) return;
+      if (await handlePilot(req, res, url, pilot)) return;
       if (await handleReplies(req, res, url, replies, randomBytes(16).toString("base64"))) return;
       if (req.method === "GET" && url.pathname === "/") {
         const nonce = randomBytes(16).toString("base64");
@@ -248,7 +255,7 @@ export function lanAddresses(): string[] {
     .map((a) => a.address);
 }
 
-export async function startServer(opts: ServeOptions & { port: number; lan: boolean }): Promise<Server> {
+export async function startServer(opts: ServeOptions & { port: number; lan: boolean; autopilot?: boolean }): Promise<Server> {
   const config = loadHostConfig(opts.dir); // fail early on a broken config
   const db = openDb(dbPath(opts.dir));
   let guests = false;
@@ -259,7 +266,18 @@ export async function startServer(opts: ServeOptions & { port: number; lan: bool
   } finally {
     db.close();
   }
-  const server = createServer(createHandler(opts));
+  const pilot: PilotPageContext = { dir: opts.dir, io: opts.io, previews: new Map(), busy: false };
+  const server = createServer(createHandler({ ...opts, pilot }));
+  if (opts.autopilot) {
+    // While the page is open it does the day's run if the computer's daily task did not (it was off at that hour).
+    const check = () => pageRunIfDue(opts.dir, opts.io, pilot).catch((e: unknown) => opts.io.err(`Pilota automatico: ${(e as Error).message}`));
+    const first = setTimeout(check, 60_000);
+    const hourly = setInterval(check, PAGE_CHECK_MS);
+    server.on("close", () => {
+      clearTimeout(first);
+      clearInterval(hourly);
+    });
+  }
   const host = opts.lan ? "0.0.0.0" : "127.0.0.1";
   return new Promise((resolve, reject) => {
     server.once("error", reject);

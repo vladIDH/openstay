@@ -1,6 +1,6 @@
 {
   "name": "fairnight-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "AGPL-3.0-only",
   "author": {
     "name": "Vlad Humenny",
@@ -29,7 +29,7 @@
     "node": ">=20"
   },
   "bin": {
-    "fairnight-mcp": "./bin/fairnight-mcp.js"
+    "fairnight-mcp": "bin/fairnight-mcp.js"
   },
   "main": "./dist/server.js",
   "types": "./dist/server.d.ts",
@@ -47,8 +47,8 @@
   ],
   "dependencies": {
     "@modelcontextprotocol/server": "2.2.0",
-    "fairnight": "0.1.0",
-    "fairnight-cli": "0.1.0"
+    "fairnight": "0.2.0",
+    "fairnight-cli": "0.2.0"
   },
   "devDependencies": {
     "@modelcontextprotocol/client": "2.2.0"

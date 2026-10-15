@@ -40,3 +40,6 @@ fairhello-credentials.json
 # documenti del Ministero (SES): restano fuori dal repo, mai committati
 openstay-ses-docs/
 installa/pacchetto/
+
+# npm tarballs and the installer zip made by "node scripts/release.mjs pack"
+release-files/

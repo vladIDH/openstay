@@ -2,8 +2,10 @@ name: Installer
 
 # The installer for hosts, tried for real on Windows and on a Mac: from a copy of
 # the project into a clean folder, with fake iCal calendars, up to the calendar page.
-# Only on pull requests that touch the installer or the command line (macOS minutes cost more).
+# Only on pull requests that touch the installer or the command line (macOS minutes cost more),
+# and before every release (called by release.yml).
 on:
+  workflow_call:
   pull_request:
     paths:
       - "installa/**"

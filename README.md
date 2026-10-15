@@ -1,221 +1,105 @@
-# OpenStay · Fairnight
+# OpenStay
 
-**Fair nightly prices for your holiday rental, worked out on your own computer.**
+Open-source tools for holiday rental hosts that run on the host's own computer: no account, no monthly fee, no server of ours holding their data. AGPL-3.0, TypeScript, Node.js.
 
-Fairnight looks at your Airbnb, Booking.com and Vrbo calendars and at the rules you set. It then gives every night of the coming year a price and a minimum stay, and tells you **why**:
+**Fairnight** prices every night of the coming year.
+It reads the host's calendars and rules, gives each night a price and a minimum stay, and explains every step that led there.
+With Smoobu or Beds24 connected it writes the prices back, after the host confirms, or every day on autopilot where the host turned it on.
 
-> Sat 13 Feb · 230 EUR: base 100 → season "Carnival week" = 160 → Saturday +15% = 184 → event "Jazz weekend" +25% = 230 → within floor 60 and ceiling 260. Min stay 3.
+**Fairguest** registers guests with the authorities.
+Spain (SES.HOSPEDAJES rules, the Mossos d'Esquadra file) and Italy (Alloggiati Web, regional Istat data): a check-in form for the guests, deadlines, and erasure when the law allows.
+Guest data is encrypted on the host's computer with a passphrase only the host knows.
 
-It is free and open source (AGPL-3.0). It has no account, no monthly fee per listing, and it does not send your data anywhere.
+**Fairhello** drafts replies to guests.
+It reads guest messages from Smoobu or Beds24 and writes a draft from the host's own house file, with the host's model key or a model running locally.
+The host approves every reply before it is sent; a draft never contains a price.
 
-![Fairnight calendar page](docs/images/calendar.png)
+## Screenshots
 
-## What it does
+All data in the screenshots is invented.
 
-- **Reads your calendars** through the iCal links that Airbnb, Booking.com, Vrbo and most channel managers give you.
-- **Prices every night** from your rules:
-  - base price, floor and ceiling;
-  - seasons and weekdays;
-  - last-minute discounts and far-ahead premiums;
-  - gaps between two stays;
-  - how full the month is, and for small hotels how many rooms are left;
-  - your local events;
-  - last year's prices;
-  - a discount when no booking has come in for a while.
-- **Sets the minimum stay** too: shorter close to the date, longer far ahead, and lowered so a single booking can fill a gap.
-- **Explains each price**, step by step.
-- **Shows a calendar page** in your browser, on your computer or your phone.
-- **Exports a CSV** (date, price, minimum stay) to upload where you need it.
-- **Answers questions in Claude** through an optional read-only MCP server: "which gaps do I have before Christmas?"
+![The calendar page: each night's price and minimum stay, and why](docs/images/calendar.png)
 
-What it does **not** do (yet): it does not change prices on Airbnb or Booking.com by itself. You copy the prices or upload the CSV, or, with Smoobu or Beds24, confirm and let Fairnight write them (0.2.0, see below). More channel managers come in phase 2.
+| Autopilot: last run and why each night changed | Check-in form on a phone | Check-in link: the document read in the browser |
+|---|---|---|
+| ![Autopilot](docs/images/pilota/pilota-desktop.png) | ![Check-in form](docs/images/visivo/checkin-es-telefono-1-dati.png) | ![Check-in link](docs/images/link/link-it-2-letto.png) |
 
-## Five-minute setup
+## Install in a minute
 
-Never opened a terminal? There is a double-click installer for Windows and Mac with a guided setup in Italian: [docs/installa.md](docs/installa.md). The installer is tested in CI on Windows and macOS; what still has to be checked by hand on a real Mac (Finder, Gatekeeper, Dock) is listed in [installa/README.md](installa/README.md#da-verificare-a-mano-su-un-mac-vero).
+You need [Node.js](https://nodejs.org) 22 or newer (20 works where a C++ compiler is installed, because the SQLite module is precompiled only from Node 22 on).
 
-You need [Node.js](https://nodejs.org) 22 or newer on Windows and Mac, where the SQLite module comes precompiled only from Node 22 on (20 works where a C++ compiler is installed). It is free and its installer takes a minute.
+**Hosts, Windows or Mac.** Download `Fairnight-installa.zip` from the [latest release](https://github.com/vladIDH/openstay/releases/latest), extract it and double-click `Installa Fairnight.cmd` (Windows) or `Installa Fairnight.command` (Mac). The installer checks Node.js, installs Fairnight in `~/Fairnight`, asks a few questions in Italian and opens the calendar page. Running it again updates Fairnight and keeps the settings. Step-by-step guide with screenshots, in Italian: [docs/installa.md](docs/installa.md).
+
+**With npm:**
 
 ```
 npm install -g fairnight-cli
 fairnight init my-rentals
 cd my-rentals
+# put your iCal links and prices in fairnight.config.json
+fairnight sync
+fairnight serve        # http://localhost:4321
 ```
 
-1. Open `fairnight.config.json`. Replace the two example listings with yours:
-   - a short name;
-   - the iCal links from your channels;
-   - your base, minimum and maximum price.
-2. Read your calendars: `fairnight sync`
-3. Open the calendar page: `fairnight serve`, then go to http://localhost:4321
-
-Details, with where to find the iCal links on each channel, are in [fairnight-cli](packages/fairnight-cli).
-
-## The commands
-
-| Command | What it does |
-|---|---|
-| `fairnight init my-rentals` | Creates your folder with an example to copy from. |
-| `fairnight sync` | Reads your calendars again. Safe to run as often as you like. |
-| `fairnight price` | Prints every night with its price, minimum stay and reason (`--explain` for the full story). |
-| `fairnight serve` | The calendar page (`--lan` to open it from your phone). |
-| `fairnight export` | A CSV with date, price and minimum stay. |
-| `fairnight import prices.csv --listing <name>` | Last year's prices, for the historical floor. |
-
-## Smoobu
-
-If you use [Smoobu](https://www.smoobu.com), Fairnight can read your apartments and bookings straight from it, and write prices and minimum stays back. It writes only after you have seen the differences and confirmed. *In development for 0.2.0.*
+**From source:**
 
 ```
-fairnight smoobu collega          # asks for your Smoobu API key and secret (never shown, never in the shell history)
-fairnight smoobu importa          # your Smoobu apartments become listings, bookings come in
-fairnight smoobu spingi           # shows what would change; add --applica to write it to Smoobu
+git clone https://github.com/vladIDH/openstay.git
+cd openstay
+npm install
+npm run check          # typecheck, lint, tests and build of every package
+node packages/fairnight-cli/bin/fairnight.js init ../my-rentals
 ```
 
-The connector uses only Smoobu's HMAC request signing: create the API key **with its secret** in *Settings → Advanced → API Keys*. The old key-only login stops working on 31 October 2026 and is not used. After `importa`, `fairnight sync` reads Smoobu too.
+## Architecture
 
-## Beds24
-
-If you use [Beds24](https://beds24.com), Fairnight reads your rooms and bookings from it, and writes prices and minimum stays back only after you have seen the differences and confirmed. *In development for 0.2.0.*
+An npm workspace. The libraries are pure: no network, no files, no clock ("today" is an input). Everything that touches the outside world lives in the command line package.
 
 ```
-fairnight beds24 collega          # asks for a Beds24 invite code (never shown) and keeps the refresh token
-fairnight beds24 importa          # each Beds24 room becomes a listing, bookings come in
-fairnight beds24 spingi           # shows what would change; add --applica to write it to Beds24
+packages/
+  fairnight          pricing engine: price, minimum stay and explanation per night (no runtime dependencies)
+  fairguest          guest registration: rules per country, deadlines, retention, encryption, authority files
+  fairhello          guest replies: house file, request to the model, freshness, price check
+  fairnight-smoobu   Smoobu API client (HMAC request signing, rate limit)
+  fairnight-beds24   Beds24 API v2 client (refresh token, credit budget)
+  fairnight-market   zone data readers (host CSV, Inside Airbnb files, ISTAC open data)
+  fairnight-cli      the `fairnight` command, SQLite storage, the local web pages
+  fairnight-mcp      read-only MCP server over stdio
+  fairguest-relay    optional relay for the check-in link (Cloudflare Worker, not published on npm)
 ```
 
-- **Permissions.** Create the invite code in *Settings → Marketplace → API* with the permissions **read:bookings, all:inventory and read:properties**. They are chosen when the code is created and cannot be changed later.
-- **Token lifetime.** The invite code works once, for 24 hours. The refresh token it gives **stops working after 30 days without use**, so run a Beds24 command at least once a month.
-- **Credits.** Beds24 counts credits (100 every 5 minutes by default). Fairnight never uses more than half of them and prints, after each command, how many it used and how many are left.
-- **Rooms with several identical units** (`qty` > 1) become a room type with one price: see [Small hotels](#small-hotels-piccoli-hotel).
+- **Local SQLite.** The host's folder holds `fairnight.config.json` and `data/fairnight.db` ([better-sqlite3](https://github.com/WiseLibs/better-sqlite3)). The schema is versioned and migrated in place on first use. Guest details are sealed per value (X25519 + AES-256-GCM, key locked with scrypt) before they reach the database.
+- **Local web pages.** `fairnight serve` serves the calendar page, the check-in form and the replies page from the host's computer, with a strict Content-Security-Policy and nothing loaded from other sites. It listens on `127.0.0.1` unless `--lan` is given (so guests and the host's phone can reach it on the home network). Changing settings, switching the autopilot and sending replies work only from the computer itself; the check-in form needs a random per-stay code.
+- **MCP.** `fairnight-mcp` opens the database read-only and exposes nine tools to Claude Desktop or any MCP client: `list_listings`, `get_prices`, `explain_night`, `occupancy`, `next_gaps`, `get_sync_status`, `get_market_area`, `get_guest_deadlines`, `get_guest_replies`. Fairguest's guest details are never returned; message texts only when a tool is asked for them. Setup: [packages/fairnight-mcp](packages/fairnight-mcp).
+- **Deterministic engine.** Same input, same output. A regression test prices 365 nights and compares them with a fixture.
 
-## Autopilot
+## Connectors
 
-With Smoobu or Beds24 connected, Fairnight can keep the prices up to date on its own, every day, **only for the listings you turn it on for** (off by default). *In development for 0.2.0.*
+| Source | Reads | Writes |
+|---|---|---|
+| **iCal** (Airbnb, Booking.com, Vrbo and most channel managers) | bookings and blocked dates | nothing: export a CSV of prices instead |
+| **Smoobu** (API key and secret, HMAC-signed requests) | apartments, bookings, rates, guest messages | prices and minimum stays after a confirmation; replies the host approved |
+| **Beds24** (API v2, invite code → refresh token) | rooms and units, bookings, calendar, guest messages | prices and minimum stays after a confirmation; replies the host approved |
 
-- **Every day** it reads the calendars and bookings, prices the next 90 nights, writes the ones that changed to Smoobu or Beds24 and reads them back. On Windows it is a task of your user in Task Scheduler, on a Mac a LaunchAgent: at 06:00 and when you sign in. If the computer was off, it runs when it is back on. While the calendar page is open it also does the day's run if it was missed.
-- **Limits.** A price moves at most 15% a day from the price on the channel (a far price is reached over several days), never under your lowest or over your highest price, which the autopilot needs. Nothing is written for a listing whose calendars could not be read that day. After 3 failed runs in a row, or more than 5 nights that do not match when read back, the listing pauses until you resume it.
-- **You see what it did.** The calendar page says "today: changed 12 nights on Smoobu, all read back" and why each night changed. `fairnight pilota registro` lists every night written (`--out file.csv` for all of them).
-- **Turning it on** shows first what would change now: on the calendar page (only on the computer Fairnight runs on), in "Cambia impostazioni", or with `fairnight pilota accendi <listing>`.
+Credentials are asked without echo, saved readable by the current user only, and never logged. Details and limits: [docs/connettori.md](docs/connettori.md) (Italian). There is no scraping and there are no unofficial APIs, ever.
 
-![The autopilot on the calendar page: the last run, each night before and after, and why (invented data)](docs/images/pilota/pilota-desktop.png)
+## What it does not do
 
-```
-fairnight pilota prova            # what a run would write now, writing nothing
-fairnight pilota accendi loft     # shows the preview, asks, turns it on
-fairnight pilota pianifica        # runs it every day on this computer (--ora 06:00); "togli" removes it
-fairnight pilota stato            # on, off or paused, last run
-```
+- **Nothing is sent by itself.** Every write to a channel manager, every reply to a guest and every communication to the authorities is shown first and needs the host's confirmation. The only exceptions are ones the host switches on per listing: the price autopilot (within daily limits, read back after writing) and unattended sending to Alloggiati Web (`autoSend`).
+- **No cloud of ours.** No account, no telemetry, no analytics. The only requests go to the calendar links, channel managers, model providers and authority services the host configured. The one exception is optional: the remote check-in link passes through a relay that stores only data sealed in the guest's browser, deletes it once downloaded, and anyone can run their own; it is not deployed yet.
+- **No market data by default.** Remote zone data sources are off unless the host switches them on with their own key or downloaded files.
+- **No direct connection to Airbnb or Booking.com**, which require partner agreements.
 
-## Small hotels (piccoli hotel)
+## Status
 
-Fairnight prices homes **and small hotels**. In a hotel a room type ("Double") has several identical rooms sold at one price: in Fairnight it is one listing with `"units": 6` in its pricing. The price stays one per night; what changes is how nights are counted.
-
-- **A night is for sale while one room is free**, and its explanation says how many: `Sat 2026-11-21 · 109 EUR (1 of 6 rooms free): … Weighed most: few rooms left (≥80% taken) +15%.`
-- **Occupancy** counts room-nights: 4 of 6 doubles booked is 67%.
-- **Gaps** are short stretches with free rooms between two **sold-out** nights, where no guest can stay longer whatever room they get. One room free between two bookings of that same room, while other rooms are free, is not a gap: moving guests between rooms is the channel manager's job.
-- **Few rooms left** (`scarcity`, off by default): the price rises as rooms run out, by steps, never above a cap (default +20%). Recommended: +5% from 50% of rooms taken, +10% from 65%, +15% from 80%.
-- **Last minute** and the **no-new-bookings discount** work on every night with a room free.
-- With one unit nothing changes: a home is priced exactly as before.
-
-Where the rooms come from:
-
-- **Beds24**: rooms with `qty` > 1 are imported as a room type; bookings are read unit by unit (`unitId`); one price per room is written, and nights where Beds24's free units (`numAvail`) differ from Fairnight's are left alone.
-- **Smoobu** has no room types (one apartment = one bookable unit): Fairnight joins up to `units` apartments into one room type and writes the same price to the free ones. The join is ours, not a Smoobu feature.
-- **iCal**: one calendar per room, each with its `"unit"`. Booking.com gives no iCal for room types with more than one room, and Fairnight never reads a calendar of a whole room type.
-- **MCP**: `get_prices`, `explain_night`, `occupancy` and `next_gaps` show the units and the rooms free, still read only.
-
-The whole guide, with an invented 14-room hotel (6 doubles, 4 triples, 4 singles) and the sources, is in Italian in [docs/piccoli-hotel.md](docs/piccoli-hotel.md).
-
-## Fairguest: guest registration in Spain
-
-*0.1.0, in development.* Spanish law (Real Decreto 933/2021) asks every host to send the police the details of each guest, within 24 hours. Fairguest does this on your computer, with no account and no server of ours in between:
-
-- **a check-in form** your guests fill in on a phone or tablet, on your own Wi-Fi only, in Spanish, English or Italian;
-- **the details kept encrypted** with a passphrase only you know;
-- **the deadlines** of every booking and arrival, with late ones flagged;
-- **the file for the Mossos d'Esquadra** (Catalonia), ready to upload;
-- **automatic erasure** when the law no longer requires the data.
-
-Sending to SES.HOSPEDAJES (the rest of Spain) comes when the Ministry's schemas are in hand. Until then you enter the guests on its website, and Fairguest keeps the deadlines and the record.
-
-```
-fairnight ospiti attiva                  # choose the passphrase
-fairnight serve --lan                    # the check-in forms open on your network
-fairnight ospiti                         # what is due and what is late
-```
-
-**If you lose the passphrase, the guests' data cannot be recovered by anyone.** The whole guide is in [fairnight-cli](packages/fairnight-cli#guest-registration-fairguest-010-in-development).
-
-## Fairhello: replies to guests
-
-*0.1.0, in development.* Fairhello reads your guests' messages from Smoobu or Beds24 and writes a draft reply for each guest waiting. **You approve every reply before it is sent**: nothing goes out on its own.
-
-- **Your model, your key**: Claude Haiku with your own Anthropic key (about a cent a month for one house), or a model running on your computer with Ollama, where no message leaves it.
-- **Your house file**: `casa/<listing>.md`, written with a few questions. The assistant answers only from what is written there, in the guest's language.
-- **Never a price**: the model never sees one. A draft that contains one anyway cannot be sent until you change it.
-- **Access codes only during the stay**, and only after the guest registration if you use Fairguest.
-- **Checked again before sending**: if the guest wrote again in the meantime, the old draft is not sent.
-
-```
-fairnight risposte collega               # choose the model (your key is asked, never shown)
-fairnight risposte casa --listing loft   # what the assistant knows about the house
-fairnight risposte leggi                 # read new messages, write drafts
-fairnight serve                          # approve and send on http://localhost:4321/risposte
-```
-
-The page opens only on your computer. Messages are erased 60 days after check-out. The guide is in Italian in [docs/risposte-ospiti.md](docs/risposte-ospiti.md).
-
-## Fairnight today and PriceLabs
-
-PriceLabs is a mature, paid service with market data from millions of listings. Fairnight is a first version that works only with **your** data. This is where it stands, compared with PriceLabs' public feature pages:
-
-| Feature | PriceLabs | Fairnight today | Coming in |
-|---|---|---|---|
-| Base price, floor and ceiling, rounding | ✓ | ✓ | — |
-| Seasons, day of week | ✓ | ✓ | — |
-| Last-minute discount, far-ahead premium | ✓ | ✓ (steps you choose) | market-driven version: phase 3 |
-| Gap (orphan night) pricing and minimum stay | ✓ | ✓ | — |
-| Minimum stay by lead time | ✓ | ✓ | computed minimum stay: phase 3 |
-| Occupancy adjustment | ✓ | ✓ (per month) | portfolio-wide: phase 2 |
-| Historical floor | ✓ | ✓ (same month last year) | — |
-| Discount when no bookings arrive | ✓ | ✓ | — |
-| Events | curated list, users can only suggest | ✓ your own events file | public holidays file: phase 2 |
-| Date overrides | ✓ | ✓ | — |
-| Explanation of each price | tooltip | ✓ every step, reproducible | — |
-| Calendar page | ✓ | ✓ local | — |
-| AI assistant connection (MCP) | ✓ | ✓ read-only, local | write access with confirmation: phase 2 |
-| Rules per group / portfolio, reusable rule sets | ✓ | — | phase 2 |
-| Length-of-stay discounts, extra-guest fees, check-in days | ✓ | — | phase 2 |
-| Pushing prices to channel managers | ✓ 160+ | CSV export; Smoobu and Beds24 in 0.2.0, with confirmation | more connectors: phase 2 |
-| Alerts, portfolio reports, pacing vs last year | ✓ | — | phase 2 |
-| Try the rules on last year first (backtest) | preview of new rules only | — | phase 2 |
-| Market data: neighbourhood prices, comp sets | ✓ | zone demand from your own CSV, the Inside Airbnb files you download or ISTAC's open data for the Canary Islands (0.2.0); a suggested base price you confirm by hand; AirROI with your own key, off until AirROI confirms its terms | neighbourhood page, comp sets: phase 3 |
-| Price per listing | about $20 a month (third-party sources) | free | — |
-| Your data | in their cloud | on your computer | — |
-
-Direct connections to Airbnb and Vrbo need partner agreements, and OpenStay will never scrape any website.
-
-## Privacy
-
-Everything stays in your folder: your rules, your calendars, your prices. The only internet requests go to the calendar links you write yourself, and to Smoobu or Beds24 if you connect them. Pricing never stores guest names, phone numbers or messages. If you use Fairguest, your guests' details are stored in the same folder, encrypted with your passphrase, and erased as soon as the law allows. If you use Fairhello, guest messages are kept in the same folder and erased 60 days after check-out; to write a draft, the last messages and your house file go to the model you chose (Anthropic with your key, or Ollama on your computer). There is no account, no tracking and no telemetry.
-
-## The packages
-
-| Package | For whom |
-|---|---|
-| [`fairnight-cli`](packages/fairnight-cli) | Hosts: the `fairnight` command and the calendar page. |
-| [`fairnight-mcp`](packages/fairnight-mcp) | Hosts who use Claude Desktop or another MCP client. |
-| [`fairnight`](packages/fairnight) | Developers: the pricing engine as a pure library (no network, no files). |
-| [`fairguest`](packages/fairguest) | Developers: guest registration as a pure library (rules, deadlines, retention, encryption, the Mossos file). |
-| [`fairhello`](packages/fairhello) | Developers: replies to guests as a pure library (house file, request to the model, freshness, no prices). |
+0.2.0 is the first version published on npm. Fairnight's engine, iCal, Smoobu and Beds24 are tested against fake servers; the first writes to a real Smoobu and Beds24 account still check how each service treats the end of a date range. Fairguest's SES.HOSPEDAJES sending waits for the Ministry's schemas. What changed: [CHANGELOG.md](CHANGELOG.md). Host guides are in Italian and Spanish in [docs/](docs).
 
 ## Contributing
 
-Bug reports, ideas and pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md). Security issues: see [SECURITY.md](SECURITY.md). What changed in each version: [CHANGELOG.md](CHANGELOG.md).
-
-Contact: [hello@khlumen.com](mailto:hello@khlumen.com).
+Bug reports, ideas and pull requests are welcome: read [CONTRIBUTING.md](CONTRIBUTING.md). Security problems: [SECURITY.md](SECURITY.md), not a public issue.
 
 ## License
 
-[AGPL-3.0](LICENSE). You can use, study, change and share Fairnight. If you offer a modified version to others, including as an online service, you must share your changes under the same license.
+[AGPL-3.0-only](LICENSE). You can use, study, change and share OpenStay. If you offer a modified version to others, including as an online service, you must share your changes under the same license.
+
+Contact: [hello@khlumen.com](mailto:hello@khlumen.com).

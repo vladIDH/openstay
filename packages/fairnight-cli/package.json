@@ -1,6 +1,6 @@
 {
   "name": "fairnight-cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "AGPL-3.0-only",
   "author": {
     "name": "Vlad Humenny",
@@ -31,7 +31,7 @@
     "node": ">=20"
   },
   "bin": {
-    "fairnight": "./bin/fairnight.js"
+    "fairnight": "bin/fairnight.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -48,9 +48,9 @@
     "LICENSE"
   ],
   "dependencies": {
-    "fairnight": "0.1.0",
-    "fairguest": "0.1.0",
-    "fairhello": "0.1.0",
+    "fairnight": "0.2.0",
+    "fairguest": "0.2.0",
+    "fairhello": "0.2.0",
     "better-sqlite3": "12.11.1",
     "fairnight-beds24": "0.2.0",
     "fairnight-market": "0.2.0",

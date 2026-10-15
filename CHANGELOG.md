@@ -86,6 +86,14 @@ Guest registration for Spain (Real Decreto 933/2021). Everything runs on the hos
 
 ## [0.2.0] - in development, not released
 
+### Market data, second part (mercato2)
+
+- fairnight: `suggestBasePrice`, a suggested base price from zone data (median of the monthly averages of the 12 most recent months, at least 6), with its explanation. Outside the nightly pricing: the expected prices do not change.
+- fairnight-market: ISTAC holiday homes of the Canary Islands (ADR by municipality and size, open data), INE tourist apartments (occupancy by tourist point), Inside Airbnb filter by guests (`accommodates`).
+- fairnight-cli: `fairnight mercato prezzo-base [--listing] [--applica]`; `mercato importa --fonte istac --comune <code> [--ospiti N]`; `mercato importa --fonte ine --punto <name>`, off (`market.ine.enabled`) while INE's licence is unclear; `--ospiti` on import; a listing field `guests`; which homes a zone describes is kept and shown by `mercato stato`.
+- Calendar page: the suggested base price with "Use this price" after a confirmation, only on the computer that runs Fairnight.
+- AirROI stays off until AirROI confirms its terms in a formal written document.
+
 ### fairnight (engine)
 
 - Small hotels: a listing can be a room type with `units` identical rooms sold at one price (default 1, up to 99). See docs/piccoli-hotel.md.

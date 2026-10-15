@@ -190,7 +190,7 @@ PriceLabs is a mature, paid service with market data from millions of listings. 
 | Pushing prices to channel managers | ✓ 160+ | CSV export; Smoobu and Beds24 in 0.2.0, with confirmation | more connectors: phase 2 |
 | Alerts, portfolio reports, pacing vs last year | ✓ | — | phase 2 |
 | Try the rules on last year first (backtest) | preview of new rules only | — | phase 2 |
-| Market data: neighbourhood prices, comp sets | ✓ | zone demand from your own CSV or the Inside Airbnb files you download (0.2.0); AirROI with your own key, off until AirROI confirms its terms | neighbourhood page, comp sets: phase 3 |
+| Market data: neighbourhood prices, comp sets | ✓ | zone demand from your own CSV, the Inside Airbnb files you download or ISTAC's open data for the Canary Islands (0.2.0); a suggested base price you confirm by hand; AirROI with your own key, off until AirROI confirms its terms | neighbourhood page, comp sets: phase 3 |
 | Price per listing | about $20 a month (third-party sources) | free | — |
 | Your data | in their cloud | on your computer | — |
 

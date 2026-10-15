@@ -31,8 +31,21 @@ date,occupancy,average_price,comparables
 - **Their rules:** cite the source, do not republish the data, do not scrape the site, download once. Keep the files and the imported figures on your own computer.
 - **Occupancy is an estimate.** A night marked "not available" can be booked or closed by the host, and the file cannot tell them apart. Listings closed on every night of the file are left out. Explanations say "occupancy estimated".
 - **Coverage:** only the cities Inside Airbnb publishes; for example, the Canary Islands are not covered.
-- Comparable listings: same room type, number of bedrooms and neighbourhood, as you choose.
+- Comparable listings: same room type, number of bedrooms, number of guests (`accommodates`) and neighbourhood, as you choose.
 - The files are read as a stream, so a large city does not need much memory.
+
+### ISTAC: holiday homes of the Canary Islands
+
+Open data of the [Instituto Canario de Estadística](https://www.gobiernodecanarias.org/istac/): dataset `C00065A_000062`, the average daily rate (ADR) of the holiday homes of each municipality, month by month, for whole homes of 1–4, 5–8 or more than 8 guests. One CSV call per municipality to `datos.canarias.es`, no key.
+
+- **Licence:** [ISTAC's legal notice](https://www.gobiernodecanarias.org/istac/aviso_legal.html) allows reuse "para fines comerciales y no comerciales", citing "Fuente: Instituto Canario de Estadística (ISTAC)" and the date of the last update, without suggesting that ISTAC supports the reuse. The figures are shown as ISTAC gives them; our own results (the suggested base price) are said to be ours.
+- **Requests:** ISTAC may limit repeated requests for the same data; the figures change once a month, so import once a month.
+- **Granularity:** monthly and past. Each night uses the most recent month with the same calendar month.
+- ISTAC's rate of booked homes is not used: by its definition (booked at least once in the month or the one before) it stays around 95%.
+
+### INE: tourist apartments of Spain (switched off)
+
+Table 2083 of INE's "Encuesta de Ocupación en Apartamentos Turísticos": the occupancy of the registered tourist apartments of each tourist point, month by month, as the zone's season (no prices). One JSON call to `servicios.ine.es`, no key. Citation: "Elaboración propia con datos extraídos del sitio web del INE: www.ine.es". Fairnight keeps it off while the licence is unclear (CC BY 4.0 in INE's legal notice, CC BY-SA 4.0 in the footer of the same site).
 
 ### AirROI (switched off until AirROI confirms its terms in writing)
 

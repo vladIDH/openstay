@@ -5,8 +5,12 @@
  * limit how long it may be kept (AirROI: 30 days) carries expires_on; from
  * that day it is never used again, and it is deleted by the first command that
  * can write to the database.
+ *
+ * Which homes a zone's figures describe (bedrooms, guests, room type…) is kept
+ * in the meta table, under "market_comparables:<zone>": the market tables keep
+ * their shape, and it goes away with the zone.
  */
-import type { MarketData, MarketDay } from "fairnight";
+import type { ComparableHomes, MarketData, MarketDay } from "fairnight";
 import type { Db } from "./db.js";
 
 export interface MarketAreaRow {
@@ -36,7 +40,23 @@ export interface MarketImport {
   expiresOn?: string;
   file?: string;
   note?: string;
+  /** Which homes the figures describe, as chosen at import. Missing: the whole zone. */
+  comparables?: ComparableHomes;
   days: MarketDay[];
+}
+
+const comparablesKey = (area: string) => `market_comparables:${area}`;
+
+/** Which homes the zone's figures describe, or null for the whole zone. */
+export function loadComparables(db: Db, area: string): ComparableHomes | null {
+  const row = db.prepare("SELECT value FROM meta WHERE key = ?").get(comparablesKey(area)) as { value: string } | undefined;
+  if (!row) return null;
+  try {
+    const v = JSON.parse(row.value) as ComparableHomes;
+    return typeof v === "object" && v !== null && Object.keys(v).length > 0 ? v : null;
+  } catch {
+    return null;
+  }
 }
 
 const hasTables = (db: Db) =>
@@ -54,6 +74,10 @@ export function saveMarket(db: Db, m: MarketImport): void {
     ).run(m.area, m.source, m.attribution, m.estimated ? 1 : 0, m.readOn, m.importedAt, m.expiresOn ?? null, m.file ?? null, m.note ?? null);
     const insert = db.prepare("INSERT INTO market_days (area, date, occupancy, average_price, comparables) VALUES (?, ?, ?, ?, ?)");
     for (const d of m.days) insert.run(m.area, d.date, d.occupancyPercent ?? null, d.averagePrice ?? null, d.comparables ?? null);
+    db.prepare("DELETE FROM meta WHERE key = ?").run(comparablesKey(m.area));
+    if (m.comparables && Object.keys(m.comparables).length > 0) {
+      db.prepare("INSERT INTO meta (key, value) VALUES (?, ?)").run(comparablesKey(m.area), JSON.stringify(m.comparables));
+    }
   });
   tx();
 }
@@ -72,6 +96,7 @@ function deleteArea(db: Db, area: string): void {
   db.transaction(() => {
     db.prepare("DELETE FROM market_days WHERE area = ?").run(area);
     db.prepare("DELETE FROM market_areas WHERE area = ?").run(area);
+    db.prepare("DELETE FROM meta WHERE key = ?").run(comparablesKey(area));
   })();
 }
 

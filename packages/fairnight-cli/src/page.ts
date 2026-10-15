@@ -59,6 +59,14 @@ select.lang { padding: 8px 10px; font-size: 13px; color: var(--muted); }
   background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
 .summary b { display: block; font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15; }
 .summary span { color: var(--muted); font-size: 13px; }
+.suggest { padding: 14px 18px; margin-bottom: 18px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+.suggest h3 { margin: 0 0 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.suggest .big { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.suggest p { margin: 6px 0 0; font-size: 14px; }
+.suggest .sub { color: var(--muted); font-size: 13px; }
+.suggest .warn { color: var(--accent); }
+.suggest .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.suggest code { font-size: 12px; overflow-wrap: anywhere; }
 .monthbar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .monthbar h2 { font-size: 22px; font-weight: 650; margin: 0 auto 0 0; }
 .monthbar .btn { width: 38px; height: 38px; padding: 0; display: grid; place-items: center; }
@@ -334,8 +342,95 @@ function render() {
   $("#sum-average").textContent = avg == null ? "—" : money(Math.round(avg), l.currency);
   $("#sum-occupancy").textContent = sellable === 0 ? "—" : new Intl.NumberFormat(state.lang, { style: "percent" }).format(reserved / sellable);
   renderPilot();
+  renderSuggestion(l);
   if (message) setStatus(t(message.key, message.vars), message.isError);
   else setStatus(l.lastSync ? t("status_read", { when: new Intl.DateTimeFormat(state.lang, { dateStyle: "medium", timeStyle: "short" }).format(new Date(l.lastSync)) }) : t("status_not_read"));
+}
+
+// ---- suggested base price: facts from the server, sentences written here
+function homesText(sg) {
+  const h = sg.homes || {};
+  const parts = [];
+  if (h.bedrooms != null) parts.push(tn("homes_bedrooms", h.bedrooms));
+  if (h.guests != null) parts.push(tn("homes_guests", h.guests));
+  else if (h.guestsFrom != null) parts.push(h.guestsTo != null ? t("homes_guests_range", { from: num(h.guestsFrom), to: num(h.guestsTo) }) : t("homes_guests_from", { from: num(h.guestsFrom) }));
+  if (h.roomType) parts.push(h.roomType);
+  if (h.neighbourhood) parts.push(h.neighbourhood);
+  const who = sg.comparables != null ? tn("homes_count", sg.comparables) : t("homes_some");
+  return who + " " + (parts.length ? t("homes_with", { list: parts.join(", ") }) : t("homes_whole_zone"));
+}
+function zoneGuestsText(h) {
+  if (h && h.guests != null) return tn("homes_guests", h.guests);
+  if (h && h.guestsFrom != null) return h.guestsTo != null ? t("homes_guests_range", { from: num(h.guestsFrom), to: num(h.guestsTo) }) : t("homes_guests_from", { from: num(h.guestsFrom) });
+  return "";
+}
+function warningText(w, sg, currency) {
+  switch (w.kind) {
+    case "whole-zone": return t("suggest_warn_whole_zone");
+    case "guests-differ": return t("suggest_warn_guests_differ", { zone: zoneGuestsText(sg.homes), listing: num(w.listing) });
+    case "guests-unknown": return t("suggest_warn_guests_unknown", { listing: num(w.listing) });
+    case "below-floor": return t("suggest_warn_below_floor", { floor: money(w.floor, currency) });
+    case "above-ceiling": return t("suggest_warn_above_ceiling", { ceiling: money(w.ceiling, currency) });
+    default: return "";
+  }
+}
+let confirming = false;
+function renderSuggestion(l) {
+  const box = $("#suggest");
+  const sg = l.suggestion;
+  if (!sg) { box.hidden = true; box.replaceChildren(); return; }
+  box.hidden = false;
+  const m = (n) => money(n, l.currency);
+  const parts = [el("h3", null, t("suggest_title")), el("div", "big", m(sg.suggested))];
+  const monthName = (k) => dateFmt({ month: "long", year: "numeric" }).format(utc(k));
+  parts.push(el("p", null, t("suggest_why", { homes: homesText(sg), area: sg.area || "", from: monthName(sg.from), to: monthName(sg.to), n: num(sg.months), low: m(sg.low), high: m(sg.high) })));
+  const diff = sg.differencePercent === 0 ? t("suggest_same") : (sg.differencePercent > 0 ? "+" : "") + num(sg.differencePercent) + "%";
+  parts.push(el("p", null, t("suggest_current", { current: m(sg.current), diff: diff })));
+  if (sg.farOff) parts.push(el("p", "warn", t("suggest_far_off")));
+  for (const w of sg.warnings) { const text = warningText(w, sg, l.currency); if (text) parts.push(el("p", "warn", text)); }
+  const source = [sg.attribution + (sg.estimated ? ", " + t("note_estimated") : "")];
+  if (sg.readOn) source.push(t("note_read_on", { date: shortDate(sg.readOn) }));
+  parts.push(el("p", "sub", t("suggest_source", { source: source.join(" · ") }) + ". " + t("suggest_nothing_changes")));
+  if (sg.suggested !== sg.current) {
+    const actions = el("div", "actions");
+    if (!state.data.local) {
+      const c = el("code", null, "fairnight mercato prezzo-base --listing " + l.name + " --applica");
+      const line = el("p", "sub", t("suggest_remote", { command: "" }));
+      line.append(c);
+      actions.append(line);
+    } else if (!confirming) {
+      const use = el("button", "btn", t("suggest_use"));
+      use.type = "button";
+      use.addEventListener("click", () => { confirming = true; renderSuggestion(l); });
+      actions.append(use);
+    } else {
+      actions.append(el("span", null, t("suggest_confirm", { listing: l.title, price: m(sg.suggested) })));
+      const yes = el("button", "btn primary", t("suggest_yes"));
+      yes.type = "button";
+      yes.addEventListener("click", () => useSuggestion(l, sg, yes));
+      const no = el("button", "btn", t("suggest_cancel"));
+      no.type = "button";
+      no.addEventListener("click", () => { confirming = false; renderSuggestion(l); });
+      actions.append(yes, no);
+    }
+    parts.push(actions);
+  }
+  box.replaceChildren(...parts);
+}
+async function useSuggestion(l, sg, btn) {
+  btn.disabled = true;
+  try {
+    const res = await fetch("/api/base-price", { method: "POST", headers: { "X-Fairnight": "1", "Content-Type": "application/json" }, body: JSON.stringify({ listing: l.name, price: sg.suggested }) });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error || res.statusText);
+    confirming = false;
+    await load();
+    say("suggest_done", { before: money(body.before, l.currency), after: money(body.basePrice, l.currency) });
+  } catch (e) {
+    confirming = false;
+    say("suggest_failed", { error: e.message }, true);
+    renderSuggestion(l);
+  }
 }
 
 function openNight(iso) {
@@ -581,7 +676,7 @@ $("#lang").addEventListener("change", (e) => {
   if (!state.data) { if (message) setStatus(t(message.key, message.vars), message.isError); return; }
   if (state.selected) openNight(state.selected); else render();
 });
-$("#listing").addEventListener("change", (e) => { state.listing = Number(e.target.value); state.month = null; state.preview = null; closePanel(); });
+$("#listing").addEventListener("change", (e) => { state.listing = Number(e.target.value); state.month = null; state.preview = null; confirming = false; closePanel(); });
 $("#prev").addEventListener("click", () => { const ms = monthsOf(current().nights); state.month = ms[Math.max(0, ms.indexOf(state.month) - 1)]; render(); });
 $("#next").addEventListener("click", () => { const ms = monthsOf(current().nights); state.month = ms[Math.min(ms.length - 1, ms.indexOf(state.month) + 1)]; render(); });
 $("#refresh").addEventListener("click", refresh);
@@ -633,6 +728,7 @@ export function renderPage(nonce: string): string {
     <div><b id="sum-average">—</b><span data-t="summary_average">${PAGE_TEXTS.en.summary_average}</span></div>
     <div><b id="sum-occupancy">—</b><span data-t="summary_occupancy">${PAGE_TEXTS.en.summary_occupancy}</span></div>
   </section>
+  <section class="suggest" id="suggest" hidden aria-live="polite"></section>
   <div class="monthbar">
     <button class="btn" id="prev" type="button" data-t-label="previous_month" aria-label="${PAGE_TEXTS.en.previous_month}">‹</button>
     <h2 id="month"></h2>

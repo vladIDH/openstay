@@ -103,7 +103,7 @@ jobs:
           curl -sf http://127.0.0.1:4321/api/data -o data.json
           grep -q '"name":"casa-prova"' data.json
           curl -sf http://127.0.0.1:4321/ -o page.html
-          grep -q "<title>Fairnight" page.html
+          grep -Eq "<title>[^<]*Fairnight" page.html
           # A second "apri" finds the first one instead of starting another
           node "$FN" apri --dir "$FOLDER" --senza-browser | tee second.txt
           grep -q "Fairnight è già acceso: http://localhost:4321" second.txt

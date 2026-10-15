@@ -261,6 +261,9 @@ Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web, 
 - The Windows launchers also find Node.js in `%LOCALAPPDATA%\Programs\nodejs`, where the installer finds it.
 - `fairnight configura` leaves a short guide for the host in the folder, `LEGGIMI.txt` in Italian or `LEEME.txt` for a Spanish calendar, instead of the English `README.txt` (removed if the host never changed it). The zip carries the same steps in `LEGGIMI.txt` and `LEEME.txt`.
 - `fairnight configura` proposes the computer's language first (an Italian host with a house in Spain gets Italian), then the town's, and says why; the calendar check and the first reading use the same words (bookings and blocked periods).
+- `fairnight configura` and `fairnight apri` speak Spanish when the calendar is in Spanish, or the first time on a Spanish computer; the proposed seasons are named in Spanish too.
+- The calendar page arrives in the folder's language (tab title, `lang` and the first texts), before its script runs.
+- The installer says "2-4 minutes" only on the first installation, and its Node.js messages name the button to click on nodejs.org ("Windows Installer (.msi)", "macOS Installer (.pkg)", x64 instead of ARM64), checked on 15 October 2026.
 
 
 ## [0.1.0] - 2026-10-12, not published on npm

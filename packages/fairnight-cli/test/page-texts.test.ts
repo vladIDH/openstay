@@ -19,6 +19,15 @@ const html = renderPage("nonce-0000");
 const script = /<script nonce="[^"]+">([\s\S]*)<\/script>/.exec(html)?.[1] ?? "";
 
 describe("texts of the calendar page", () => {
+  it("arrives already in the folder's language: tab title, html lang and the first texts", () => {
+    const italian = renderPage("nonce-0000", "it");
+    expect(italian).toContain('<html lang="it">');
+    expect(italian).toContain(`<title>${PAGE_TEXTS.it.page_title}</title>`);
+    expect(italian).toContain('const START_LANG = "it";');
+    expect(renderPage("nonce-0000", "es")).toContain(`<title>${PAGE_TEXTS.es.page_title}</title>`);
+    expect(html).toContain('<html lang="en">');
+  });
+
   it("has the same keys in English, Italian and Spanish, none empty", () => {
     const keys = Object.keys(PAGE_TEXTS.en).sort();
     for (const lang of LANGS) {

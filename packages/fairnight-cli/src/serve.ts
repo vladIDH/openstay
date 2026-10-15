@@ -29,6 +29,7 @@ import { pullRelay } from "./guests/relay.js";
 import { handleReplies, type RepliesContext } from "./hello/page.js";
 import { applyRetention, guestDeadlines, guestsEnabled, prefillFromCalendar } from "./guests/store.js";
 import { renderPage } from "./page.js";
+import type { Language } from "./lingua.js";
 import { handlePilot, PAGE_CHECK_MS, pageRunIfDue, type PilotPageContext } from "./pilota-pagina.js";
 import { lastSync, priceOne } from "./price.js";
 import { suggestionFor, writeBasePrice, type ListingSuggestion } from "./prezzo-base.js";
@@ -170,7 +171,14 @@ export function createHandler(opts: ServeOptions): (req: IncomingMessage, res: S
       if (await handleReplies(req, res, url, replies, randomBytes(16).toString("base64"))) return;
       if (req.method === "GET" && url.pathname === "/") {
         const nonce = randomBytes(16).toString("base64");
-        send(res, 200, "text/html; charset=utf-8", renderPage(nonce), {
+        // The folder's language for the first paint; a config being edited and broken right now falls back to English.
+        let language: Language = "en";
+        try {
+          language = loadHostConfig(opts.dir).language ?? "en";
+        } catch {
+          /* /api/data says what is wrong with it */
+        }
+        send(res, 200, "text/html; charset=utf-8", renderPage(nonce, language), {
           "content-security-policy": `default-src 'none'; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
         });
         return;

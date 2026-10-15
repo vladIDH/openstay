@@ -8,7 +8,7 @@ import { parseAmount } from "../src/configura.js";
 import { openDb } from "../src/db.js";
 import { main } from "../src/main.js";
 import { startServer } from "../src/serve.js";
-import { languageOfCity, languageOfLocale, proposedLanguage, systemLocale } from "../src/lingua.js";
+import { languageOfCity, languageOfLocale, proposedLanguage, setupLanguage, systemLocale } from "../src/lingua.js";
 import { describeSeason, parseDayMonth, proposedSeasons, regionOf } from "../src/stagioni.js";
 import { LOCAL_README } from "../src/template.js";
 import type { FetchLike } from "../src/io.js";
@@ -188,7 +188,7 @@ describe("fairnight configura, first time", () => {
 describe("fairnight configura, run again", () => {
   it("shows the current values, changes only what the host changes and keeps the rest of the file", async () => {
     const dir = tempDir();
-    await main(["configura"], host(dir, ["Casa Limone", "Adeje", AIRBNB, "", "", "90", "", "", "s", "", ""]).io);
+    await main(["configura"], host(dir, ["Casa Limone", "Adeje", AIRBNB, "", "", "90", "", "", "s", "", "1"]).io);
     const before = rawConfig(dir);
     before.listings[0].pricing.factors.dayOfWeek.adjustments.sat = 25; // edited by hand
     before.listings[0].pricing.defaultMinStay = 4;
@@ -230,7 +230,7 @@ describe("fairnight configura, run again", () => {
 
   it("asks rooms and beds only for a house in Italy that sends Istat data to ROSS1000", async () => {
     const dir = tempDir();
-    await main(["configura"], host(dir, ["Casa Limone", "Adeje", AIRBNB, "", "", "90", "", "", "s", "", ""]).io);
+    await main(["configura"], host(dir, ["Casa Limone", "Adeje", AIRBNB, "", "", "90", "", "", "s", "", "1"]).io);
     const before = rawConfig(dir);
     before.listings[0].fairguest = { country: "IT", establishment: "ZZ00000000", rooms: 1, beds: 2, istat: { region: "lazio", code: "ZZ0001P" } };
     writeFileSync(path.join(dir, "fairnight.config.json"), JSON.stringify(before, null, 2));
@@ -417,6 +417,35 @@ describe("language of the calendar page", () => {
     const { io } = host(dir, ["Casa", "Lisboa", "", "", "", "90", "", "", "n", "", ""]);
     expect(await main(["configura"], io)).toBe(0);
     expect(readFileSync(path.join(dir, "README.txt"), "utf8")).toBe("my notes");
+  });
+
+  it("speaks Spanish for a Spanish calendar, or the first time on a Spanish computer", () => {
+    expect(setupLanguage("es", "it-IT")).toBe("es");
+    expect(setupLanguage("it", "es-ES")).toBe("it");
+    expect(setupLanguage(undefined, "es_ES.UTF-8")).toBe("es");
+    expect(setupLanguage(undefined, "en-US")).toBe("it");
+    expect(setupLanguage("en", "es-ES")).toBe("it");
+  });
+
+  it("asks everything in Spanish on a Spanish computer, with the seasons named in Spanish", async () => {
+    const dir = tempDir();
+    const { io, left } = host(dir, ["Casa Naranja", "Valencia", "", "", "", "90", "", "", "s", "", ""]);
+    io.locale = "es-ES";
+    expect(await main(["configura"], io)).toBe(0);
+    expect(left()).toBe(0);
+    expect(io.lines).toContain("Configuración de Fairnight");
+    expect(io.questions).toContain("  Nombre del alojamiento [Casa 1]: ");
+    expect(io.questions).toContain("¿Quieres añadir otro alojamiento? [s/N]: ");
+    expect(io.lines).toContain("    3. Julio y agosto · del 1 jul al 31 ago · +25%");
+    expect(io.lines).toContain("  Te propongo el español, el idioma de este ordenador: pulsa Intro para dejarlo.");
+    expect(io.lines).toContain("Guardado. Estos son tus alojamientos:");
+    expect(rawConfig(dir).language).toBe("es");
+    expect(existsSync(path.join(dir, "LEEME.txt"))).toBe(true);
+    // Run again ("Cambia impostazioni"): Spanish because the calendar is, whatever the computer.
+    const again = host(dir, ["f"]);
+    again.io.locale = "it-IT";
+    expect(await main(["configura"], again.io)).toBe(0);
+    expect(again.io.lines).toContain("Tus alojamientos:");
   });
 
   it("only it, es or en in the config", () => {

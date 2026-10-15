@@ -42,9 +42,11 @@ Se non sai se ce l'hai, vai pure al passo 3: se manca, l'installazione si ferma 
 
 ![Messaggio quando manca Node.js](images/installa/01-senza-node.png)
 
-1. Apri la pagina ufficiale [nodejs.org/it/download](https://nodejs.org/it/download).
-2. Scarica la versione **LTS**: su Windows il file `.msi`, su Mac il file `.pkg`. Installala lasciando tutte le opzioni come sono.
+1. Apri la pagina ufficiale [nodejs.org/en/download](https://nodejs.org/en/download). È in inglese, e propone già la versione **LTS**, quella giusta.
+2. In alto c'è un riquadro con dei comandi: non serve. Scorri fino alla frase «Or get a prebuilt Node.js® for Windows running a x64 architecture» (su Mac «for macOS») e clicca il pulsante verde **Windows Installer (.msi)**, su Mac **macOS Installer (.pkg)**. Apri il file scaricato e installalo lasciando tutte le opzioni come sono.
 3. Rifai il passo 3.
+
+Su un computer Windows con processore ARM, nel menu dopo «running a» scegli **x64** al posto di **ARM64**: la versione x64 funziona anche lì, e il messaggio dell'installazione te lo ricorda. (Pulsanti verificati il 15 ottobre 2026: i nomi sulla pagina possono cambiare.)
 
 Se hai già Node.js ma è vecchio (prima della 22), il messaggio te lo dice: installa la LTS sopra quella vecchia.
 
@@ -80,7 +82,7 @@ Si apre il Terminale: Fairnight si installa da solo, in 1-4 minuti. Le domande e
 
 ## 4. Rispondi alle domande
 
-Alla fine dell'installazione Fairnight ti fa qualche domanda. Tra parentesi quadre c'è una risposta già pronta: premi **Invio** per tenerla, oppure scrivi la tua e premi Invio.
+Alla fine dell'installazione Fairnight ti fa qualche domanda, in italiano; in spagnolo se il computer è in spagnolo, e da lì in poi se scegli il calendario in spagnolo. Tra parentesi quadre c'è una risposta già pronta: premi **Invio** per tenerla, oppure scrivi la tua e premi Invio.
 
 1. **Nome della casa**: come la chiami tu, per esempio «Casa Limone».
 2. **Città o paese**: serve per proporti le stagioni.

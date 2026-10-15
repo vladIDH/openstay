@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import os from "node:os";
 import { main } from "./main.js";
 import { terminalPrompt } from "./prompt.js";
 
@@ -16,6 +17,18 @@ process.exitCode = await main(process.argv.slice(2), {
   airroiFetch: (url, init) => fetch(url, init),
   alloggiatiFetch: (url, init) => fetch(url, init),
   relayFetch: (url, init) => fetch(url, init),
+  system: {
+    platform: process.platform,
+    home: os.homedir(),
+    user: process.env.USERDOMAIN ? `${process.env.USERDOMAIN}\\${os.userInfo().username}` : os.userInfo().username,
+    uid: typeof process.getuid === "function" ? process.getuid() : null,
+    node: process.execPath,
+    script: process.argv[1] ?? "",
+  },
+  run: (command, args) => {
+    const r = spawnSync(command, args, { encoding: "utf8", windowsHide: true });
+    return { status: r.status, stdout: r.stdout ?? "", stderr: r.stderr ?? (r.error ? r.error.message : "") };
+  },
   openUrl: (url) => {
     // The default browser: "start" on Windows, "open" on a Mac, xdg-open elsewhere.
     const [cmd, args]: [string, string[]] =

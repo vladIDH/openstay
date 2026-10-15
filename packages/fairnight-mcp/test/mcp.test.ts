@@ -71,13 +71,13 @@ async function call(name: string, args: Record<string, unknown> = {}) {
 }
 
 describe("fairnight MCP server", () => {
-  it("offers eight tools, all read-only", async () => {
+  it("offers nine tools, all read-only", async () => {
     const { tools } = await client.listTools();
-    expect(tools.map((t) => t.name)).toEqual(["list_listings", "get_prices", "explain_night", "occupancy", "next_gaps", "get_sync_status", "get_market_area", "get_guest_deadlines"]);
+    expect(tools.map((t) => t.name)).toEqual(["list_listings", "get_prices", "explain_night", "occupancy", "next_gaps", "get_sync_status", "get_market_area", "get_guest_deadlines", "get_guest_replies"]);
     for (const t of tools) {
       expect(t.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false });
     }
-    expect(TOOLS).toHaveLength(8);
+    expect(TOOLS).toHaveLength(9);
   });
 
   it("lists the listings without ever showing the calendar links", async () => {

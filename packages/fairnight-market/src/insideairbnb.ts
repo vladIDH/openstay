@@ -6,9 +6,9 @@
  *
  * - calendar.csv(.gz): listing_id, date, available ("t"/"f"), price… One line
  *   per listing and night, for about a year ahead of the snapshot.
- * - listings.csv(.gz), optional: id, room_type, bedrooms, neighbourhood_cleansed…
- *   Used only to keep the comparable listings (same room type, bedrooms,
- *   neighbourhood).
+ * - listings.csv(.gz), optional: id, room_type, bedrooms, accommodates,
+ *   neighbourhood_cleansed… Used only to keep the comparable listings (same room
+ *   type, bedrooms, guests, neighbourhood).
  *
  * The occupancy is an ESTIMATE: "available = f" means booked OR closed by the
  * host, and the file cannot tell them apart. Listings closed on every night of
@@ -29,6 +29,8 @@ export interface ComparableFilter {
   /** e.g. "Entire home/apt", "Private room" (case does not matter). */
   roomType?: string;
   bedrooms?: number;
+  /** Matches accommodates: how many guests the listing takes. */
+  guests?: number;
   /** Matches neighbourhood_cleansed (case does not matter). */
   neighbourhood?: string;
 }
@@ -76,6 +78,7 @@ export class InsideAirbnbListings {
       const wanted = ["id"];
       if (this.filter.roomType !== undefined) wanted.push("room_type");
       if (this.filter.bedrooms !== undefined) wanted.push("bedrooms");
+      if (this.filter.guests !== undefined) wanted.push("accommodates");
       if (this.filter.neighbourhood !== undefined) wanted.push("neighbourhood_cleansed");
       this.columns = columnsOf(cells, wanted, "listings");
       return;
@@ -85,6 +88,7 @@ export class InsideAirbnbListings {
     const f = this.filter;
     if (f.roomType !== undefined && get("room_type").toLowerCase() !== f.roomType.toLowerCase()) return;
     if (f.bedrooms !== undefined && Number(get("bedrooms")) !== f.bedrooms) return;
+    if (f.guests !== undefined && Number(get("accommodates")) !== f.guests) return;
     if (f.neighbourhood !== undefined && get("neighbourhood_cleansed").toLowerCase() !== f.neighbourhood.toLowerCase()) return;
     const id = get("id");
     if (id !== "") this.ids.add(id);

@@ -6,6 +6,8 @@
  * block. No guest names, phone numbers or descriptions from the calendars.
  * The guest registration (Fairguest, the guest_* tables) keeps every personal
  * field encrypted: in clear there are only random ids, dates and states.
+ * The guest assistant (Fairhello, the hello_* tables) keeps the messages of
+ * current and recent stays, and erases them some days after check-out.
  */
 import { mkdirSync } from "node:fs";
 import path from "node:path";
@@ -14,7 +16,7 @@ import { SetupError } from "./config.js";
 
 export type Db = Database.Database;
 
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (
@@ -165,7 +167,7 @@ CREATE TABLE IF NOT EXISTS guest_stays (
   erased_at    TEXT,
   -- Italy: when the host confirmed they saw the guests in person or on a live video call
   recognized_at TEXT,
-  -- the mailbox of the check-in link on the relay (version 8): its id and secrets, no personal data
+  -- the mailbox of the check-in link on the relay (version 9): its id and secrets, no personal data
   relay_box    TEXT,
   relay_read   TEXT,
   relay_write  TEXT,
@@ -179,7 +181,7 @@ CREATE TABLE IF NOT EXISTS guest_people (
   added_at TEXT NOT NULL,
   added_by TEXT NOT NULL CHECK (added_by IN ('host', 'form')),
   data     TEXT NOT NULL,
-  -- version 8: where a guest from the check-in link was sealed (relay/<box>); null = guest_people/<id>/data
+  -- version 9: where a guest from the check-in link was sealed (relay/<box>); null = guest_people/<id>/data
   place    TEXT
 );
 
@@ -197,7 +199,7 @@ CREATE TABLE IF NOT EXISTS guest_submissions (
   detail   TEXT
 );
 
--- Version 7: the Alloggiati Web receipts (one PDF per account and day), kept
+-- Version 8: the Alloggiati Web receipts (one PDF per account and day), kept
 -- 5 years. No personal data: the PDF holds only the number of schedine.
 CREATE TABLE IF NOT EXISTS guest_receipts (
   account    TEXT NOT NULL,
@@ -205,6 +207,116 @@ CREATE TABLE IF NOT EXISTS guest_receipts (
   file       TEXT NOT NULL,
   fetched_at TEXT NOT NULL,
   PRIMARY KEY (account, day)
+
+);
+
+-- Version 7 (Fairhello, the guest assistant). Messages read from Smoobu or
+-- Beds24 and the drafts written for them. Erased retentionDays after
+-- check-out (fairhello.json, default 60): the stay row stays, without them.
+CREATE TABLE IF NOT EXISTS hello_stays (
+  -- "smoobu:<booking id>" or "beds24:<booking id>"
+  id           TEXT PRIMARY KEY,
+  listing      TEXT NOT NULL,
+  source       TEXT NOT NULL CHECK (source IN ('smoobu', 'beds24')),
+  booking_id   INTEGER NOT NULL,
+  check_in     TEXT NOT NULL,
+  check_out    TEXT NOT NULL,
+  -- the guest's language: from the channel, or from the first draft
+  language     TEXT,
+  channel      TEXT,
+  guests       INTEGER,
+  seen_at      TEXT NOT NULL,
+  cancelled_at TEXT,
+  erased_at    TEXT
+);
+
+CREATE TABLE IF NOT EXISTS hello_messages (
+  stay_id  TEXT NOT NULL REFERENCES hello_stays (id),
+  -- the channel's id of the message, and its order in the conversation
+  id       TEXT NOT NULL,
+  seq      INTEGER NOT NULL,
+  sender   TEXT NOT NULL CHECK (sender IN ('guest', 'host', 'system')),
+  text     TEXT NOT NULL,
+  -- when it was written, if the channel says it (Beds24 does, Smoobu does not)
+  sent_at  TEXT,
+  seen_at  TEXT NOT NULL,
+  PRIMARY KEY (stay_id, id)
+);
+
+-- One draft per guest message. Nothing is sent without the host: waiting →
+-- (approved) → sending → sent, or discarded, or failed (can be tried again).
+CREATE TABLE IF NOT EXISTS hello_drafts (
+  id          INTEGER PRIMARY KEY,
+  stay_id     TEXT NOT NULL REFERENCES hello_stays (id),
+  -- the guest message it answers
+  message_id  TEXT NOT NULL,
+  text        TEXT NOT NULL,
+  -- the host's version, when changed: this one is sent
+  edited_text TEXT,
+  language    TEXT,
+  needs_host  INTEGER NOT NULL DEFAULT 0,
+  note        TEXT,
+  -- JSON list: "price" (cannot be approved unedited), money, complaint, cancellation, emergency
+  flags       TEXT NOT NULL DEFAULT '[]',
+  model       TEXT NOT NULL,
+  status      TEXT NOT NULL CHECK (status IN ('waiting', 'approved', 'sending', 'sent', 'discarded', 'failed')),
+  created_at  TEXT NOT NULL,
+  decided_at  TEXT,
+  sent_at     TEXT,
+  error       TEXT,
+  UNIQUE (stay_id, message_id)
+);
+
+-- Every reading of the messages, with what the model cost in tokens.
+CREATE TABLE IF NOT EXISTS hello_runs (
+  id            INTEGER PRIMARY KEY,
+  at            TEXT NOT NULL,
+  stays         INTEGER NOT NULL DEFAULT 0,
+  new_messages  INTEGER NOT NULL DEFAULT 0,
+  drafts        INTEGER NOT NULL DEFAULT 0,
+  input_tokens  INTEGER NOT NULL DEFAULT 0,
+  output_tokens INTEGER NOT NULL DEFAULT 0,
+  cached_tokens INTEGER NOT NULL DEFAULT 0,
+  error         TEXT
+);
+
+-- The autopilot (fairnight pilota). New tables only: no version step, they are
+-- created when the database is opened.
+-- One row per real run (previews are not kept); listings is the JSON summary per listing.
+CREATE TABLE IF NOT EXISTS pilot_runs (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  started_at  TEXT NOT NULL,
+  finished_at TEXT NOT NULL,
+  trigger     TEXT NOT NULL,             -- scheduled | page | manual
+  outcome     TEXT NOT NULL,             -- ok | errors
+  written     INTEGER NOT NULL,          -- nights written, every listing
+  listings    TEXT NOT NULL
+);
+
+-- Every night the autopilot wrote: before, after, what the engine wanted and why.
+CREATE TABLE IF NOT EXISTS pilot_changes (
+  run_id        INTEGER NOT NULL,
+  listing       TEXT NOT NULL,
+  feed          TEXT NOT NULL,           -- smoobu | beds24
+  date          TEXT NOT NULL,
+  old_price     REAL,
+  new_price     REAL NOT NULL,
+  target_price  REAL NOT NULL,           -- the engine's price, before the daily cap
+  old_min_stay  INTEGER,
+  new_min_stay  INTEGER NOT NULL,
+  limited       TEXT,                    -- cap | floor | ceiling, when the price was held back
+  steps         TEXT NOT NULL,           -- the engine's steps (JSON), the "why"
+  verified      INTEGER,                 -- read back: 1 matches, 0 does not
+  PRIMARY KEY (run_id, listing, date)
+);
+CREATE INDEX IF NOT EXISTS pilot_changes_listing ON pilot_changes (listing, date);
+
+-- Failed runs in a row, and the pause after too many. Cleared by "riprendi".
+CREATE TABLE IF NOT EXISTS pilot_state (
+  listing       TEXT PRIMARY KEY,
+  failures      INTEGER NOT NULL DEFAULT 0,
+  paused_at     TEXT,
+  paused_reason TEXT
 );
 `;
 
@@ -230,14 +342,15 @@ const MIGRATIONS: { to: number; run(db: Database.Database): void }[] = [
       if (!hasColumn(db, "calendar_events", "units")) db.exec("ALTER TABLE calendar_events ADD COLUMN units INTEGER");
     },
   },
+  { to: 7, run: () => {} }, // Fairhello: new tables only
   {
-    to: 7, // Fairguest Italy: the recognition of the guests (and the receipts table, new)
+    to: 8, // Fairguest Italy: the recognition of the guests (and the receipts table, new)
     run: (db) => {
       if (hasTable(db, "guest_stays") && !hasColumn(db, "guest_stays", "recognized_at")) db.exec("ALTER TABLE guest_stays ADD COLUMN recognized_at TEXT");
     },
   },
   {
-    to: 8, // the check-in link: the relay mailbox of a stay, and where a guest from it was sealed
+    to: 9, // the check-in link: the relay mailbox of a stay, and where a guest from it was sealed
     run: (db) => {
       for (const c of ["relay_box", "relay_read", "relay_write"]) if (!hasColumn(db, "guest_stays", c)) db.exec(`ALTER TABLE guest_stays ADD COLUMN ${c} TEXT`);
       if (!hasColumn(db, "guest_people", "place")) db.exec("ALTER TABLE guest_people ADD COLUMN place TEXT");

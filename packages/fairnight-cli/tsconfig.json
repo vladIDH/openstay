@@ -20,6 +20,9 @@
       ],
       "fairguest": [
         "../fairguest/src/index.ts"
+      ],
+      "fairhello": [
+        "../fairhello/src/index.ts"
       ]
     }
   },

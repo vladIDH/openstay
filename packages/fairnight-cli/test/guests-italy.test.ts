@@ -373,8 +373,8 @@ describe("deadlines for Italy", () => {
 describe("the reminder on the calendar page", () => {
   it("says how many communications are due within 24 hours or late, and the command for Italy, never who", async () => {
     const { dir } = await ready();
-    expect(pricesPayload(dir, loadHostConfig(dir), "2099-06-01", 1, new Date("2099-06-01T09:00:00")).guests).toBeNull();
-    expect(pricesPayload(dir, loadHostConfig(dir), "2099-06-10", 1, new Date(ARRIVAL_DAY)).guests).toEqual({ late: 0, soon: 1, italy: true });
-    expect(pricesPayload(dir, loadHostConfig(dir), "2099-06-12", 1, new Date("2099-06-12T09:00:00")).guests).toEqual({ late: 1, soon: 0, italy: true });
+    expect(pricesPayload(dir, loadHostConfig(dir), "2099-06-01", 1, { now: new Date("2099-06-01T09:00:00") }).guests).toBeNull();
+    expect(pricesPayload(dir, loadHostConfig(dir), "2099-06-10", 1, { now: new Date(ARRIVAL_DAY) }).guests).toEqual({ late: 0, soon: 1, italy: true });
+    expect(pricesPayload(dir, loadHostConfig(dir), "2099-06-12", 1, { now: new Date("2099-06-12T09:00:00") }).guests).toEqual({ late: 1, soon: 0, italy: true });
   });
 });

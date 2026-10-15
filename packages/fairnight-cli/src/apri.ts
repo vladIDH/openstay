@@ -81,7 +81,7 @@ export async function apri(dir: string, io: Io, opts: ApriOptions): Promise<Apri
 
     let server: Server;
     try {
-      server = await startServer({ dir, io, days: opts.days, port, lan: false, quiet: true });
+      server = await startServer({ dir, io, days: opts.days, port, lan: false, quiet: true, autopilot: true });
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code === "EADDRINUSE") continue;
       throw e;

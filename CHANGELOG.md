@@ -2,6 +2,42 @@
 
 All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org).
 
+## Fairhello [0.1.0] - in development, not released
+
+Draft replies to guests, approved by the host before anything is sent. Everything runs on the host's computer.
+
+### fairhello (new)
+
+- The house file `casa/<listing>.md`: free `##` sections. The access codes section is kept apart. Amounts of money are reported.
+- The request to the model:
+  - the rules and the house file in a cacheable system part;
+  - the stay, the conversation inside tags (text to answer, never instructions) and, only from check-in to check-out and after the guest registration, the access codes.
+- No prices: the model never sees one, and a draft with one is flagged.
+- Freshness: newest draft of the conversation, answers the guest's last message, booking not cancelled, stay ended at most 2 days ago.
+- Sensitive topics (money, complaint, cancellation, emergency) in six languages.
+- Request and answer shapes for Anthropic (`claude-haiku-5-5`, JSON schema, low effort) and Ollama. Errors say whether to stop the whole reading.
+
+### fairnight-smoobu, fairnight-beds24
+
+- Smoobu: conversations (`/api/threads`), messages of a booking, `send-message-to-guest`, the guest's language and the channel.
+- Beds24: `/bookings/messages` for up to 50 bookings per request, without internal notes, and the reply. Needs the bookings-personal scope.
+
+### fairnight-cli
+
+- `fairnight risposte` (`hello`): `collega`, `casa`, `leggi`, `mostra`, `invia` (sends only with `--applica`), `scarta`, `stato`.
+- Page `/risposte` in `fairnight serve`:
+  - this computer only, with signed forms and no JavaScript;
+  - the "Notte" look, in Italian, Spanish and English;
+  - Fairnight's price of the free nights nearby, shown to the host only.
+- Before sending: the conversation is read again, freshness is checked, a draft with a price is blocked until the host edits it, and it is claimed once.
+- Database schema 7: `hello_stays`, `hello_messages`, `hello_drafts`, `hello_runs`. Messages are erased 60 days after check-out.
+- **Schema numbers taken next:** `fairguest-it` takes schema 8. The autopilot (`pilota`) only adds new tables, created when the database is opened, and takes no schema number. Details in `docs/piano.md`.
+- Secret scan: the Anthropic key file and `ANTHROPIC_API_KEY`.
+
+### fairnight-mcp
+
+- `get_guest_replies`: the drafts waiting for the host, read only, texts only when asked.
+
 ## Fairguest [0.1.0] - in development, not released
 
 Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web). Everything runs on the host's computer; no server of ours in between.
@@ -68,6 +104,14 @@ Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web).
 - New read-only tool `get_guest_deadlines`: the communications due per stay, dates and states only.
 
 ## [0.2.0] - in development, not released
+
+### Market data, second part (mercato2)
+
+- fairnight: `suggestBasePrice`, a suggested base price from zone data (median of the monthly averages of the 12 most recent months, at least 6), with its explanation. Outside the nightly pricing: the expected prices do not change.
+- fairnight-market: ISTAC holiday homes of the Canary Islands (ADR by municipality and size, open data), INE tourist apartments (occupancy by tourist point), Inside Airbnb filter by guests (`accommodates`).
+- fairnight-cli: `fairnight mercato prezzo-base [--listing] [--applica]`; `mercato importa --fonte istac --comune <code> [--ospiti N]`; `mercato importa --fonte ine --punto <name>`, off (`market.ine.enabled`) while INE's licence is unclear; `--ospiti` on import; a listing field `guests`; which homes a zone describes is kept and shown by `mercato stato`.
+- Calendar page: the suggested base price with "Use this price" after a confirmation, only on the computer that runs Fairnight.
+- AirROI stays off until AirROI confirms its terms in a formal written document.
 
 ### fairnight (engine)
 
@@ -150,6 +194,13 @@ Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web).
 - The guests' check-in form, made for a phone: three steps on screen (details, document, confirmation), a line on what happens to the data, a message for each kind of field next to it, light or dark with the phone. Same fields, same checks, same data saved.
 - The calendar page in Italian, Spanish and English: `language` in `fairnight.config.json` (English when missing), a small IT · ES · EN menu saved in the browser, dates, weekdays and prices formatted with `Intl`, the price rules said from the engine's `params`, the engine's English text folded at the bottom of the night panel. `fairnight configura` asks the language once, proposing it from the town (Italy → it, Spain and the Canary Islands → es) or from the computer's language.
 - Small hotels: `beds24 importa` imports rooms with `qty` > 1 as a room type (`units`) and warns when `qty` changes; a listing with `units` can list up to that many Smoobu apartments; an iCal calendar of a room type names its room (`unit`), and calendars of a whole room type are refused. `fairnight price` and the calendar page show the rooms free. Database schema 6: `unit` and `units` of each stored stay.
+- Autopilot, off by default per listing (`pilot` in `fairnight.config.json`): `fairnight pilota giro | prova | stato | accendi | spegni | riprendi | registro | pianifica | togli`.
+  - One run reads, prices the next 90 nights, writes to Smoobu or Beds24 where it is on, reads back.
+  - Limits: at most 15% a day from the price on the channel, never outside the lowest and highest price (needed), nothing written when a calendar could not be read, pause after 3 failed runs or more than 5 nights not matching.
+  - The daily run: a Task Scheduler task on Windows, a LaunchAgent on a Mac, at the chosen time and at sign-in; the open calendar page does the run if it was missed.
+  - Log of every night written with its reason (`pilot_runs`, `pilot_changes`, `pilot_state`, new tables only), kept 400 days.
+  - The calendar page shows the last run and why each night changed, and switches the autopilot on (after a preview) from this computer only. `fairnight configura` asks about it for houses on Smoobu or Beds24.
+- The write step of `smoobu spingi` and `beds24 spingi` moved into `channel.ts` (push targets), shared with the autopilot.
 
 ### fairnight-mcp
 

@@ -89,6 +89,19 @@ export interface HostListing {
   marketArea?: string;
   /** Where the listing is, as the host wrote it. `fairnight configura` uses it to propose the seasons. */
   city?: string;
+  /** How many guests the listing takes: the suggested base price checks that the zone's homes take as many. */
+  guests?: number;
+  /** The autopilot (`fairnight pilota`): writes this listing's prices to its channel manager every day. Off unless turned on. */
+  pilot?: PilotSettings;
+}
+
+/** The autopilot of one listing. */
+export interface PilotSettings {
+  enabled: boolean;
+  /** The most a night's price moves in one day, in percent of the price on the channel now. Default 15. */
+  maxDailyChangePercent?: number;
+  /** How many nights from today the autopilot looks after. Default 90. */
+  days?: number;
 }
 
 /** Where AirROI should look for one zone, and which listings count as comparable. */
@@ -109,6 +122,8 @@ export interface MarketSettings {
     /** Zone name → AirROI market. */
     areas?: Record<string, AirRoiArea>;
   };
+  /** INE tourist apartments: off while INE's licence is unclear (CC BY 4.0 or CC BY-SA 4.0). */
+  ine?: { enabled: boolean };
 }
 
 export interface HostConfig {
@@ -118,6 +133,33 @@ export interface HostConfig {
   language?: Language;
   /** The relay of the guests' check-in link. Missing: https://fairguest.khlumen.com. */
   fairguestRelay?: string;
+  /** When the daily run of the autopilot starts ("06:00"), as `fairnight pilota pianifica` sets it. */
+  pilot?: { time: string };
+}
+
+export const PILOT_TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+export const PILOT_MAX_CHANGE = { min: 1, max: 50 } as const;
+export const PILOT_DAYS = { min: 7, max: 365 } as const;
+
+const wholeIn = (v: unknown, r: { min: number; max: number }) => typeof v === "number" && Number.isInteger(v) && v >= r.min && v <= r.max;
+
+function checkPilot(v: unknown, path: string, issues: ConfigIssue[]): PilotSettings | undefined {
+  if (!isObj(v)) {
+    issues.push({ path, message: "must be an object like { \"enabled\": false }" });
+    return undefined;
+  }
+  unknownFields(v, path, ["enabled", "maxDailyChangePercent", "days"], issues);
+  if (typeof v.enabled !== "boolean") issues.push({ path: `${path}.enabled`, message: `must be true or false, got ${JSON.stringify(v.enabled)}` });
+  if (v.maxDailyChangePercent !== undefined && !wholeIn(v.maxDailyChangePercent, PILOT_MAX_CHANGE)) {
+    issues.push({ path: `${path}.maxDailyChangePercent`, message: `must be a whole number from 1 to 50, got ${JSON.stringify(v.maxDailyChangePercent)}` });
+  }
+  if (v.days !== undefined && !wholeIn(v.days, PILOT_DAYS)) {
+    issues.push({ path: `${path}.days`, message: `must be a whole number from 7 to 365, got ${JSON.stringify(v.days)}` });
+  }
+  const out: PilotSettings = { enabled: v.enabled === true };
+  if (typeof v.maxDailyChangePercent === "number") out.maxDailyChangePercent = v.maxDailyChangePercent;
+  if (typeof v.days === "number") out.days = v.days;
+  return out;
 }
 
 const NAME = /^[a-z0-9][a-z0-9-]{0,62}$/;
@@ -131,8 +173,17 @@ function checkMarket(v: unknown, issues: ConfigIssue[]): MarketSettings | null {
     issues.push({ path, message: "must be an object" });
     return null;
   }
-  unknownFields(v, path, ["airroi"], issues);
-  if (v.airroi === undefined) return {};
+  unknownFields(v, path, ["airroi", "ine"], issues);
+  let ine: MarketSettings["ine"];
+  if (v.ine !== undefined) {
+    if (!isObj(v.ine)) issues.push({ path: `${path}.ine`, message: "must be an object with enabled" });
+    else {
+      unknownFields(v.ine, `${path}.ine`, ["enabled"], issues);
+      if (typeof v.ine.enabled !== "boolean") issues.push({ path: `${path}.ine.enabled`, message: `must be true or false, got ${JSON.stringify(v.ine.enabled)}` });
+      ine = { enabled: v.ine.enabled === true };
+    }
+  }
+  if (v.airroi === undefined) return ine ? { ine } : {};
   const ap = `${path}.airroi`;
   const a = v.airroi;
   if (!isObj(a)) {
@@ -166,7 +217,7 @@ function checkMarket(v: unknown, issues: ConfigIssue[]): MarketSettings | null {
       }
     }
   }
-  return { airroi: { enabled: a.enabled === true, ...(a.areas !== undefined ? { areas } : {}) } };
+  return { airroi: { enabled: a.enabled === true, ...(a.areas !== undefined ? { areas } : {}) }, ...(ine ? { ine } : {}) };
 }
 
 type Obj = Record<string, unknown>;
@@ -262,9 +313,19 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
   if (!isObj(input)) {
     return { ok: false, issues: [{ path: "config", message: "must be an object with a listings list" }] };
   }
-  unknownFields(input, "config", ["listings", "market", "language", "fairguestRelay"], issues);
   if (input.fairguestRelay !== undefined && (typeof input.fairguestRelay !== "string" || !/^(https:\/\/[a-z0-9.-]+|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)\/?$/i.test(input.fairguestRelay))) {
     issues.push({ path: "config.fairguestRelay", message: `must be the https address of a Fairguest relay, like "https://fairguest.khlumen.com", got ${JSON.stringify(input.fairguestRelay)}` });
+  }
+  unknownFields(input, "config", ["listings", "market", "language", "pilot", "fairguestRelay"], issues);
+  let pilotTime: string | undefined;
+  if (input.pilot !== undefined) {
+    if (!isObj(input.pilot)) issues.push({ path: "config.pilot", message: 'must be an object like { "time": "06:00" }' });
+    else {
+      unknownFields(input.pilot, "config.pilot", ["time"], issues);
+      if (typeof input.pilot.time !== "string" || !PILOT_TIME.test(input.pilot.time)) {
+        issues.push({ path: "config.pilot.time", message: `must be a time like "06:00", got ${JSON.stringify(input.pilot.time)}` });
+      } else pilotTime = input.pilot.time;
+    }
   }
   const market = input.market === undefined ? undefined : checkMarket(input.market, issues);
   if (input.language !== undefined && !isLanguage(input.language)) {
@@ -283,7 +344,11 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
       issues.push({ path: lp, message: "must be an object with name, calendars and pricing" });
       return;
     }
-    unknownFields(l, lp, ["name", "calendars", "pricing", "marketArea", "fairguest", "city"], issues);
+    unknownFields(l, lp, ["name", "calendars", "pricing", "marketArea", "fairguest", "city", "guests", "pilot"], issues);
+    if (l.guests !== undefined && (typeof l.guests !== "number" || !Number.isInteger(l.guests) || l.guests < 1 || l.guests > 50)) {
+      issues.push({ path: `${lp}.guests`, message: `must be a whole number of guests from 1 to 50, got ${JSON.stringify(l.guests)}` });
+    }
+    const pilot = l.pilot === undefined ? undefined : checkPilot(l.pilot, `${lp}.pilot`, issues);
     if (l.city !== undefined && (typeof l.city !== "string" || l.city.trim() === "" || l.city.length > 100)) {
       issues.push({ path: `${lp}.city`, message: `must be the name of a town, up to 100 characters, got ${JSON.stringify(l.city)}` });
     }
@@ -326,7 +391,9 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
       const listing: HostListing = { name: l.name as string, calendars, pricing: r.value };
       if (typeof l.marketArea === "string") listing.marketArea = l.marketArea;
       if (typeof l.city === "string") listing.city = l.city;
+      if (typeof l.guests === "number") listing.guests = l.guests;
       if (fairguest) listing.fairguest = fairguest;
+      if (pilot) listing.pilot = pilot;
       listings.push(listing);
     }
   });
@@ -355,6 +422,7 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
   const value: HostConfig = market ? { listings, market } : { listings };
   if (isLanguage(input.language)) value.language = input.language;
   if (typeof input.fairguestRelay === "string" && !issues.some((i) => i.path === "config.fairguestRelay")) value.fairguestRelay = input.fairguestRelay.replace(/\/+$/, "");
+  if (pilotTime !== undefined) value.pilot = { time: pilotTime };
   return { ok: true, value };
 }
 

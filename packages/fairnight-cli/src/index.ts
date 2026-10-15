@@ -12,3 +12,5 @@ export type { MarketAreaRow } from "./market-store.js";
 export { lastBookingReceived, lastSync, loadPriceHistory, loadStays, priceOne } from "./price.js";
 export { guestDeadlines, guestsEnabled } from "./guests/store.js";
 export type { DeadlineRow } from "./guests/store.js";
+export { conversation, flagsOf, helloTablesExist, lastRun, openDrafts, textToSend } from "./hello/store.js";
+export type { DraftRow, DraftView, HelloStayRow, MessageRow } from "./hello/store.js";

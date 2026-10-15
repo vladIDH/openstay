@@ -66,7 +66,10 @@ Every command works in the current folder. Add `--dir <folder>` to use another o
 | `fairnight smoobu importa` | Each Smoobu apartment not linked yet becomes a listing (source `smoobu`, starting prices from Smoobu, to review). Its bookings and blocked dates come in. |
 | `fairnight smoobu spingi [--applica] [--da DATE] [--a DATE] [--alloggio ID]` | Compares Smoobu's prices and minimum stays with Fairnight's (default: the next 90 days) and shows the differences. **Writes only with `--applica`**, then reads back from Smoobu to check. |
 
-| `fairnight mercato importa <file> --zona <name>` | Zone data from your own CSV (`date,occupancy,average_price,comparables`) or from the Inside Airbnb files you downloaded (`calendar.csv.gz`, optionally `--annunci listings.csv.gz --tipo "Entire home/apt" --camere 2 --quartiere <name>`). `--fonte csv\|insideairbnb` if the type is not recognised, `--dry-run` to check. |
+| `fairnight mercato importa <file> --zona <name>` | Zone data from your own CSV (`date,occupancy,average_price,comparables`) or from the Inside Airbnb files you downloaded (`calendar.csv.gz`, optionally `--annunci listings.csv.gz --tipo "Entire home/apt" --camere 2 --ospiti 4 --quartiere <name>`). With a CSV, `--camere`, `--ospiti`, `--tipo` and `--quartiere` only say which homes your figures describe. `--fonte csv\|insideairbnb` if the type is not recognised, `--dry-run` to check. |
+| `fairnight mercato importa --fonte istac --zona <name> --comune <code> [--ospiti N]` | Canary Islands only: the average daily rate of the holiday homes of a municipality (INE code, e.g. `38001` Adeje, `38006` Arona), from ISTAC's open data, for homes of your size (1–4, 5–8, more than 8 guests). Free, one call. |
+| `fairnight mercato importa --fonte ine --zona <name> --punto <name>` | The occupancy of the tourist apartments of an INE tourist point (e.g. `Adeje`), as the zone's season. **Off while INE's licence is unclear** (see below). |
+| `fairnight mercato prezzo-base [--listing <name>] [--applica]` | The base price the zone data suggests for each listing, and why. Changes nothing; `--applica` writes it for one listing (`--listing`), keeping the old file as `fairnight.config.json.bak`. |
 | `fairnight mercato importa --fonte airroi [--zona <name>]` | AirROI zone metrics with your own key. **Off until AirROI confirms its terms in writing** (see below). |
 | `fairnight mercato collega` | Asks for your own AirROI key (never shown) and saves it in `airroi-credentials.json`, readable only by you. Refuses while AirROI is off. |
 | `fairnight mercato stato` | The zones, their source and attribution, their age, and which listings use them. |
@@ -155,7 +158,19 @@ The factor compares each night of the zone with the zone's own average and moves
 - **Your own CSV.** For figures you are allowed to use. The first line names the columns, in English, Italian or Spanish. Occupancy is 0–100; one of occupancy or price may be empty.
 - **Inside Airbnb.** Only files you download yourself from insideairbnb.com, once; Fairnight never downloads them or visits the site. The data is licensed **CC BY 4.0**: every explanation says "Inside Airbnb (insideairbnb.com), CC BY 4.0". **The occupancy is an estimate**: "not available" means booked *or* closed by the host, and the file cannot tell them apart. Do not republish the data. Not every city is covered (no Canary Islands).
 - **AirROI.** With your own key, for your own pricing, zone metrics only (never their price recommendations). It is switched off with `"market": { "airroi": { "enabled": false } }` until AirROI confirms its terms in writing. When on: zones go under `market.airroi.areas` (`country`, `region`, `locality` as AirROI names them, optional `roomType`, `bedrooms`), the key comes from `AIRROI_API_KEY` or `airroi-credentials.json`, every call is billed to your AirROI account, explanations say "powered by AirROI", and the data is deleted after 30 days or with `fairnight mercato cancella --fonte airroi`.
+- **ISTAC (Canary Islands).** Open data of the Instituto Canario de Estadística: the average daily rate of the holiday homes of each municipality, month by month, for whole homes of 1–4, 5–8 or more than 8 guests (`--ospiti` chooses the band). Reuse is allowed, also commercial, citing the source: every explanation says "Fuente: Instituto Canario de Estadística (ISTAC)" with the last month of data. ISTAC's figures are monthly and past: each night uses the most recent same month, the zone's season. Import again once a month, not more: ISTAC asks not to repeat requests for the same data.
+- **INE (Spain), switched off.** The occupancy of the registered tourist apartments of a tourist point, only as the zone's season (no prices). It stays off until INE's licence is clear: its legal notice says CC BY 4.0, the footer of the same site CC BY-SA 4.0. `"market": { "ine": { "enabled": true } }` switches it on, at your own judgement.
 - **Never** scraping of Airbnb, Booking, PriceLabs or any other site.
+
+### Suggested base price
+
+`fairnight mercato prezzo-base` suggests a base price from the zone data: the **median of the monthly average prices** of the zone's homes over the 12 most recent months with figures (at least 6 months; nights measured on fewer than 5 homes are left out). The explanation names the homes (bedrooms, guests, type), the months, the lowest and highest month, your current base price and the source:
+
+```
+Suggested base price 118 EUR: median of the monthly average price of 30 homes with 2 bedrooms, 4 guests in zone "costa", 2025-11 → 2026-10 (12 months, from 90 EUR to 145 EUR). Your base price is 100 EUR: +18%. Source: your file "zona.csv", read 2026-11-01. Nothing changes until you confirm it.
+```
+
+It says when to check: figures for the whole zone and not homes like yours, a different number of guests (give the listing `"guests": 4`), a suggestion below your floor or above your ceiling, or more than 30% from your price. **The base price never changes by itself**: only with `--applica` for one listing, or with "Use this price" and a confirmation on the calendar page (only on the computer that runs Fairnight; on a phone the page shows the command).
 
 ## Guest registration: Fairguest (0.1.0, in development)
 
@@ -247,6 +262,46 @@ The INE code of the municipality, needed for guests who live in Spain, is not as
 **Retention runs by itself** at every `fairnight ospiti` command, at every `sync` and when `serve` starts. It deletes the guests, the encrypted details, the form link and any file, and keeps only dates and the record of what was sent. Backups and copies of `data/fairnight.db` are not touched: erasing works only on the file itself.
 
 The MCP server has a read-only tool, `get_guest_deadlines`, that answers "what do I still have to send?" with dates and states only.
+
+## Replies to guests: Fairhello (0.1.0, in development)
+
+`fairnight risposte` (also `fairnight hello`) reads your guests' messages from Smoobu or Beds24 and writes a draft reply for each guest waiting for an answer. **Every reply is approved by you**; nothing is sent on its own.
+
+```
+fairnight risposte collega                 # Anthropic with your own key, or Ollama on this computer
+fairnight risposte casa --listing loft     # writes casa/loft.md with a few questions
+fairnight risposte leggi                   # new messages and drafts [--senza-bozze]
+fairnight risposte                         # the replies to approve, with their number
+fairnight risposte mostra 3                # the conversation and draft 3
+fairnight risposte invia 3                 # shows what would be sent
+fairnight risposte invia 3 --applica       # sends it
+fairnight risposte scarta 3
+fairnight risposte stato                   # model, house files, tokens used in 30 days
+```
+
+Or on the page **http://localhost:4321/risposte** of `fairnight serve`: the conversation, the draft in a box you can change, *Approve and send* and *Discard*. The page opens **only on this computer**, even with `--lan`.
+
+**The house file** `casa/<listing>.md` is plain Markdown: a `#` title, then one `##` section per topic (check-in, wifi, parking, rules…). A section called `## Codici d'accesso`, `## Códigos de acceso` or `## Access codes` is given to the model only from the day of check-in to the day of check-out, and only after the guest registration if the listing uses Fairguest. Without the file, no draft is written for that listing.
+
+**What the model gets**: the house file, the dates and times of the stay, the guest's language, whether the registration is done, the free nights just before and after the stay (dates only), and the last 20 messages. **Never prices** and never the guest's name or contact details. A draft that contains an amount of money anyway cannot be sent until you change it.
+
+**Before sending**, the conversation is read again from Smoobu or Beds24. A draft is sent only if it still answers the guest's last message, the booking is not cancelled and the stay ended at most 2 days ago. It is sent once, even after a double click.
+
+**Settings** in `fairhello.json`:
+
+```json
+{
+  "provider": "anthropic",
+  "model": "claude-haiku-5-5",
+  "signature": "Marta",
+  "retentionDays": 60,
+  "maxDraftsPerRun": 20
+}
+```
+
+For Ollama: `"provider": "ollama"`, `"model": "qwen3:8b"` (or any model you pulled) and, if it is not the default, `"ollamaUrl": "http://127.0.0.1:11434"`. The Anthropic key is in `ANTHROPIC_API_KEY` or in `fairhello-credentials.json`, readable only by you. Never share that file.
+
+**Beds24** sends messages only for bookings that came from a channel, and the invite code needs the **bookings-personal** scope with write access. Messages are erased `retentionDays` after check-out. The MCP server has a read-only tool, `get_guest_replies`. The full guide, in Italian, is [docs/risposte-ospiti.md](../../docs/risposte-ospiti.md).
 
 ## How calendars are read
 

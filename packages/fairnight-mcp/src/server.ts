@@ -1,6 +1,7 @@
 /**
- * Fairnight MCP server: eight read-only tools over a Fairnight folder (prices,
- * zone data, and the deadlines of guest registration).
+ * Fairnight MCP server: nine read-only tools over a Fairnight folder (prices,
+ * zone data, the deadlines of guest registration and the replies to guests
+ * waiting for the host).
  *
  * Built like mador-mcp: every tool is declared read-only (no confirmation
  * prompts in Claude or ChatGPT), errors come back as text the model can act
@@ -8,7 +9,7 @@
  */
 import { McpServer, fromJsonSchema, type JsonSchemaType } from "@modelcontextprotocol/server";
 import { ConfigError, formatAmount } from "fairnight";
-import { explainNight, getPrices, guestDeadlinesOf, listListings, marketArea, nextGaps, occupancy, syncStatus, ToolError, type Folder } from "./data.js";
+import { explainNight, getPrices, guestDeadlinesOf, guestRepliesOf, listListings, marketArea, nextGaps, occupancy, syncStatus, ToolError, type Folder } from "./data.js";
 
 export const VERSION = "0.1.0";
 
@@ -223,12 +224,35 @@ export const TOOLS: Tool[] = [
       return { text: lines.length ? `${head}\n${lines.join("\n")}` : `${head} Nothing to communicate.`, data: d };
     },
   },
+  {
+    name: "get_guest_replies",
+    title: "Replies to guests waiting",
+    description:
+      "The guest assistant (Fairhello): draft replies to guests waiting for the host's approval, with the listing, the dates of the stay, the guest's language, what to look at (price, money, complaint, cancellation, emergency) and whether each draft can still be sent (an outdated one has a reason: the guest wrote again, the host already answered…). Read only: approving and sending happen only on the host's page /risposte or with \"fairnight risposte invia\". Texts are returned only with includeText, and contain guests' messages: use them only to help the host answer.",
+    inputSchema: {
+      type: "object",
+      properties: { includeText: { type: "boolean", description: "Also return the guest's last message and the draft. Default false." } },
+      additionalProperties: false,
+    },
+    handler: (folder, args) => {
+      const d = guestRepliesOf(folder, args);
+      if (!d.enabled) return { text: 'The guest assistant (Fairhello) has not been used in this folder yet ("fairnight risposte leggi").', data: d };
+      const lines = d.drafts.map(
+        (r) =>
+          `- #${r.draft} ${r.listing} ${r.checkIn} → ${r.checkOut}${r.language ? `, ${r.language}` : ""}: ${r.sendable ? "waiting for approval" : `outdated (${r.reason})`}` +
+          (r.flags.length ? `, look at: ${r.flags.join(", ")}` : "") +
+          (r.draftText !== undefined ? `\n  guest: ${r.guestMessage}\n  draft: ${r.draftText}` : ""),
+      );
+      const head = `Today ${d.today}. ${d.waiting} repl${d.waiting === 1 ? "y" : "ies"} waiting for approval, ${d.outdated} outdated.`;
+      return { text: lines.length ? `${head}\n${lines.join("\n")}` : head, data: d };
+    },
+  },
 ];
 
 export const INSTRUCTIONS = `Fairnight prices the host's short-term rental listings night by night, on the host's own computer.
 Start with list_listings to get the listing names. Prices come from the host's rules and calendars; explain_night says why a night costs what it costs.
 These tools only read: they never change prices, calendars or bookings. To change a price, the host edits fairnight.config.json.
-Calendars are as fresh as the last "fairnight sync" (see lastSync). get_market_area shows the zone data a listing uses, if any: always quote its attribution. Answer in the host's language.`;
+Calendars are as fresh as the last "fairnight sync" (see lastSync). get_market_area shows the zone data a listing uses, if any: always quote its attribution. get_guest_replies lists the replies to guests waiting for the host; they are approved and sent only by the host, never from here. Answer in the host's language.`;
 
 const errorResult = (text: string) => ({ content: [{ type: "text" as const, text }], isError: true });
 

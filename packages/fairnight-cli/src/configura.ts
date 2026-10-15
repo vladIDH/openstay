@@ -9,15 +9,22 @@
  * - Seasons are proposed from the town and shown with their dates; nothing is
  *   applied unless the host confirms it.
  * - The previous config is kept as fairnight.config.json.bak.
+ * - Houses linked to Smoobu or Beds24 get the autopilot question (off unless
+ *   the host says yes); a house turned on now shows its preview and is kept on
+ *   only when the host confirms it. Then the computer's daily run is set up,
+ *   or removed when no house has it on any more.
  */
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { ConfigError, type ListingConfig, type SeasonPeriod } from "fairnight";
+import { ConfigError, formatAmount, type ListingConfig, type SeasonPeriod } from "fairnight";
 import { slugify } from "./channel.js";
-import { SetupError, normaliseCalendarUrl, validateHostConfig, type IcalSource } from "./config.js";
+import { PILOT_DAYS, PILOT_MAX_CHANGE, PILOT_TIME, SetupError, normaliseCalendarUrl, validateHostConfig, type HostConfig, type IcalSource } from "./config.js";
 import { openDb } from "./db.js";
 import { classify, parseIcal } from "./ical.js";
 import { initFolder } from "./init.js";
-import { configPath, dbPath, stripBom, type Io } from "./io.js";
+import { configPath, dbPath, localToday, stripBom, type Io } from "./io.js";
+import { installSchedule, isScheduled, removeSchedule } from "./pianifica.js";
+import { writeListingPilot } from "./pilota-comandi.js";
+import { DEFAULT_MAX_CHANGE, DEFAULT_PILOT_TIME, runPilot } from "./pilota.js";
 import { describeSeason, multiplierOf, parseDayMonth, percentOf, proposedSeasons, REGION_LABEL, regionOf, typedDayMonth } from "./stagioni.js";
 import { isLanguage, proposedLanguage, systemLocale, type Language } from "./lingua.js";
 import { download } from "./sync.js";
@@ -137,6 +144,26 @@ class Asker {
       if (["s", "si", "sì", "y", "yes"].includes(raw)) return true;
       if (["n", "no"].includes(raw)) return false;
       this.io.out("    Rispondi s (sì) oppure n (no).");
+    }
+    throw new SetupError("Configurazione interrotta: troppe risposte non valide.");
+  }
+
+  async whole(question: string, current: number, range: { min: number; max: number }): Promise<number> {
+    for (let i = 0; i < Asker.TRIES; i++) {
+      const raw = (await this.text(question, String(current))).replace("%", "").trim();
+      const n = Number(raw);
+      if (raw !== "" && Number.isInteger(n) && n >= range.min && n <= range.max) return n;
+      this.io.out(`    Scrivi un numero intero da ${range.min} a ${range.max}.`);
+    }
+    throw new SetupError("Configurazione interrotta: troppe risposte non valide.");
+  }
+
+  async time(question: string, current: string): Promise<string> {
+    for (let i = 0; i < Asker.TRIES; i++) {
+      const raw = (await this.text(question, current)).replace(".", ":");
+      const padded = /^\d:\d\d$/.test(raw) ? `0${raw}` : raw;
+      if (PILOT_TIME.test(padded)) return padded;
+      this.io.out("    Scrivi l'ora con i minuti, per esempio 06:00.");
     }
     throw new SetupError("Configurazione interrotta: troppe risposte non valide.");
   }
@@ -363,6 +390,113 @@ async function askLanguage(a: Asker, io: Io, cities: (string | undefined)[]): Pr
   return LANGUAGE_CHOICES.find((c) => c.key === key)?.language ?? null;
 }
 
+const channelLabel = (l: Obj): string | null => {
+  const calendars = Array.isArray(l.calendars) ? (l.calendars as Obj[]) : [];
+  if (calendars.some((c) => c.source === "smoobu")) return "Smoobu";
+  if (calendars.some((c) => c.source === "beds24")) return "Beds24";
+  return null;
+};
+const titleOf = (l: Obj) => (isObj(l.pricing) && typeof l.pricing.name === "string" ? l.pricing.name : String(l.name));
+
+/**
+ * The autopilot of the houses linked to Smoobu or Beds24: on or off, and how
+ * much a price may move in a day. Returns the houses turned on now (they get a
+ * preview after saving) and whether any house has it on.
+ */
+async function askPilot(a: Asker, io: Io, listings: Obj[], next: Obj): Promise<{ turnedOn: string[]; anyOn: boolean }> {
+  const linked = listings.filter((l) => channelLabel(l) !== null);
+  if (linked.length === 0) return { turnedOn: [], anyOn: false };
+  io.out("");
+  io.out("Pilota automatico");
+  io.out("  Ogni giorno Fairnight rilegge i calendari e manda i prezzi nuovi a Smoobu o Beds24, poi li rilegge per controllo.");
+  io.out("  Un prezzo cambia al massimo della percentuale che scegli al giorno, mai sotto il minimo né sopra il massimo.");
+  const turnedOn: string[] = [];
+  for (const l of linked) {
+    const before: Obj = isObj(l.pilot) ? (l.pilot as Obj) : {};
+    const wasOn = before.enabled === true;
+    const on = await a.yes(`  «${titleOf(l)}» → ${channelLabel(l)}: mando i prezzi da solo ogni giorno?`, wasOn);
+    if (!on) {
+      if (isObj(l.pilot)) l.pilot = { ...before, enabled: false };
+      continue;
+    }
+    const current = typeof before.maxDailyChangePercent === "number" ? before.maxDailyChangePercent : DEFAULT_MAX_CHANGE;
+    const pct = await a.whole("    Variazione massima al giorno, in %", current, PILOT_MAX_CHANGE);
+    const pilot: Obj = { ...before, enabled: true };
+    if (pct !== DEFAULT_MAX_CHANGE || before.maxDailyChangePercent !== undefined) pilot.maxDailyChangePercent = pct;
+    if (typeof pilot.days === "number" && (pilot.days < PILOT_DAYS.min || pilot.days > PILOT_DAYS.max)) delete pilot.days;
+    l.pilot = pilot;
+    if (!wasOn) turnedOn.push(String(l.name));
+  }
+  const anyOn = listings.some((l) => isObj(l.pilot) && l.pilot.enabled === true);
+  if (anyOn) {
+    const time = await a.time("  A che ora ogni giorno?", isObj(next.pilot) && typeof next.pilot.time === "string" ? next.pilot.time : DEFAULT_PILOT_TIME);
+    next.pilot = { time };
+  }
+  return { turnedOn, anyOn };
+}
+
+/** After saving: show each house just turned on what it would write, and keep it on only if the host confirms. */
+async function confirmPilot(a: Asker, io: Io, dir: string, config: HostConfig, names: string[]): Promise<void> {
+  for (const name of names) {
+    const listing = config.listings.find((l) => l.name === name);
+    if (!listing) continue;
+    const title = listing.pricing.name ?? name;
+    io.out("");
+    io.out(`  Anteprima per «${title}»: guardo i prezzi che ci sono adesso…`);
+    let ok = false;
+    try {
+      const r = await runPilot(dir, io, { trigger: "manual", dryRun: true, includeOff: true, only: [name] }, config);
+      const res = r.listings[0];
+      if (res?.status === "preview") {
+        const label = res.feed === "beds24" ? "Beds24" : "Smoobu";
+        io.out(
+          res.nights.length === 0
+            ? `    ${label} ha già questi prezzi: oggi non cambierebbe niente.`
+            : `    Al primo giro cambierebbero ${plural(res.nights.length, "notte", "notti")} su ${label}, per esempio:`,
+        );
+        for (const n of res.nights.slice(0, 5)) {
+          io.out(`      ${n.date}: ${n.oldPrice === null ? "—" : formatAmount(n.oldPrice)} → ${formatAmount(n.newPrice)}${n.limited === "cap" ? ` (va verso ${formatAmount(n.target)} un passo al giorno)` : ""}`);
+        }
+        ok = await a.yes(`    Accendo il pilota per «${title}»?`, true);
+      } else {
+        io.out(`    ✗ Non riesco a fare l'anteprima: ${res?.error ?? "nessuna risposta"}. Il pilota resta spento.`);
+      }
+    } catch (e) {
+      io.out(`    ✗ Non riesco a fare l'anteprima: ${(e as Error).message}. Il pilota resta spento.`);
+    }
+    if (!ok) {
+      writeListingPilot(dir, name, { enabled: false });
+      io.out(`    Pilota spento per «${title}».`);
+    } else io.out(`    ✓ Pilota acceso per «${title}».`);
+  }
+}
+
+/** Set up the daily run when some house has the autopilot on; remove it when none has. */
+function scheduleOrRemove(io: Io, dir: string, config: HostConfig): void {
+  const anyOn = config.listings.some((l) => l.pilot?.enabled === true);
+  try {
+    if (anyOn) {
+      const time = config.pilot?.time ?? DEFAULT_PILOT_TIME;
+      installSchedule(dir, io, time, localToday(io.now()));
+      io.out(`  Il pilota gira ogni giorno alle ${time}. Se a quell'ora il computer è spento, gira appena lo riaccendi.`);
+    } else if (isScheduled(dir, io) === true) {
+      removeSchedule(dir, io);
+      io.out("  Nessuna casa ha più il pilota acceso: ho tolto il giro di ogni giorno da questo computer.");
+    }
+  } catch (e) {
+    if (!(e instanceof SetupError)) throw e;
+    io.out(`  ✗ Il giro di ogni giorno non è stato impostato: ${e.message}`);
+    io.out("    Finché la pagina del calendario è aperta, il pilota fa comunque il giro del giorno.");
+  }
+}
+
+/** The config as saved, after the confirmations changed it. */
+function readConfigAfter(dir: string): HostConfig {
+  const checked = validateHostConfig(readRawConfig(dir));
+  if (!checked.ok) throw new ConfigError("configurazione", checked.issues);
+  return checked.value;
+}
+
 export function readRawConfig(dir: string): Obj | null {
   const file = configPath(dir);
   if (!existsSync(file)) return null;
@@ -416,6 +550,7 @@ export async function configura(dir: string, io: Io): Promise<number> {
   }
 
   const next: Obj = { ...(raw ?? { market: { airroi: { enabled: false } } }), listings };
+  const pilot = await askPilot(a, io, listings, next);
   if (!isLanguage(next.language)) {
     const language = await askLanguage(
       a,
@@ -449,6 +584,12 @@ export async function configura(dir: string, io: Io): Promise<number> {
     }
   } finally {
     db.close();
+  }
+
+  if (pilot.turnedOn.length > 0 || pilot.anyOn || isObj(raw?.pilot)) {
+    await confirmPilot(a, io, dir, checked.value, pilot.turnedOn);
+    io.out("");
+    scheduleOrRemove(io, dir, readConfigAfter(dir));
   }
   return 0;
 }

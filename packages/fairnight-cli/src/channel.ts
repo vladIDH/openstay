@@ -1,11 +1,12 @@
 /**
  * What the channel-manager connectors (Smoobu, Beds24) have in common: dates,
- * listing names, the table of differences, storing bookings, adding listings.
+ * listing names, the table of differences, storing bookings, adding listings,
+ * and writing prices (the target every channel manager gives).
  */
 import { copyFileSync, readFileSync, writeFileSync } from "node:fs";
-import { formatAmount } from "fairnight";
+import { formatAmount, type NightQuote } from "fairnight";
 import type { Db } from "./db.js";
-import { configPath, stripBom } from "./io.js";
+import { configPath, stripBom, type Io } from "./io.js";
 import type { FeedReport } from "./sync.js";
 
 export const DAY = 86_400_000;
@@ -163,4 +164,67 @@ export function storeStays(
       }
     }
   })();
+}
+
+// ---------------------------------------------------------------- writing prices
+
+/**
+ * One listing on one channel manager, as `spingi` and the autopilot write to
+ * it. A new channel manager plugs in by giving these two steps.
+ */
+export interface PushTarget<Row extends DiffLike = DiffLike> {
+  /** The feed name ("smoobu", "beds24"). */
+  feed: string;
+  /** The name shown to the host ("Smoobu"). */
+  label: string;
+  /** Read what the channel has now and compare it with Fairnight's nights. Throws the channel's own error when it cannot be read. */
+  plan(quotes: readonly NightQuote[], from: string, to: string): Promise<TargetPlan<Row>>;
+  /** Write the rows, read them back, keep a line in the channel's push table. Channel errors end in `error`, never thrown. */
+  write(rows: readonly Row[], from: string, to: string): Promise<WriteResult>;
+  /** Is this error the channel saying no (network, refusal), rather than a bug? */
+  isChannelError(e: unknown): boolean;
+}
+
+export interface TargetPlan<Row extends DiffLike = DiffLike> {
+  /** "casa → Smoobu apartment 12 · 2026-10-15 → 2027-01-12 · prices in EUR" */
+  header: string;
+  changes: Row[];
+  unchanged: number;
+  /** Nights left alone because the channel and Fairnight do not agree on what is free. */
+  leftAlone: string[];
+  /** The end of the summary line about leftAlone (" · 3 free here but …"), empty when none. */
+  leftAloneNote: string;
+  /** Extra lines after the summary. */
+  details: string[];
+}
+
+export interface WriteResult {
+  /** Nights sent. */
+  nights: number;
+  /** Requests or calendar writes used. */
+  operations: number;
+  /** Nights the channel refused, with its reason. */
+  refused: { date: string; why: string }[];
+  /** Nights that do not match when read back. */
+  wrong: string[];
+  /** Set when the channel stopped the write. */
+  error?: string;
+  /** What `spingi` prints, in order. */
+  lines: string[];
+}
+
+/** Print the plan the way `spingi` does; write it when apply is on. Returns whether the listing failed. */
+export async function showAndWrite<Row extends DiffLike>(io: Io, target: PushTarget<Row>, plan: TargetPlan<Row>, from: string, to: string, apply: boolean): Promise<boolean> {
+  io.out(plan.header);
+  if (plan.changes.length > 0) for (const line of diffTable(plan.changes, target.label)) io.out(line);
+  io.out(`${plan.changes.length} night${plan.changes.length === 1 ? "" : "s"} to change · ${plan.unchanged} already right${plan.leftAloneNote}`);
+  for (const line of plan.details) io.out(line);
+  if (!apply || plan.changes.length === 0) {
+    io.out("");
+    return false;
+  }
+  const result = await target.write(plan.changes, from, to);
+  for (const line of result.lines) io.out(line);
+  io.out("");
+  return result.error !== undefined || result.wrong.length > 0;
 }

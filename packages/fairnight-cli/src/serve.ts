@@ -6,11 +6,16 @@
  * - GET  /           the page (HTML, CSS and JS inline, no external files)
  * - GET  /api/data   prices of every listing, computed on each request
  * - POST /api/refresh  reads the iCal calendars again (the only network access)
+ * - POST /api/base-price  uses the suggested base price for one listing, after the
+ *   host confirmed it on the page; only from this computer, never from the network
  * - GET  /api/ping   "this is Fairnight, for this folder": lets `fairnight apri`
  *   find a calendar that is already running instead of starting a second one
  * - GET/POST /checkin/<code>  the guest check-in form (Fairguest), local network only
- * The page never writes anything except through "Recalculate", which runs the
- * same sync as `fairnight sync`.
+ * - GET/POST /risposte  the replies to guests to approve (Fairhello), this computer only
+ * - GET/POST /api/pilot…  the autopilot: its state, and its switches for this computer only (pilota-pagina.ts)
+ * The calendar page writes only through "Recalculate", which runs the same
+ * sync as `fairnight sync`, "Use this price" (POST /api/base-price) and the
+ * autopilot switches.
  */
 import { createHash, randomBytes } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
@@ -20,9 +25,12 @@ import { loadHostConfig, type HostConfig } from "./config.js";
 import { openDb } from "./db.js";
 import { dbPath, localToday, type Io } from "./io.js";
 import { handleCheckin, type CheckinContext } from "./guests/checkin.js";
+import { handleReplies, type RepliesContext } from "./hello/page.js";
 import { applyRetention, guestDeadlines, guestsEnabled, prefillFromCalendar } from "./guests/store.js";
 import { renderPage } from "./page.js";
+import { handlePilot, PAGE_CHECK_MS, pageRunIfDue, type PilotPageContext } from "./pilota-pagina.js";
 import { lastSync, priceOne } from "./price.js";
+import { suggestionFor, writeBasePrice, type ListingSuggestion } from "./prezzo-base.js";
 import { syncEverything } from "./sync-all.js";
 
 export interface ServeOptions {
@@ -33,6 +41,8 @@ export interface ServeOptions {
   today?: string;
   /** No startup lines: `fairnight apri` prints its own, in Italian. */
   quiet?: boolean;
+  /** Shared with the autopilot switches; made by createHandler when missing. */
+  pilot?: PilotPageContext;
 }
 
 /** Identifies the folder a running calendar serves, without showing its path on the network. */
@@ -65,13 +75,55 @@ function guestReminder(db: ReturnType<typeof openDb>, config: HostConfig, now: D
   return { late: pending.filter((d) => d.state === "late").length, soon: pending.filter((d) => d.state === "open").length, italy: pending.some((d) => d.country === "IT") };
 }
 
-export function pricesPayload(dir: string, config: HostConfig, today: string, days: number, now?: Date) {
+/** A request from this computer (not from a phone or another computer of the network). */
+export function fromThisComputer(req: IncomingMessage): boolean {
+  const a = req.socket.remoteAddress ?? "";
+  return a === "127.0.0.1" || a === "::1" || a === "::ffff:127.0.0.1";
+}
+
+async function readSmallBody(req: IncomingMessage, limit = 2048): Promise<string | null> {
+  let body = "";
+  for await (const chunk of req) {
+    body += String(chunk);
+    if (body.length > limit) return null;
+  }
+  return body;
+}
+
+/** The suggested base price as the page shows it: facts only, the page writes the sentences. */
+function suggestionPayload(s: ListingSuggestion) {
+  const r = s.result;
+  if (!r || !r.ok) return null;
+  return {
+    suggested: r.suggested,
+    current: r.currentBasePrice,
+    differencePercent: r.differencePercent,
+    farOff: r.farOff,
+    low: r.low,
+    high: r.high,
+    months: r.months.length,
+    from: r.months[0]?.month ?? null,
+    to: r.months.at(-1)?.month ?? null,
+    comparables: r.comparables ?? null,
+    homes: s.comparables,
+    area: r.area,
+    attribution: r.attribution,
+    estimated: r.estimated,
+    readOn: r.readOn,
+    warnings: s.warnings,
+    explanation: r.explanation,
+  };
+}
+
+export function pricesPayload(dir: string, config: HostConfig, today: string, days: number, options: { local?: boolean; now?: Date } = {}) {
   const db = openDb(dbPath(dir));
   try {
     return {
       today,
       days,
-      guests: now ? guestReminder(db, config, now) : null,
+      guests: options.now ? guestReminder(db, config, options.now) : null,
+      // "Use this price" works only on this computer; on a phone the page shows the command.
+      local: options.local ?? true,
       // The page starts in this language unless the browser has another one saved.
       language: config.language ?? "en",
       listings: config.listings.map((l) => {
@@ -81,6 +133,7 @@ export function pricesPayload(dir: string, config: HostConfig, today: string, da
           title: l.pricing.name ?? l.name,
           currency: result.currency,
           basePrice: l.pricing.basePrice,
+          suggestion: suggestionPayload(suggestionFor(db, l, today)),
           lastSync: lastSync(db, l.name),
           nights: result.nights.map((n) => ({
             date: n.date,
@@ -104,12 +157,16 @@ export function pricesPayload(dir: string, config: HostConfig, today: string, da
 export function createHandler(opts: ServeOptions): (req: IncomingMessage, res: ServerResponse) => void {
   let refreshing: Promise<unknown> | null = null;
   const checkin: CheckinContext = { dir: opts.dir, io: opts.io, secret: randomBytes(32), failures: new Map() };
+  const pilot = opts.pilot ?? { dir: opts.dir, io: opts.io, previews: new Map(), busy: false };
+  const replies: RepliesContext = { dir: opts.dir, io: opts.io, secret: randomBytes(32), ...(opts.today !== undefined ? { today: opts.today } : {}) };
 
   return (req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
     const today = opts.today ?? localToday(opts.io.now());
     const run = async () => {
       if (await handleCheckin(req, res, url, checkin, randomBytes(16).toString("base64"))) return;
+      if (await handlePilot(req, res, url, pilot)) return;
+      if (await handleReplies(req, res, url, replies, randomBytes(16).toString("base64"))) return;
       if (req.method === "GET" && url.pathname === "/") {
         const nonce = randomBytes(16).toString("base64");
         send(res, 200, "text/html; charset=utf-8", renderPage(nonce), {
@@ -122,7 +179,50 @@ export function createHandler(opts: ServeOptions): (req: IncomingMessage, res: S
         return;
       }
       if (req.method === "GET" && url.pathname === "/api/data") {
-        json(res, 200, pricesPayload(opts.dir, loadHostConfig(opts.dir), today, opts.days, opts.io.now()));
+        json(res, 200, pricesPayload(opts.dir, loadHostConfig(opts.dir), today, opts.days, { local: fromThisComputer(req), now: opts.io.now() }));
+        return;
+      }
+      if (req.method === "POST" && url.pathname === "/api/base-price") {
+        if (req.headers["x-fairnight"] !== "1") {
+          json(res, 403, { error: "missing X-Fairnight header" });
+          return;
+        }
+        if (!fromThisComputer(req)) {
+          json(res, 403, { error: "the base price can be changed only on the computer that runs Fairnight" });
+          return;
+        }
+        const raw = await readSmallBody(req);
+        let body: { listing?: unknown; price?: unknown } | null = null;
+        try {
+          body = raw === null ? null : (JSON.parse(raw) as { listing?: unknown; price?: unknown });
+        } catch {
+          body = null;
+        }
+        if (!body || typeof body.listing !== "string" || typeof body.price !== "number") {
+          json(res, 400, { error: "send the listing and the price shown" });
+          return;
+        }
+        const config = loadHostConfig(opts.dir);
+        const listing = config.listings.find((l) => l.name === body.listing);
+        if (!listing) {
+          json(res, 404, { error: "no such listing" });
+          return;
+        }
+        const db = openDb(dbPath(opts.dir));
+        let s: ListingSuggestion;
+        try {
+          s = suggestionFor(db, listing, today);
+        } finally {
+          db.close();
+        }
+        // Only the figure the host saw and confirmed: if the data changed meanwhile, nothing is written.
+        if (!s.result?.ok || s.result.suggested !== body.price) {
+          json(res, 409, { error: "the suggestion has changed: reload the page and check it again" });
+          return;
+        }
+        const before = listing.pricing.basePrice;
+        if (before !== body.price) writeBasePrice(opts.dir, listing.name, body.price);
+        json(res, 200, { listing: listing.name, before, basePrice: body.price });
         return;
       }
       if (req.method === "POST" && url.pathname === "/api/refresh") {
@@ -167,7 +267,7 @@ export function lanAddresses(): string[] {
     .map((a) => a.address);
 }
 
-export async function startServer(opts: ServeOptions & { port: number; lan: boolean }): Promise<Server> {
+export async function startServer(opts: ServeOptions & { port: number; lan: boolean; autopilot?: boolean }): Promise<Server> {
   const config = loadHostConfig(opts.dir); // fail early on a broken config
   const db = openDb(dbPath(opts.dir));
   let guests = false;
@@ -178,7 +278,18 @@ export async function startServer(opts: ServeOptions & { port: number; lan: bool
   } finally {
     db.close();
   }
-  const server = createServer(createHandler(opts));
+  const pilot: PilotPageContext = { dir: opts.dir, io: opts.io, previews: new Map(), busy: false };
+  const server = createServer(createHandler({ ...opts, pilot }));
+  if (opts.autopilot) {
+    // While the page is open it does the day's run if the computer's daily task did not (it was off at that hour).
+    const check = () => pageRunIfDue(opts.dir, opts.io, pilot).catch((e: unknown) => opts.io.err(`Pilota automatico: ${(e as Error).message}`));
+    const first = setTimeout(check, 60_000);
+    const hourly = setInterval(check, PAGE_CHECK_MS);
+    server.on("close", () => {
+      clearTimeout(first);
+      clearInterval(hourly);
+    });
+  }
   const host = opts.lan ? "0.0.0.0" : "127.0.0.1";
   return new Promise((resolve, reject) => {
     server.once("error", reject);
@@ -195,6 +306,7 @@ export async function startServer(opts: ServeOptions & { port: number; lan: bool
             : "  guest check-in forms: only on this computer; add --lan to fill them in on a phone or tablet",
         );
       }
+      opts.io.out(`  replies to guests: http://localhost:${port}/risposte (this computer only)`);
       opts.io.out("Press Ctrl+C to stop.");
       resolve(server);
     });

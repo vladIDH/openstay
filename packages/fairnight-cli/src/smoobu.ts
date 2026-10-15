@@ -22,10 +22,11 @@ import {
   SmoobuClient,
   SmoobuError,
   type RangeEnd,
+  type TypeDiffRow,
 } from "fairnight-smoobu";
 import { CONFIG_FILE, configPath, localToday, type Io } from "./io.js";
 import { noteChannelGuests } from "./guests/store.js";
-import { addDays, appendListings, daysBetween, diffTable, emptyReport, HISTORY_DAYS, recordRun, slugify, storeStays } from "./channel.js";
+import { addDays, appendListings, daysBetween, emptyReport, HISTORY_DAYS, recordRun, showAndWrite, slugify, storeStays, type PushTarget } from "./channel.js";
 import { isSmoobu, loadHostConfig, SetupError, smoobuApartments, type HostListing } from "./config.js";
 import { CREDENTIALS_FILE, loadCredentials, saveCredentials } from "./credentials.js";
 import { getMeta, openDb, setMeta, type Db } from "./db.js";
@@ -192,7 +193,97 @@ export async function importFromSmoobu(dir: string, io: Io): Promise<ImportSumma
   }
 }
 
-// ---------------------------------------------------------------- spingi
+/// ---------------------------------------------------------------- spingi
+
+/**
+ * One listing on Smoobu as a push target: its apartments, read and written
+ * together (one room type, one price). The date-range check runs on the first
+ * real write and is kept in the database.
+ */
+export function smoobuTarget(db: Db, listing: HostListing, client: SmoobuClient, now: () => Date): PushTarget<TypeDiffRow> {
+  const apts = smoobuApartments(listing);
+  return {
+    feed: SMOOBU_FEED,
+    label: "Smoobu",
+    isChannelError: (e) => e instanceof SmoobuError,
+
+    async plan(quotes, from, to) {
+      const current = await client.getRates(apts, from, to);
+      const plan = planTypePush(quotes, current, apts);
+      const where = apts.length === 1 ? `Smoobu apartment ${apts[0]}` : `Smoobu apartments ${apts.join(", ")} (one room type, one price)`;
+      const n = plan.unavailableOnSmoobu.length;
+      return {
+        header: `${listing.name} → ${where} · ${from} → ${to} · prices in ${listing.pricing.currency}`,
+        changes: plan.changes,
+        unchanged: plan.unchanged,
+        leftAlone: plan.unavailableOnSmoobu,
+        leftAloneNote:
+          n === 0
+            ? ""
+            : apts.length === 1
+              ? ` · ${n} free here but unavailable on Smoobu, left alone (run "fairnight smoobu importa")`
+              : ` · ${n} with a different number of apartments free on Smoobu, left alone (run "fairnight smoobu importa")`,
+        details: [],
+      };
+    },
+
+    async write(changes, from, to) {
+      const lines: string[] = [];
+      let rows: readonly TypeDiffRow[] = changes;
+      let operations = 0;
+      let rangeEnd = (getMeta(db, RANGE_END_KEY) as RangeEnd | null) ?? "unknown";
+      const record = (mismatches: number, error: string | null) =>
+        db
+          .prepare("INSERT INTO smoobu_pushes (listing, apartment_id, at, nights, operations, mismatches, error) VALUES (?, ?, ?, ?, ?, ?, ?)")
+          .run(listing.name, apts[0], now().toISOString(), changes.length, operations, mismatches, error);
+      try {
+        if (rangeEnd === "unknown") {
+          // Smoobu's docs do not say whether "from:to" includes "to". Check it once with two nights.
+          const pair = probePair(rows.filter((r) => r.apartments.length > 0));
+          const probe = pair ? pair[0].apartments.find((x) => pair[1].apartments.includes(x)) : undefined;
+          if (pair && probe !== undefined) {
+            const [a, b] = pair;
+            await client.postRates([probe], [{ dates: [`${a.date}:${b.date}`], daily_price: a.newPrice, min_length_of_stay: a.newMinStay }]);
+            operations++;
+            const back = (await client.getRates([probe], a.date, b.date))[String(probe)] ?? {};
+            const second = back[b.date];
+            rangeEnd = second?.price === b.newPrice && second.min_length_of_stay === b.newMinStay ? "inclusive" : "exclusive";
+            setMeta(db, RANGE_END_KEY, rangeEnd);
+            setMeta(db, RANGE_CHECKED_KEY, localToday(now()));
+            lines.push(
+              rangeEnd === "inclusive"
+                ? `Checked once how Smoobu reads a date range (${a.date}:${b.date}): the last day IS written. From now on, runs of equal nights go in ranges of up to 7.`
+                : `Checked once how Smoobu reads a date range (${a.date}:${b.date}): the last day is NOT written. Fairnight keeps writing one night per operation.`,
+            );
+            const written = (r: TypeDiffRow) => r.date === a.date || (rangeEnd === "inclusive" && r.date === b.date);
+            rows = rows
+              .map((r) => (written(r) ? { ...r, apartments: r.apartments.filter((x) => x !== probe) } : r))
+              .filter((r) => r.apartments.length > 0);
+          }
+        }
+        for (const group of groupByApartments(rows)) {
+          for (const part of chunks(buildOperations(group.rows, rangeEnd), OPERATIONS_PER_REQUEST)) {
+            await client.postRates(group.apartments, part);
+            operations += part.length;
+          }
+        }
+        const after = await client.getRates(apts, from, to);
+        const wrong = changes
+          .filter((r) => r.apartments.some((x) => after[String(x)]?.[r.date]?.price !== r.newPrice || after[String(x)]?.[r.date]?.min_length_of_stay !== r.newMinStay))
+          .map((r) => r.date);
+        record(wrong.length, null);
+        lines.push(`Written to Smoobu: ${changes.length} nights in ${operations} operations.`);
+        lines.push(wrong.length === 0 ? "Read back from Smoobu: every night matches." : `Read back from Smoobu: ${wrong.length} nights do not match yet: ${wrong.join(", ")}.`);
+        return { nights: changes.length, operations, refused: [], wrong, lines };
+      } catch (e) {
+        if (!(e instanceof SmoobuError)) throw e;
+        record(0, e.message);
+        lines.push(`Stopped: ${e.message}`);
+        return { nights: changes.length, operations, refused: [], wrong: [], error: e.message, lines };
+      }
+    },
+  };
+}
 
 export interface PushOptions {
   apply: boolean;
@@ -226,96 +317,14 @@ export async function push(dir: string, io: Io, opts: PushOptions): Promise<numb
   let failed = 0;
   let totalChanges = 0;
   try {
-    let rangeEnd = (getMeta(db, RANGE_END_KEY) as RangeEnd | null) ?? "unknown";
     for (const listing of listings) {
-      const apts = smoobuApartments(listing);
       const quotes = priceOne(db, listing, today, daysBetween(today, to) + 1, { useSmoobuHistory: opts.useSmoobuHistory ?? false }).nights.filter(
         (n) => n.date >= from,
       );
-      const current = await client.getRates(apts, from, to);
-      const plan = planTypePush(quotes, current, apts);
-      const where = apts.length === 1 ? `Smoobu apartment ${apts[0]}` : `Smoobu apartments ${apts.join(", ")} (one room type, one price)`;
-      io.out(`${listing.name} → ${where} · ${from} → ${to} · prices in ${listing.pricing.currency}`);
-      if (plan.changes.length > 0) for (const line of diffTable(plan.changes, "Smoobu")) io.out(line);
-      io.out(
-        `${plan.changes.length} night${plan.changes.length === 1 ? "" : "s"} to change · ${plan.unchanged} already right` +
-          (plan.unavailableOnSmoobu.length > 0
-            ? apts.length === 1
-              ? ` · ${plan.unavailableOnSmoobu.length} free here but unavailable on Smoobu, left alone (run "fairnight smoobu importa")`
-              : ` · ${plan.unavailableOnSmoobu.length} with a different number of apartments free on Smoobu, left alone (run "fairnight smoobu importa")`
-            : ""),
-      );
+      const target = smoobuTarget(db, listing, client, () => io.now());
+      const plan = await target.plan(quotes, from, to);
       totalChanges += plan.changes.length;
-      if (!opts.apply || plan.changes.length === 0) {
-        io.out("");
-        continue;
-      }
-
-      let rows = plan.changes;
-      let operations = 0;
-      try {
-        if (rangeEnd === "unknown") {
-          // Smoobu's docs do not say whether "from:to" includes "to". Check it once with two nights.
-          const pair = probePair(rows.filter((r) => r.apartments.length > 0));
-          const probe = pair ? pair[0].apartments.find((x) => pair[1].apartments.includes(x)) : undefined;
-          if (pair && probe !== undefined) {
-            const [a, b] = pair;
-            await client.postRates([probe], [{ dates: [`${a.date}:${b.date}`], daily_price: a.newPrice, min_length_of_stay: a.newMinStay }]);
-            operations++;
-            const back = (await client.getRates([probe], a.date, b.date))[String(probe)] ?? {};
-            const second = back[b.date];
-            rangeEnd = second?.price === b.newPrice && second.min_length_of_stay === b.newMinStay ? "inclusive" : "exclusive";
-            setMeta(db, RANGE_END_KEY, rangeEnd);
-            setMeta(db, RANGE_CHECKED_KEY, today);
-            io.out(
-              rangeEnd === "inclusive"
-                ? `Checked once how Smoobu reads a date range (${a.date}:${b.date}): the last day IS written. From now on, runs of equal nights go in ranges of up to 7.`
-                : `Checked once how Smoobu reads a date range (${a.date}:${b.date}): the last day is NOT written. Fairnight keeps writing one night per operation.`,
-            );
-            const written = (r: (typeof rows)[number]) => r.date === a.date || (rangeEnd === "inclusive" && r.date === b.date);
-            rows = rows
-              .map((r) => (written(r) ? { ...r, apartments: r.apartments.filter((x) => x !== probe) } : r))
-              .filter((r) => r.apartments.length > 0);
-          }
-        }
-        for (const group of groupByApartments(rows)) {
-          for (const part of chunks(buildOperations(group.rows, rangeEnd), OPERATIONS_PER_REQUEST)) {
-            await client.postRates(group.apartments, part);
-            operations += part.length;
-          }
-        }
-        const after = await client.getRates(apts, from, to);
-        const wrong = plan.changes.filter((r) =>
-          r.apartments.some((x) => after[String(x)]?.[r.date]?.price !== r.newPrice || after[String(x)]?.[r.date]?.min_length_of_stay !== r.newMinStay),
-        );
-        db.prepare("INSERT INTO smoobu_pushes (listing, apartment_id, at, nights, operations, mismatches, error) VALUES (?, ?, ?, ?, ?, ?, NULL)").run(
-          listing.name,
-          apts[0],
-          io.now().toISOString(),
-          plan.changes.length,
-          operations,
-          wrong.length,
-        );
-        io.out(`Written to Smoobu: ${plan.changes.length} nights in ${operations} operations.`);
-        if (wrong.length === 0) io.out("Read back from Smoobu: every night matches.");
-        else {
-          failed++;
-          io.out(`Read back from Smoobu: ${wrong.length} nights do not match yet: ${wrong.map((r) => r.date).join(", ")}.`);
-        }
-      } catch (e) {
-        if (!(e instanceof SmoobuError)) throw e;
-        failed++;
-        db.prepare("INSERT INTO smoobu_pushes (listing, apartment_id, at, nights, operations, mismatches, error) VALUES (?, ?, ?, ?, ?, 0, ?)").run(
-          listing.name,
-          apts[0],
-          io.now().toISOString(),
-          plan.changes.length,
-          operations,
-          e.message,
-        );
-        io.out(`Stopped: ${e.message}`);
-      }
-      io.out("");
+      if (await showAndWrite(io, target, plan, from, to, opts.apply)) failed++;
     }
   } finally {
     db.close();

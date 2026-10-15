@@ -18,7 +18,7 @@ export interface Io {
   err(line: string): void;
   fetch: FetchLike;
   now(): Date;
-  /** Environment variables (SMOOBU_API_KEY, SMOOBU_API_SECRET, BEDS24_REFRESH_TOKEN, AIRROI_API_KEY). Default: none. */
+  /** Environment variables (SMOOBU_API_KEY, SMOOBU_API_SECRET, BEDS24_REFRESH_TOKEN, AIRROI_API_KEY, ANTHROPIC_API_KEY). Default: none. */
   env?: Record<string, string | undefined>;
   /** The language of this computer, like "it-IT" (only for tests). Default: from LANG or the system. */
   locale?: string;
@@ -42,12 +42,38 @@ export interface Io {
   alloggiatiUrl?: string;
   /** Only for tests: where the Alloggiati Web code tables are downloaded from (file name → URL). */
   alloggiatiTableUrls?: { municipalities: string; states: string; documents: string };
+  /** Network access for the open data services (ISTAC, INE). Default: global fetch. */
+  openDataFetch?: SmoobuFetchLike;
+  /** Only for tests: fake ISTAC and INE servers. */
+  istacBaseUrl?: string;
+  ineBaseUrl?: string;
+  /** Network access for the model that writes the guest drafts (Anthropic or Ollama). Default: global fetch. */
+  modelFetch?: SmoobuFetchLike;
+  /** Only for tests: a fake Anthropic server instead of https://api.anthropic.com. */
+  anthropicBaseUrl?: string;
   /** Open a link in the default browser (`fairnight apri`). Default: nothing is opened. */
   openUrl?(url: string): void;
   /** Waiting (rate limits, retries). Default: real time. */
   sleep?(ms: number): Promise<void>;
   /** Only for tests: a cheaper scrypt for the Fairguest passphrase. */
   scryptCost?: ScryptParams;
+  /** This computer, for the daily run of the autopilot. Default: unknown, so it cannot be scheduled. */
+  system?: SystemInfo;
+  /** Run a program and wait for it (schtasks, launchctl). Default: none. */
+  run?(command: string, args: string[]): { status: number | null; stdout: string; stderr: string };
+}
+
+export interface SystemInfo {
+  platform: NodeJS.Platform;
+  /** The user's home folder (the Mac's LaunchAgents live there). */
+  home: string;
+  /** The user the Windows task runs as, like "PC\\anna". */
+  user: string;
+  /** The Mac user id, for launchctl. */
+  uid: number | null;
+  /** Node.js and the fairnight script the scheduled run starts. */
+  node: string;
+  script: string;
 }
 
 export type SmoobuFetchLike = (

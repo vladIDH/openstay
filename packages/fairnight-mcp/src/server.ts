@@ -167,7 +167,7 @@ export const TOOLS: Tool[] = [
     name: "get_market_area",
     title: "Zone data used by a listing",
     description:
-      "The zone data behind the zone demand factor of a listing: its source and the attribution to quote (your own file, Inside Airbnb CC BY 4.0, powered by AirROI), when it was read, how long it is kept, whether the occupancy is an estimate, the zone's average, and the zone's occupancy, average price and comparable listings for each night between two dates (default: the next 14). Also the factor's settings (on or off, weight, caps). Always quote the attribution when you use these figures.",
+      "The zone data behind the zone demand factor of a listing: its source and the attribution to quote (your own file, Inside Airbnb CC BY 4.0, Powered by AirROI with its link https://www.airroi.com), when it was read, how long it is kept, whether the occupancy is an estimate, the zone's average, and the zone's occupancy, average price and comparable listings for each night between two dates (default: the next 14). Also the factor's settings (on or off, weight, caps). Always quote the attribution when you use these figures.",
     inputSchema: {
       type: "object",
       properties: {

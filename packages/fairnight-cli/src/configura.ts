@@ -587,7 +587,7 @@ export async function configura(dir: string, io: Io): Promise<number> {
     }
   }
 
-  const next: Obj = { ...(raw ?? { market: { airroi: { enabled: false } } }), listings };
+  const next: Obj = { ...(raw ?? { market: { airroi: { enabled: true } } }), listings };
   const pilot = await askPilot(a, io, listings, next);
   if (!isLanguage(next.language)) {
     const language = await askLanguage(
@@ -617,7 +617,7 @@ export async function configura(dir: string, io: Io): Promise<number> {
 
   const db = openDb(dbPath(dir));
   try {
-    const { reports } = await syncEverything(db, dir, checked.value.listings, io);
+    const { reports } = await syncEverything(db, dir, checked.value.listings, io, checked.value.market);
     if (reports.length > 0) {
       io.out("");
       io.out(w.calendarsRead);

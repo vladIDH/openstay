@@ -117,7 +117,7 @@ export interface AirRoiArea {
 
 export interface MarketSettings {
   airroi?: {
-    /** Off until AirROI confirms its terms of use in writing. */
+    /** On unless the host sets it to false. Used with AirROI's agreement, with the host's own key. */
     enabled: boolean;
     /** Zone name → AirROI market. */
     areas?: Record<string, AirRoiArea>;
@@ -191,7 +191,7 @@ function checkMarket(v: unknown, issues: ConfigIssue[]): MarketSettings | null {
     return null;
   }
   unknownFields(a, ap, ["enabled", "areas"], issues);
-  if (typeof a.enabled !== "boolean") issues.push({ path: `${ap}.enabled`, message: `must be true or false, got ${JSON.stringify(a.enabled)}` });
+  if (a.enabled !== undefined && typeof a.enabled !== "boolean") issues.push({ path: `${ap}.enabled`, message: `must be true or false, got ${JSON.stringify(a.enabled)}` });
   const areas: Record<string, AirRoiArea> = {};
   if (a.areas !== undefined) {
     if (!isObj(a.areas)) issues.push({ path: `${ap}.areas`, message: "must be an object: zone name → country, region, locality" });
@@ -217,7 +217,7 @@ function checkMarket(v: unknown, issues: ConfigIssue[]): MarketSettings | null {
       }
     }
   }
-  return { airroi: { enabled: a.enabled === true, ...(a.areas !== undefined ? { areas } : {}) }, ...(ine ? { ine } : {}) };
+  return { airroi: { enabled: a.enabled !== false, ...(a.areas !== undefined ? { areas } : {}) }, ...(ine ? { ine } : {}) };
 }
 
 type Obj = Record<string, unknown>;

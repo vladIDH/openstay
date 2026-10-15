@@ -76,7 +76,7 @@ export async function apri(dir: string, io: Io, opts: ApriOptions): Promise<Apri
     const titles = new Map(config.listings.map((l) => [l.name, l.pricing.name ?? l.name]));
     const db = openDb(dbPath(dir));
     try {
-      const { reports } = await syncEverything(db, dir, config.listings, io);
+      const { reports } = await syncEverything(db, dir, config.listings, io, config.market);
       for (const r of reports) io.out(feedLineIt(r, titles, w));
       if (reports.length === 0) io.out(w.noLinks);
     } finally {

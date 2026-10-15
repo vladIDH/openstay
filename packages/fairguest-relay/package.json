@@ -1,6 +1,6 @@
 {
   "name": "fairguest-relay",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "license": "AGPL-3.0-only",
   "author": {
@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@noble/curves": "2.4.0",
-    "fairguest": "0.1.0",
+    "fairguest": "0.2.0",
     "tesseract.js": "7.0.0"
   },
   "devDependencies": {

@@ -11,7 +11,7 @@ import { McpServer, fromJsonSchema, type JsonSchemaType } from "@modelcontextpro
 import { ConfigError, formatAmount } from "fairnight";
 import { explainNight, getPrices, guestDeadlinesOf, guestRepliesOf, listListings, marketArea, nextGaps, occupancy, syncStatus, ToolError, type Folder } from "./data.js";
 
-export const VERSION = "0.1.0";
+export const VERSION = "0.2.0";
 
 export const READ_ONLY_ANNOTATIONS = {
   readOnlyHint: true,

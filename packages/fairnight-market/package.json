@@ -42,7 +42,7 @@
     "LICENSE"
   ],
   "dependencies": {
-    "fairnight": "0.1.0"
+    "fairnight": "0.2.0"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

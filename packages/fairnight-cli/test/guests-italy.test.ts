@@ -191,6 +191,8 @@ describe("the check-in form for a listing in Italy", () => {
     expect(html).toContain('name="birthCountry"');
     expect(html).toContain('name="docPlace"');
     expect(html).toContain("Carta d&#39;identità elettronica (CIE)");
+    expect(html).toContain("Luogo di nascita");
+    expect(html).not.toContain("dai 14 anni");
     expect(html).not.toContain('name="street"');
     expect(html).not.toContain('name="payment"');
     expect(html).not.toContain('name="docSupport"');

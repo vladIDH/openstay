@@ -2,7 +2,7 @@
 
 Fairguest comunica gli ospiti alla **Polizia di Stato** con il servizio **Alloggiati Web**, dal tuo computer. I dati degli ospiti restano cifrati sul tuo computer e si cancellano da soli appena l'invio è registrato. Nessun nostro server sta nel mezzo.
 
-> Versione di Fairguest in sviluppo (ottobre 2026). Questa guida copre **Alloggiati Web**. La comunicazione **Istat** (movimento turistico regionale), il **link da mandare all'ospite** da qualsiasi posto e la **foto del documento** arrivano nelle prossime versioni e saranno aggiunte qui.
+> Versione di Fairguest in sviluppo (ottobre 2026). Questa guida copre **Alloggiati Web**, il **link da mandare all'ospite** e la **foto del documento**. La comunicazione **Istat** (movimento turistico regionale) arriva nella prossima versione e sarà aggiunta qui.
 >
 > Non è un parere legale. I punti segnati **[NV]** non sono ancora verificati con un invio vero.
 
@@ -70,7 +70,10 @@ fairnight ospiti credenziali --verifica
 
 ## Cosa vede l'ospite
 
-`fairnight ospiti elenco` mostra, per ogni soggiorno, il link al modulo. Per ora il modulo si apre solo dalla rete di casa: avvia `fairnight serve --lan` e apri il link su un telefono o un tablet collegato alla tua rete. Il link da mandare da qualsiasi posto arriva con la prossima versione.
+Il modulo si apre in due modi:
+
+- **dalla rete di casa:** `fairnight serve --lan`, poi il link di `fairnight ospiti elenco` su un telefono o un tablet collegato alla tua rete;
+- **da qualsiasi posto:** il link di `fairnight ospiti link <soggiorno>`, da mandare all'ospite come gli scrivi di solito. Vedi «Il link da mandare all'ospite» qui sotto.
 
 Il modulo è in italiano, inglese e spagnolo, in tre passi: i suoi dati, documento, conferma. Per un alloggio in Italia chiede solo quello che chiede Alloggiati Web:
 
@@ -83,6 +86,60 @@ Il modulo è in italiano, inglese e spagnolo, in tre passi: i suoi dati, documen
 **Non chiede** indirizzo, telefono, email né pagamento: in Italia la legge non li vuole, quindi il modulo non li raccoglie.
 
 In alto l'ospite legge una riga su cosa succede ai suoi dati: restano cifrati sul tuo computer, vanno solo alla Polizia di Stato e si cancellano da soli dopo l'invio. Gli viene anche detto che **all'arrivo lo riconoscerai di persona o in videochiamata**, con il documento.
+
+## Il link da mandare all'ospite
+
+```
+fairnight ospiti link <soggiorno>
+```
+
+Stampa un indirizzo come `https://fairguest.khlumen.com/c/…#v1.…`. Mandalo all'ospite: funziona da qualsiasi telefono fino a due giorni dopo il check-out. Il tuo computer **non apre nessuna porta**: fa solo richieste in uscita.
+
+**Come viaggiano i dati**
+1. L'ospite compila il modulo sul suo telefono: stessa grafica e stesse domande del modulo di casa.
+2. **Il telefono cifra i dati** con la chiave pubblica della tua cartella Fairguest, prima di spedirli.
+3. Il servizio di inoltro (`fairguest.khlumen.com`) riceve solo testo cifrato e lo tiene in una casella del soggiorno.
+4. Il tuo computer scarica e poi cancella dal servizio:
+   - con `fairnight ospiti scarica`;
+   - da solo ogni 5 minuti mentre `fairnight serve` è acceso;
+   - prima di `ospiti elenco` e di `ospiti invia`.
+5. I dati restano cifrati anche sul tuo computer: si aprono solo con la frase segreta.
+
+**Cosa vede chi gestisce il servizio di inoltro**
+- **Vede:** l'indirizzo IP del telefono e l'ora dell'invio, come per qualsiasi sito, e un testo cifrato sempre della stessa lunghezza.
+- **Non vede:**
+  - nomi e documenti;
+  - quanti caratteri ha scritto l'ospite;
+  - la tua chiave, l'alloggio e le date: stanno dopo il `#` del link, e i browser non li mandano mai al server.
+- **Non tiene registri** delle richieste. Ogni casella si cancella da sola due giorni dopo il check-out.
+
+**Cosa può fare chi ha il link:** aggiungere ospiti a quel soggiorno, non leggerli. Se un link finisce nelle mani sbagliate, controlla gli ospiti con `fairnight ospiti mostra` e cancella quelli in più con `fairnight ospiti cancella <soggiorno> --persona N --applica`.
+
+**Controllare la pagina**
+
+```
+fairnight ospiti verifica-pagina
+```
+
+- Confronta ogni file che il servizio manda al telefono con l'impronta (SHA-256) della pagina di questa versione di Fairguest. Ogni riga deve dire `same`.
+- Serve perché chi gestisce il servizio potrebbe cambiare la pagina per leggere i dati prima che vengano cifrati: questo è il limite di ogni modulo sul web.
+- Chi vuole il controllo completo può ospitare il servizio da sé: istruzioni in [packages/fairguest-relay/README.md](../packages/fairguest-relay/README.md). Poi si mette il proprio indirizzo in `fairnight.config.json` con `"fairguestRelay": "https://…"`.
+
+## La foto del documento
+
+Nella pagina del link l'ospite può toccare «Scatta o scegli una foto» e inquadrare la parte del documento con le righe di lettere e `<<<`:
+- sul passaporto, in fondo alla pagina con la foto;
+- sulla carta d'identità elettronica o sul DNI spagnolo, sul retro.
+
+**Cosa viene compilato:** nome, cognome, data di nascita, sesso, cittadinanza, tipo e numero del documento, Stato di rilascio. L'ospite li controlla e completa il resto. Comune di nascita e di rilascio non sono scritti in quelle righe.
+
+**Dove succede tutto:**
+- **La lettura avviene sul telefono.** Il programma di lettura (Tesseract) e il suo modello per queste righe sono file del servizio stesso: nessun altro sito viene contattato.
+- **La foto non viene mai inviata né salvata.** Resta in memoria il tempo della lettura e poi viene cancellata. Fairguest non conserva copie del documento, in nessun posto: è quello che chiede il Garante privacy (nota del 29/04/2026).
+- **Le cifre di controllo** di quelle righe dicono se la lettura è giusta. Se non tornano, l'ospite vede un avviso e controlla i dati.
+- **Senza righe da leggere** (per esempio la vecchia carta d'identità cartacea) si compila a mano.
+
+Schermate da telefono, con dati inventati: [pagina vuota](images/link/link-it-1-vuoto.png), [dati letti dalla foto](images/link/link-it-2-letto.png), [ospite salvato](images/link/link-it-3-salvato.png).
 
 ## Il riconoscimento dell'ospite
 
@@ -171,7 +228,8 @@ fairnight ospiti ricevute
 | Cosa | Quanto resta |
 |---|---|
 | Dati degli ospiti (cifrati) | fino all'invio accettato da Alloggiati Web, poi cancellati subito (DM 7/1/2013, art. 4-bis). Una prenotazione annullata si cancella subito |
-| Foto o copie del documento | mai: Fairguest non ne fa |
+| Foto o copie del documento | mai: la foto si legge sul telefono dell'ospite e non viene salvata né inviata |
+| Servizio di inoltro del link | solo testo cifrato, cancellato appena scaricato; ogni casella si cancella da sola due giorni dopo il check-out |
 | Ricevute di Alloggiati Web | 5 anni, poi cancellate |
 | Credenziali di Alloggiati Web | sigillate, finché non le cambi |
 | Tabelle dei codici | sul tuo computer, riscaricate ogni mese |

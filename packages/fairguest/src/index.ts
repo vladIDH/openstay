@@ -52,14 +52,14 @@ export type { KeyRecord, ScryptParams } from "./crypto.js";
 export { DEFAULT_ALLOGGIATI_ACCOUNT, SETTINGS_FIELDS, validateGuestSettings } from "./settings.js";
 export type { AlloggiatiSettings, GuestSettings } from "./settings.js";
 
-import { mossosRegistry } from "./countries/es-mossos.js";
-import { sesRegistry } from "./countries/es-ses.js";
-import { alloggiatiRegistry } from "./countries/it-alloggiati.js";
-import type { Country, Registry } from "./types.js";
-
-const REGISTRIES: Record<Country, Registry> = { ES: sesRegistry, "ES-CT": mossosRegistry, IT: alloggiatiRegistry };
-
-/** The registry of a country. */
-export function registryFor(country: Country): Registry {
-  return REGISTRIES[country];
-}
+export { registryFor } from "./registry.js";
+export { LANGS, pickLang, WORDS } from "./form/words.js";
+export type { Lang, Words } from "./form/words.js";
+export { errorsByField, esc, FORM_KEYS, guestInput, LOCK, page, renderForm, stayDay, stepsBar, STYLE, TICK } from "./form/render.js";
+export type { FormState } from "./form/render.js";
+export { checkDigit, findMrzLines, guestFromMrz, parseMrz } from "./mrz.js";
+export type { MrzFields, MrzFormat } from "./mrz.js";
+export { fromBase64url, hasWebX25519, padded, rawPublicKey, toBase64url, webSeal } from "./web-seal.js";
+export type { X25519Fallback } from "./web-seal.js";
+export { BOX_ID, linkFor, readLinkFragment, relayPlace } from "./link.js";
+export type { LinkPayload } from "./link.js";

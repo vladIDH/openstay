@@ -2,7 +2,7 @@ import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["**/node_modules/**", "**/dist/**", "**/coverage/**"] },
+  { ignores: ["**/node_modules/**", "**/dist/**", "**/coverage/**", "packages/fairguest-relay/public/**", "packages/fairguest-relay/assets/**"] },
   js.configs.recommended,
   ...tseslint.configs.strict,
   {
@@ -16,6 +16,13 @@ export default tseslint.config(
   {
     files: ["**/bin/*.js"],
     languageOptions: { globals: { process: "readonly", URL: "readonly" } },
+  },
+  {
+    // The build scripts of the relay's page run in Node.
+    files: ["packages/fairguest-relay/scripts/*.mjs"],
+    languageOptions: {
+      globals: { process: "readonly", URL: "readonly", Buffer: "readonly", fetch: "readonly", console: "readonly", Request: "readonly", Response: "readonly", structuredClone: "readonly" },
+    },
   },
   {
     files: ["installa/**/*.mjs"],

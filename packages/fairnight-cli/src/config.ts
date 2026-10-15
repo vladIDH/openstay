@@ -131,6 +131,8 @@ export interface HostConfig {
   market?: MarketSettings;
   /** Language of the calendar page: "it", "es" or "en". Missing: English. */
   language?: Language;
+  /** The relay of the guests' check-in link. Missing: https://fairguest.khlumen.com. */
+  fairguestRelay?: string;
   /** When the daily run of the autopilot starts ("06:00"), as `fairnight pilota pianifica` sets it. */
   pilot?: { time: string };
 }
@@ -311,7 +313,10 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
   if (!isObj(input)) {
     return { ok: false, issues: [{ path: "config", message: "must be an object with a listings list" }] };
   }
-  unknownFields(input, "config", ["listings", "market", "language", "pilot"], issues);
+  if (input.fairguestRelay !== undefined && (typeof input.fairguestRelay !== "string" || !/^(https:\/\/[a-z0-9.-]+|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)\/?$/i.test(input.fairguestRelay))) {
+    issues.push({ path: "config.fairguestRelay", message: `must be the https address of a Fairguest relay, like "https://fairguest.khlumen.com", got ${JSON.stringify(input.fairguestRelay)}` });
+  }
+  unknownFields(input, "config", ["listings", "market", "language", "pilot", "fairguestRelay"], issues);
   let pilotTime: string | undefined;
   if (input.pilot !== undefined) {
     if (!isObj(input.pilot)) issues.push({ path: "config.pilot", message: 'must be an object like { "time": "06:00" }' });
@@ -416,6 +421,7 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
   if (issues.length > 0) return { ok: false, issues };
   const value: HostConfig = market ? { listings, market } : { listings };
   if (isLanguage(input.language)) value.language = input.language;
+  if (typeof input.fairguestRelay === "string" && !issues.some((i) => i.path === "config.fairguestRelay")) value.fairguestRelay = input.fairguestRelay.replace(/\/+$/, "");
   if (pilotTime !== undefined) value.pilot = { time: pilotTime };
   return { ok: true, value };
 }

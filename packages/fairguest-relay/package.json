@@ -1,0 +1,30 @@
+{
+  "name": "fairguest-relay",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "author": {
+    "name": "Vlad Humenny",
+    "email": "hello@khlumen.com"
+  },
+  "description": "The mailbox of the Fairguest check-in link: a Cloudflare Worker that receives only data already encrypted in the guest's browser, until the host's computer downloads and deletes it. It can never read the data.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "assets": "node scripts/assets.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@noble/curves": "2.4.0",
+    "fairguest": "0.1.0",
+    "tesseract.js": "7.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

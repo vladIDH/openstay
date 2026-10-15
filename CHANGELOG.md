@@ -53,6 +53,14 @@ Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web).
 - fairnight-cli: the calendar page shows how many guest communications are late or due within 24 hours.
 - docs: guide for the host in Italian and Spanish (docs/fairguest-italia.md, docs/fairguest-italia.es.md).
 
+### The check-in link from anywhere, and the photo of the document (branch fairguest-it-link)
+
+- fairguest: the «Carta» form and its words move into the library (`renderForm`, `WORDS`), so the host's form and the link's page are the same code; `fairguest/browser` entry with only what a browser needs.
+- fairguest: `webSeal` seals in the browser with Web Crypto in the same fg1 format (optional X25519 fallback); `padded` gives every guest the same size; `linkFor` / `readLinkFragment` for the link, whose key and stay stay after "#".
+- fairguest: `parseMrz` (TD1, TD2, TD3, ICAO check digits, OCR repairs confirmed by the check digits) and `guestFromMrz` (Spanish DNI: DNI number and support number apart).
+- fairguest-relay (new, private): Cloudflare Worker with one Durable Object per box in the EU jurisdiction; only sealed text, hashed secrets, limits, expiry two days after check-out, no logs; the guest's page with the photo read in the browser (Tesseract and the MRZ model served by the relay); hashes of the page for `verifica-pagina`; `scripts/dev.mjs` to try it locally.
+- fairnight-cli: `fairnight ospiti link`, `scarica` (no passphrase: the guests stay sealed) and `verifica-pagina`; downloads also before `elenco` and `invia` and every 5 minutes while `serve` runs; `"fairguestRelay"` in the config (default https://fairguest.khlumen.com); schema 8.
+
 ### fairguest (new)
 
 - One interface for every country (`Registry`: validate, deadlines, prepare, send, status, cancel, retention) over neutral `Guest` and `Stay` types. The network stays outside: send and status take a transport.

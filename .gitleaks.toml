@@ -48,3 +48,18 @@ path = '''(^|/)airroi-credentials\.json$'''
 regex = '''"apiKey"\s*:\s*"([^"]{8,})"'''
 secretGroup = 1
 keywords = ["apikey"]
+
+[[rules]]
+id = "anthropic-api-key-env"
+description = "The host's Anthropic API key for the guest assistant, written in an env file or a shell script"
+regex = '''(?m)^\s*(?:export\s+|set\s+|\$env:)?ANTHROPIC_API_KEY\s*=\s*["']?([^\s"'#]{16,})'''
+secretGroup = 1
+keywords = ["anthropic_api_key"]
+
+[[rules]]
+id = "fairhello-credentials-file"
+description = "The Anthropic key file written by 'fairnight risposte collega'"
+path = '''(^|/)fairhello-credentials\.json$'''
+regex = '''"anthropicApiKey"\s*:\s*"([^"]{8,})"'''
+secretGroup = 1
+keywords = ["anthropicapikey"]

@@ -262,6 +262,46 @@ The INE code of the municipality, needed for guests who live in Spain, is not as
 
 The MCP server has a read-only tool, `get_guest_deadlines`, that answers "what do I still have to send?" with dates and states only.
 
+## Replies to guests: Fairhello (0.1.0, in development)
+
+`fairnight risposte` (also `fairnight hello`) reads your guests' messages from Smoobu or Beds24 and writes a draft reply for each guest waiting for an answer. **Every reply is approved by you**; nothing is sent on its own.
+
+```
+fairnight risposte collega                 # Anthropic with your own key, or Ollama on this computer
+fairnight risposte casa --listing loft     # writes casa/loft.md with a few questions
+fairnight risposte leggi                   # new messages and drafts [--senza-bozze]
+fairnight risposte                         # the replies to approve, with their number
+fairnight risposte mostra 3                # the conversation and draft 3
+fairnight risposte invia 3                 # shows what would be sent
+fairnight risposte invia 3 --applica       # sends it
+fairnight risposte scarta 3
+fairnight risposte stato                   # model, house files, tokens used in 30 days
+```
+
+Or on the page **http://localhost:4321/risposte** of `fairnight serve`: the conversation, the draft in a box you can change, *Approve and send* and *Discard*. The page opens **only on this computer**, even with `--lan`.
+
+**The house file** `casa/<listing>.md` is plain Markdown: a `#` title, then one `##` section per topic (check-in, wifi, parking, rules…). A section called `## Codici d'accesso`, `## Códigos de acceso` or `## Access codes` is given to the model only from the day of check-in to the day of check-out, and only after the guest registration if the listing uses Fairguest. Without the file, no draft is written for that listing.
+
+**What the model gets**: the house file, the dates and times of the stay, the guest's language, whether the registration is done, the free nights just before and after the stay (dates only), and the last 20 messages. **Never prices** and never the guest's name or contact details. A draft that contains an amount of money anyway cannot be sent until you change it.
+
+**Before sending**, the conversation is read again from Smoobu or Beds24. A draft is sent only if it still answers the guest's last message, the booking is not cancelled and the stay ended at most 2 days ago. It is sent once, even after a double click.
+
+**Settings** in `fairhello.json`:
+
+```json
+{
+  "provider": "anthropic",
+  "model": "claude-haiku-5-5",
+  "signature": "Marta",
+  "retentionDays": 60,
+  "maxDraftsPerRun": 20
+}
+```
+
+For Ollama: `"provider": "ollama"`, `"model": "qwen3:8b"` (or any model you pulled) and, if it is not the default, `"ollamaUrl": "http://127.0.0.1:11434"`. The Anthropic key is in `ANTHROPIC_API_KEY` or in `fairhello-credentials.json`, readable only by you. Never share that file.
+
+**Beds24** sends messages only for bookings that came from a channel, and the invite code needs the **bookings-personal** scope with write access. Messages are erased `retentionDays` after check-out. The MCP server has a read-only tool, `get_guest_replies`. The full guide, in Italian, is [docs/risposte-ospiti.md](../../docs/risposte-ospiti.md).
+
 ## How calendars are read
 
 - **Airbnb**: "Reserved" counts as a stay; "Airbnb (Not available)" counts as a blocked date.

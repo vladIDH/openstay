@@ -18,7 +18,7 @@ export interface Io {
   err(line: string): void;
   fetch: FetchLike;
   now(): Date;
-  /** Environment variables (SMOOBU_API_KEY, SMOOBU_API_SECRET, BEDS24_REFRESH_TOKEN, AIRROI_API_KEY). Default: none. */
+  /** Environment variables (SMOOBU_API_KEY, SMOOBU_API_SECRET, BEDS24_REFRESH_TOKEN, AIRROI_API_KEY, ANTHROPIC_API_KEY). Default: none. */
   env?: Record<string, string | undefined>;
   /** The language of this computer, like "it-IT" (only for tests). Default: from LANG or the system. */
   locale?: string;
@@ -41,6 +41,10 @@ export interface Io {
   /** Only for tests: fake ISTAC and INE servers. */
   istacBaseUrl?: string;
   ineBaseUrl?: string;
+  /** Network access for the model that writes the guest drafts (Anthropic or Ollama). Default: global fetch. */
+  modelFetch?: SmoobuFetchLike;
+  /** Only for tests: a fake Anthropic server instead of https://api.anthropic.com. */
+  anthropicBaseUrl?: string;
   /** Open a link in the default browser (`fairnight apri`). Default: nothing is opened. */
   openUrl?(url: string): void;
   /** Waiting (rate limits, retries). Default: real time. */

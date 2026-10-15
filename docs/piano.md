@@ -105,6 +105,23 @@ Documenti in `docs/`, repo locale, licenza.
 
 **Totale fino alla fase 3: circa 49 giorni di lavoro.** La 0.1 pubblica esce dopo circa 13.
 
+### Fairhello: risposte agli ospiti (ramo `fairhello`, 15 ottobre 2026)
+
+Guida: `risposte-ospiti.md`.
+
+**Nella 0.1:**
+- messaggi letti e inviati tramite le API ufficiali di Smoobu e Beds24, con le chiavi dell'host;
+- bozze scritte da Claude Haiku, con la chiave dell'host, oppure da un modello locale via Ollama;
+- ogni risposta approvata dall'host, dalla pagina `/risposte` o con `fairnight risposte invia --applica`;
+- scheda della casa in `casa/<annuncio>.md`;
+- tool MCP in sola lettura `get_guest_replies`.
+
+**Versioni successive:**
+- **Lettura delle mail di Airbnb e Booking.com** (IMAP in sola lettura, come il co-host da cui viene il controllo di freschezza). I modelli di mail vanno riconosciuti in più lingue. La risposta via mail non è documentata dalle piattaforme: senza una fonte ufficiale resta solo la lettura.
+- **Invio automatico**, spento di default, solo per categorie sicure (wifi, orari, indicazioni), mai per soldi, sconti, rimborsi, reclami o codici d'accesso. Va deciso con l'host.
+- Altri gestionali con un'API messaggi ufficiale.
+- Un modello OpenAI con la chiave dell'host, se richiesto. Il piano gratuito di Gemini resta escluso, perché usa i dati per migliorare i prodotti di Google.
+
 ## Cosa esce nella 0.1 pubblica
 
 - Il motore con tutti i fattori della fase 1, ognuno spiegato notte per notte, con valori predefiniti documentati.
@@ -125,3 +142,16 @@ Documenti in `docs/`, repo locale, licenza.
 - Nessun nome di funzioni di PriceLabs nel codice o nei testi del prodotto.
 - Le fonti di mercato sono solo adattatori opzionali, con la chiave o il file dell'utente.
 - AirROI resta spento (`market.airroi.enabled: false`) finché non arriva la risposta scritta alla domanda n. 1 di `fonti-mercato.md`.
+
+## Versioni dello schema del database
+
+Ogni ramo che cambia `packages/fairnight-cli/src/db.ts` alza `SCHEMA_VERSION` di uno e aggiunge il suo passo in `MIGRATIONS`, nell'ordine in cui entra in main.
+
+| Versione | Cosa | Stato |
+|---|---|---|
+| 1–6 | calendari, Smoobu, Beds24, zone, Fairguest, piccoli hotel | in main |
+| 7 | Fairhello: tabelle `hello_*` | in main (merge della PR #12, 15 ottobre 2026) |
+| 8 | il primo che entra tra `fairguest-it` e `pilota` | da fare: oggi `fairguest-it` usa 7 e va rinumerato |
+| 9 | il secondo dei due | da fare: `pilota` aggiunge tabelle senza alzare la versione, e deve farlo |
+
+Chi rinumera aggiorna anche `test/db.test.ts`: la versione attesa e un fixture `schema-<n-1>.sql` con lo schema esatto della versione precedente.

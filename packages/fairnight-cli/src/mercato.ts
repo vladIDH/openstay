@@ -12,7 +12,7 @@
 import { createReadStream, existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { createGunzip } from "node:zlib";
-import { DEFAULT_MARKET, formatAmount } from "fairnight";
+import { DEFAULT_MARKET, describeComparables, formatAmount } from "fairnight";
 import {
   AIRROI_ATTRIBUTION,
   AIRROI_MAX_DAYS,
@@ -30,7 +30,7 @@ import { AIRROI_CREDENTIALS_FILE, airroiKeySource, loadAirRoiKey, saveAirRoiKey 
 import { isAreaName, loadHostConfig, SetupError, type HostConfig } from "./config.js";
 import { openDb } from "./db.js";
 import { CONFIG_FILE, configPath, dbPath, localToday, type Io } from "./io.js";
-import { deleteMarket, listMarketAreas, purgeExpiredMarket, saveMarket } from "./market-store.js";
+import { deleteMarket, listMarketAreas, loadComparables, purgeExpiredMarket, saveMarket } from "./market-store.js";
 
 export const FILE_SOURCES = ["csv", "insideairbnb"] as const;
 export type FileSource = (typeof FILE_SOURCES)[number];
@@ -133,9 +133,9 @@ export async function importFile(dir: string, io: Io, options: FileImportOptions
   const verb = options.dryRun ? "would import" : "imported";
 
   if (source === "csv") {
-    if (options.listingsFile !== undefined || Object.keys(options.filter).length > 0) {
-      throw new SetupError("--annunci, --tipo, --camere and --quartiere are for Inside Airbnb files only.");
-    }
+    // A CSV is already the host's own figures: --camere, --ospiti, --tipo and
+    // --quartiere only say which homes they describe (for the suggested base price).
+    if (options.listingsFile !== undefined) throw new SetupError("--annunci is for Inside Airbnb files only.");
     const r = parseMarketCsv(await readText(file));
     for (const issue of r.issues.slice(0, 20)) io.out(`  line ${issue.line}: ${issue.message}`);
     if (r.issues.length > 20) io.out(`  … and ${r.issues.length - 20} more lines with problems`);
@@ -157,6 +157,7 @@ export async function importFile(dir: string, io: Io, options: FileImportOptions
           readOn: today,
           importedAt: io.now().toISOString(),
           file: path.basename(file),
+          comparables: options.filter,
           days: r.days,
         });
       } finally {
@@ -176,11 +177,11 @@ export async function importFile(dir: string, io: Io, options: FileImportOptions
     only = reader.end();
     io.out(`${only.size} comparable listings of ${reader.seen} in ${path.basename(listingsPath)}.`);
     if (only.size === 0) {
-      io.err("No listing matches --tipo, --camere and --quartiere: nothing was imported.");
+      io.err("No listing matches --tipo, --camere, --ospiti and --quartiere: nothing was imported.");
       return 1;
     }
   } else if (Object.keys(options.filter).length > 0) {
-    throw new SetupError("--tipo, --camere and --quartiere need the listings file too: add --annunci listings.csv.gz.");
+    throw new SetupError("--tipo, --camere, --ospiti and --quartiere need the listings file too: add --annunci listings.csv.gz.");
   }
   const calendar = new InsideAirbnbCalendar(only);
   await streamText(file, (c) => calendar.feed(c));
@@ -208,6 +209,7 @@ export async function importFile(dir: string, io: Io, options: FileImportOptions
         importedAt: io.now().toISOString(),
         file: path.basename(file),
         note: `${s.listings} listings, snapshot from ${first}`,
+        comparables: options.filter,
         days: s.days,
       });
     } finally {
@@ -324,6 +326,8 @@ export function marketStatus(dir: string, io: Io): number {
       ].filter(Boolean);
       io.out(`- ${a.area}: ${a.source}, ${a.days} nights ${a.first} → ${a.last}, ${figures.join(", ")}; read ${a.readOn}.`);
       io.out(`  Source: ${a.attribution}.${a.note ? ` ${a.note}.` : ""}`);
+      const homes = describeComparables(loadComparables(db, a.area) ?? undefined);
+      io.out(`  Homes: ${homes !== "" ? homes : "the whole zone"}.`);
       if (a.expiresOn) io.out(`  Kept until ${a.expiresOn}, then deleted.`);
       if (a.estimated) io.out(`  ${INSIDE_AIRBNB_ESTIMATE_NOTE}`);
       const users = usersOf(config, a.area);

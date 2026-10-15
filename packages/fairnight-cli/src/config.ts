@@ -89,6 +89,8 @@ export interface HostListing {
   marketArea?: string;
   /** Where the listing is, as the host wrote it. `fairnight configura` uses it to propose the seasons. */
   city?: string;
+  /** How many guests the listing takes: the suggested base price checks that the zone's homes take as many. */
+  guests?: number;
 }
 
 /** Where AirROI should look for one zone, and which listings count as comparable. */
@@ -278,7 +280,10 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
       issues.push({ path: lp, message: "must be an object with name, calendars and pricing" });
       return;
     }
-    unknownFields(l, lp, ["name", "calendars", "pricing", "marketArea", "fairguest", "city"], issues);
+    unknownFields(l, lp, ["name", "calendars", "pricing", "marketArea", "fairguest", "city", "guests"], issues);
+    if (l.guests !== undefined && (typeof l.guests !== "number" || !Number.isInteger(l.guests) || l.guests < 1 || l.guests > 50)) {
+      issues.push({ path: `${lp}.guests`, message: `must be a whole number of guests from 1 to 50, got ${JSON.stringify(l.guests)}` });
+    }
     if (l.city !== undefined && (typeof l.city !== "string" || l.city.trim() === "" || l.city.length > 100)) {
       issues.push({ path: `${lp}.city`, message: `must be the name of a town, up to 100 characters, got ${JSON.stringify(l.city)}` });
     }
@@ -321,6 +326,7 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
       const listing: HostListing = { name: l.name as string, calendars, pricing: r.value };
       if (typeof l.marketArea === "string") listing.marketArea = l.marketArea;
       if (typeof l.city === "string") listing.city = l.city;
+      if (typeof l.guests === "number") listing.guests = l.guests;
       if (fairguest) listing.fairguest = fairguest;
       listings.push(listing);
     }

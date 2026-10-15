@@ -46,6 +46,23 @@ describe("Inside Airbnb import", () => {
     ]);
   });
 
+  it("keeps only the listings for the same number of guests (accommodates)", () => {
+    const listings = new InsideAirbnbListings({ guests: 4 });
+    feedInChunks(listings, LISTINGS);
+    expect([...listings.end()]).toEqual(["101", "104", "105"]);
+    const two = new InsideAirbnbListings({ guests: 2, bedrooms: 1 });
+    two.feed(LISTINGS);
+    expect([...two.end()]).toEqual(["102"]);
+  });
+
+  it("asks for the accommodates column only when guests are filtered", () => {
+    const listings = new InsideAirbnbListings({ guests: 4 });
+    expect(() => {
+      listings.feed(["id,room_type", "101,Entire home/apt", ""].join(String.fromCharCode(10)));
+      listings.end();
+    }).toThrow(/no accommodates column/);
+  });
+
   it("keeps only comparable listings when the listings file is given", () => {
     const listings = new InsideAirbnbListings({ roomType: "entire home/apt", bedrooms: 2, neighbourhood: "playa ficticia" });
     feedInChunks(listings, LISTINGS);

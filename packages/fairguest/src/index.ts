@@ -50,7 +50,7 @@ export type { AlloggiatiCredentials, AlloggiatiPlace, AlloggiatiTables, LinesOut
 export { changePassphrase, createKeys, DEFAULT_SCRYPT, open, PassphraseError, passphraseProblem, publicKeyOf, seal, SealError, unlock } from "./crypto.js";
 export type { KeyRecord, ScryptParams } from "./crypto.js";
 export { DEFAULT_ALLOGGIATI_ACCOUNT, SETTINGS_FIELDS, validateGuestSettings } from "./settings.js";
-export type { AlloggiatiSettings, GuestSettings } from "./settings.js";
+export type { AlloggiatiSettings, GuestSettings, IstatSettings } from "./settings.js";
 
 export { registryFor } from "./registry.js";
 export { LANGS, pickLang, WORDS } from "./form/words.js";
@@ -63,3 +63,10 @@ export { fromBase64url, hasWebX25519, padded, rawPublicKey, toBase64url, webSeal
 export type { X25519Fallback } from "./web-seal.js";
 export { BOX_ID, linkFor, readLinkFragment, relayPlace } from "./link.js";
 export type { LinkPayload } from "./link.js";
+export { ISTAT_REGION_KEYS, ISTAT_REGIONS, ROSS_PRODUCT } from "./istat/regions.js";
+export type { IstatMode, IstatRegion, IstatRegionKey } from "./istat/regions.js";
+export { istatStay, residenceProblems } from "./istat/record.js";
+export type { IstatGuest, IstatStay } from "./istat/record.js";
+export { NOT_SPECIFIED_TOURISM, NOT_SPECIFIED_TRANSPORT, Ross1000Client, rossFile } from "./istat/ross1000.js";
+export type { RossDay, RossOutcome } from "./istat/ross1000.js";
+export { dayFigures, monthSummary, provenance, PROVINCES, trentoCsv, umbriaDay } from "./istat/files.js";

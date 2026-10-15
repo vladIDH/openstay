@@ -16,6 +16,7 @@
  */
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { ConfigError, formatAmount, type ListingConfig, type SeasonPeriod } from "fairnight";
+import { ISTAT_REGIONS } from "fairguest";
 import { slugify } from "./channel.js";
 import { PILOT_DAYS, PILOT_MAX_CHANGE, PILOT_TIME, SetupError, normaliseCalendarUrl, validateHostConfig, type HostConfig, type IcalSource } from "./config.js";
 import { openDb } from "./db.js";
@@ -144,6 +145,17 @@ class Asker {
       if (["s", "si", "sì", "y", "yes"].includes(raw)) return true;
       if (["n", "no"].includes(raw)) return false;
       this.io.out("    Rispondi s (sì) oppure n (no).");
+    }
+    throw new SetupError("Configurazione interrotta: troppe risposte non valide.");
+  }
+
+  /** A whole number in a range. */
+  async count(question: string, current: number | undefined, max: number): Promise<number> {
+    for (let i = 0; i < Asker.TRIES; i++) {
+      const raw = await this.text(question, current !== undefined ? String(current) : undefined);
+      const n = Number(raw);
+      if (raw !== "" && Number.isInteger(n) && n >= 1 && n <= max) return n;
+      this.io.out(`    Scrivi un numero intero da 1 a ${max}.`);
     }
     throw new SetupError("Configurazione interrotta: troppe risposte non valide.");
   }
@@ -343,7 +355,23 @@ async function askListing(a: Asker, io: Io, raw: Obj | null, taken: Set<string>,
   }
   if (city !== undefined) entry.city = city;
   else delete entry.city;
+  await askRoomsAndBeds(a, io, entry);
   return entry;
+}
+
+/**
+ * Rooms and beds are asked only for a house in Italy whose Istat data goes to
+ * ROSS1000: every day sent there carries them. Nobody else is bothered.
+ */
+async function askRoomsAndBeds(a: Asker, io: Io, entry: Obj): Promise<void> {
+  const fg = isObj(entry.fairguest) ? (entry.fairguest as Obj) : null;
+  const istat = fg && isObj(fg.istat) ? (fg.istat as Obj) : null;
+  const region = istat && typeof istat.region === "string" ? (ISTAT_REGIONS as Record<string, { name: string; mode: string }>)[istat.region] : undefined;
+  if (!fg || fg.country !== "IT" || region?.mode !== "ross1000") return;
+  io.out("");
+  io.out(`  Istat (${region.name}, ROSS1000): ogni giorno si comunicano le camere e i letti della casa.`);
+  fg.rooms = await a.count("  Camere", typeof fg.rooms === "number" ? fg.rooms : undefined, 999);
+  fg.beds = await a.count("  Letti (quante persone può ospitare)", typeof fg.beds === "number" ? fg.beds : undefined, 9999);
 }
 
 function summary(listing: Obj): string[] {

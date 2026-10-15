@@ -104,6 +104,7 @@ function fieldOf(path: string): string {
     "address.postalCode": "postalCode",
     "address.locality": "locality",
     "address.municipalityCode": "postalCode",
+    "address.province": "province",
     phone2: "phone",
   };
   return map[rest] ?? rest;
@@ -129,7 +130,8 @@ export interface FormState {
   errors: Map<string, string>;
 }
 
-export function renderForm(w: Words, lang: Lang, country: Country, action: string, tok: string, registered: number, state: FormState): string {
+/** `residence`: in Italy, asked only when the listing sends Istat data. */
+export function renderForm(w: Words, lang: Lang, country: Country, action: string, tok: string, registered: number, state: FormState, options: { residence?: boolean } = {}): string {
   const v = (k: string) => esc(state.values[k] ?? "");
   const err = (k: string) => (state.errors.has(k) ? `<div class="err" id="${k}-err">${esc(state.errors.get(k) as string)}</div>` : "");
   const cls = (k: string) => (state.errors.has(k) ? ' class="has-err"' : "");
@@ -142,7 +144,7 @@ export function renderForm(w: Words, lang: Lang, country: Country, action: strin
   const countries = countryNames(lang).map((c): [string, string] => [c.code, c.name]);
   const first = registered === 0;
   const documentTypes = registryFor(country).documentTypes.map((d): [string, string] => [d, w.documentTypes[d]]);
-  if (country === "IT") return renderItalianForm(w, lang, action, tok, first, registered, state, { input, select, countries, documentTypes });
+  if (country === "IT") return renderItalianForm(w, lang, action, tok, first, registered, state, { input, select, countries, documentTypes }, options.residence === true);
   // Step 1: the person, where they live, how to reach them. Step 2: the document (and, for the holder, the payment).
   return `<form method="post" action="${esc(action)}" autocomplete="off" id="form">
 <input type="hidden" name="t" value="${esc(tok)}"><input type="hidden" name="lang" value="${lang}">
@@ -186,7 +188,7 @@ interface Controls {
  * document only for the holder. No address, contact or payment: the law does
  * not ask for them, so the form does not either.
  */
-function renderItalianForm(w: Words, lang: Lang, action: string, tok: string, first: boolean, registered: number, state: FormState, c: Controls): string {
+function renderItalianForm(w: Words, lang: Lang, action: string, tok: string, first: boolean, registered: number, state: FormState, c: Controls, residence: boolean): string {
   const hint = (k: string, text: string) => c.input(k, "text", 'maxlength="60"').replace(`${esc(w.fields[k] as string)}</label>`, `${esc(w.fields[k] as string)} <span class="hint">${esc(text)}</span></label>`);
   const province = (k: string) => c.input(k, "text", 'maxlength="2" autocapitalize="characters" size="2"');
   const sexes = SEXES.filter((x) => x !== "other").map((x): [string, string] => [x, w.sex[x]]);
@@ -205,6 +207,13 @@ ${first ? "" : c.select("kinship", KINSHIPS.map((k) => [k, w.kinship[k]]), w.ita
 <fieldset><legend>${esc(w.italy.birthSection)}</legend>
 ${c.select("birthCountry", c.countries)}${hint("birthPlace", w.italy.birthPlaceHint)}${province("birthProvince")}
 </fieldset>
+${
+  residence
+    ? `<fieldset><legend>${esc(w.italy.residenceSection)}</legend>
+${c.select("country", c.countries)}${hint("locality", w.italy.residenceHint)}${province("province")}
+</fieldset>`
+    : ""
+}
 </section>
 <section class="step"><h3><span class="n">2</span>${esc(w.steps.document)}</h3>
 ${
@@ -241,7 +250,7 @@ export function guestInput(f: URLSearchParams): Record<string, unknown> {
       spanish: f.get("docSpanish") === "1" && g("docType") === "passport",
       issuedIn: { country: g("docCountry"), locality: g("docPlace"), province: g("docProvince") },
     },
-    address: { country: g("country"), street: g("street"), postalCode: g("postalCode"), locality: g("locality") },
+    address: { country: g("country"), street: g("street"), postalCode: g("postalCode"), locality: g("locality"), province: g("province") },
     phone: g("phone"),
     email: g("email"),
   };
@@ -270,6 +279,7 @@ export const FORM_KEYS = [
   "street",
   "postalCode",
   "locality",
+  "province",
   "phone",
   "email",
   "payment",

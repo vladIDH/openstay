@@ -68,7 +68,7 @@ const expiryOf = (row: StayRow) => `${addDays(row.check_out, BOX_DAYS_AFTER_CHEC
  * The link of a stay: the box is created on the relay the first time, then the
  * same link is given again. `title` and `country` are what the guest sees.
  */
-export async function stayLink(db: Db, io: Io, config: HostConfig, row: StayRow, payload: { title: string; country: LinkPayload["c"] }): Promise<string> {
+export async function stayLink(db: Db, io: Io, config: HostConfig, row: StayRow, payload: { title: string; country: LinkPayload["c"]; residence?: boolean }): Promise<string> {
   const record = readKeys(db);
   if (!record) throw new RelayError('Guest registration is not turned on: "fairnight ospiti attiva".');
   const relay = relayOf(config);
@@ -82,7 +82,15 @@ export async function stayLink(db: Db, io: Io, config: HostConfig, row: StayRow,
     db.prepare("UPDATE guest_stays SET relay_box = ?, relay_read = ?, relay_write = ? WHERE id = ?").run(box, read, write, row.id);
     r = relayRow(db, row.id) as RelayRow;
   }
-  return linkFor(relay, r.relay_box as string, { k: record.publicKey, w: r.relay_write as string, c: payload.country, n: payload.title.slice(0, 80), i: row.check_in, o: row.check_out });
+  return linkFor(relay, r.relay_box as string, {
+    k: record.publicKey,
+    w: r.relay_write as string,
+    c: payload.country,
+    n: payload.title.slice(0, 80),
+    i: row.check_in,
+    o: row.check_out,
+    ...(payload.residence ? { r: 1 as const } : {}),
+  });
 }
 
 export interface PullReport {

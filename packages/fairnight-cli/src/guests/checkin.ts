@@ -16,7 +16,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { isIPv4, isIPv6 } from "node:net";
-import { errorsByField, esc, FORM_KEYS, guestInput, isPaymentType, localDateTime, LOCK, page, parseGuest, registryFor, renderForm, stayDay, stepsBar, TICK, type Words } from "fairguest";
+import { errorsByField, esc, FORM_KEYS, guestInput, isPaymentType, localDateTime, LOCK, page, parseGuest, registryFor, renderForm, residenceProblems, stayDay, stepsBar, TICK, type Words } from "fairguest";
 import { loadHostConfig } from "../config.js";
 import { openDb } from "../db.js";
 import { dbPath, type Io } from "../io.js";
@@ -142,6 +142,8 @@ export async function handleCheckin(req: IncomingMessage, res: ServerResponse, u
       return true;
     }
     const country = listing.fairguest.country;
+    // Italy: the residence only when the listing sends Istat data.
+    const residence = country === "IT" && !!listing.fairguest.istat;
     const law = (wl: Words) => (country === "IT" ? wl.italy : wl);
     const action = `/checkin/${code}`;
     const langLink = (l: Lang) => `${action}?lang=${l}`;
@@ -156,7 +158,7 @@ export async function handleCheckin(req: IncomingMessage, res: ServerResponse, u
 
     if (req.method === "GET") {
       const saved = Number(url.searchParams.get("saved"));
-      const form = renderForm(w, lang, country, action, tok, registered, { values: {}, errors: new Map() });
+      const form = renderForm(w, lang, country, action, tok, registered, { values: {}, errors: new Map() }, { residence });
       let body: string;
       if (registered >= MAX_GUESTS) body = header(lang, w, 3);
       else if (Number.isInteger(saved) && saved > 0) {
@@ -193,6 +195,7 @@ export async function handleCheckin(req: IncomingMessage, res: ServerResponse, u
     const parsed = parseGuest(guestInput(form), today);
     const problems = [...parsed.problems];
     problems.push(...registryFor(country).checkGuest(parsed.draft, registered, row.check_in));
+    if (residence) problems.push(...residenceProblems(parsed.draft, registered));
     const payment = form.get("payment") ?? "";
     // Only Spain asks for the type of payment (RD 933/2021); Italy does not.
     if (country !== "IT" && registered === 0 && !isPaymentType(payment)) problems.push({ path: "payment", message: "the type of payment is required" });
@@ -202,7 +205,7 @@ export async function handleCheckin(req: IncomingMessage, res: ServerResponse, u
       const body =
         header(postLang, pw, 1) +
         `<div class="banner bad" role="alert">${esc(pw.fix)}</div>` +
-        renderForm(pw, postLang, country, action, tok, registered, { values, errors: errorsByField(problems, pw) }) +
+        renderForm(pw, postLang, country, action, tok, registered, { values, errors: errorsByField(problems, pw) }, { residence }) +
         privacy(pw);
       send(res, 422, page(postLang, pw.title, body, nonce, (l) => `${action}?lang=${l}`), nonce);
       return true;

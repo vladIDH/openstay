@@ -42,6 +42,10 @@ export interface Io {
   alloggiatiUrl?: string;
   /** Only for tests: where the Alloggiati Web code tables are downloaded from (file name → URL). */
   alloggiatiTableUrls?: { municipalities: string; states: string; documents: string };
+  /** Network access for the regions' Istat web service (ROSS1000). Default: global fetch. */
+  istatFetch?: SmoobuFetchLike;
+  /** Only for tests: a fake ROSS1000 service instead of the region's. */
+  istatUrl?: string;
   /** Network access for the relay of the guests' check-in link. Default: global fetch. */
   relayFetch?: RelayFetchLike;
   /** Network access for the open data services (ISTAC, INE). Default: global fetch. */

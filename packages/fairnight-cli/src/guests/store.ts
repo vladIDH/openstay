@@ -397,12 +397,15 @@ function dropFiles(db: Db, stayId: string): void {
  * check-in code and the files. What stays: id, listing, dates and the record of
  * the communications (without data), so the deadlines stay explainable.
  */
-export function eraseStay(db: Db, stayId: string, now: Date): void {
+export function eraseStay(db: Db, stayId: string, now: Date, options: { keepIstat?: boolean } = {}): void {
   db.pragma("secure_delete = ON");
   db.transaction(() => {
     dropFiles(db, stayId);
     db.prepare("DELETE FROM guest_people WHERE stay_id = ?").run(stayId);
     db.prepare("UPDATE guest_stays SET channel_data = NULL, host_data = NULL, code = NULL, erased_at = ? WHERE id = ?").run(localDateTime(now), stayId);
+    // Italy: the retention of Alloggiati Web keeps the Istat record (no name, no document) until the region has the month;
+    // an erasure on request takes it too.
+    if (!options.keepIstat && hasColumnOf(db, "guest_stays", "istat_data")) db.prepare("UPDATE guest_stays SET istat_data = NULL WHERE id = ?").run(stayId);
   })();
 }
 
@@ -437,7 +440,7 @@ export function applyRetention(db: Db, config: HostConfig, now: Date): { erased:
     }
     const rule = retentionOf(db, row, s);
     if (rule.eraseFrom !== null && at >= rule.eraseFrom) {
-      eraseStay(db, row.id, now);
+      eraseStay(db, row.id, now, { keepIstat: true });
       out.erased.push({ id: row.id, reason: rule.reason });
     }
   }

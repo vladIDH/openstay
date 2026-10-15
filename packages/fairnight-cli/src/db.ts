@@ -16,7 +16,7 @@ import { SetupError } from "./config.js";
 
 export type Db = Database.Database;
 
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (
@@ -171,6 +171,8 @@ CREATE TABLE IF NOT EXISTS guest_stays (
   relay_box    TEXT,
   relay_read   TEXT,
   relay_write  TEXT,
+  -- Italy (version 10): sealed Istat record of the guests (no name, no document), kept until the region has the month
+  istat_data   TEXT,
   UNIQUE (listing, source, source_uid)
 );
 
@@ -197,6 +199,16 @@ CREATE TABLE IF NOT EXISTS guest_submissions (
   -- a file written for the host to upload (Mossos); deleted with the personal data
   file     TEXT,
   detail   TEXT
+);
+
+-- Version 10: each day of the Istat movement sent to the region (ROSS1000), per listing.
+CREATE TABLE IF NOT EXISTS guest_istat_days (
+  listing TEXT NOT NULL,
+  day     TEXT NOT NULL,
+  status  TEXT NOT NULL CHECK (status IN ('accepted', 'rejected')),
+  at      TEXT NOT NULL,
+  detail  TEXT,
+  PRIMARY KEY (listing, day)
 );
 
 -- Version 8: the Alloggiati Web receipts (one PDF per account and day), kept
@@ -354,6 +366,12 @@ const MIGRATIONS: { to: number; run(db: Database.Database): void }[] = [
     run: (db) => {
       for (const c of ["relay_box", "relay_read", "relay_write"]) if (!hasColumn(db, "guest_stays", c)) db.exec(`ALTER TABLE guest_stays ADD COLUMN ${c} TEXT`);
       if (!hasColumn(db, "guest_people", "place")) db.exec("ALTER TABLE guest_people ADD COLUMN place TEXT");
+    },
+  },
+  {
+    to: 10, // Istat in Italy: the sealed statistical record of a stay (and the days table, new)
+    run: (db) => {
+      if (!hasColumn(db, "guest_stays", "istat_data")) db.exec("ALTER TABLE guest_stays ADD COLUMN istat_data TEXT");
     },
   },
 ];

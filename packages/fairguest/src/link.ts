@@ -23,6 +23,8 @@ export interface LinkPayload {
   /** Check-in and check-out, "YYYY-MM-DD". */
   i: string;
   o: string;
+  /** 1 when the residence is asked (Italy, a listing that sends Istat data). */
+  r?: 1;
 }
 
 export const BOX_ID = /^[A-Za-z0-9_-]{22}$/;
@@ -47,7 +49,8 @@ export function readLinkFragment(hash: string): LinkPayload | null {
       typeof p.n === "string" &&
       p.n.length <= 80 &&
       isDate(p.i) &&
-      isDate(p.o);
+      isDate(p.o) &&
+      (p.r === undefined || p.r === 1);
     return ok ? (p as LinkPayload) : null;
   } catch {
     return null;

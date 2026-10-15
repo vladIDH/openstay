@@ -23,6 +23,7 @@ import {
   pickLang,
   readLinkFragment,
   registryFor,
+  residenceProblems,
   relayPlace,
   renderForm,
   stayDay,
@@ -102,7 +103,7 @@ function showForm(view: FormView = { values: {}, errors: new Map() }): void {
   const w = WORDS[lang];
   document.documentElement.lang = lang;
   document.title = w.title;
-  const form = renderForm(w, lang, link.c, "#", "", saved, { values: view.values, errors: view.errors });
+  const form = renderForm(w, lang, link.c, "#", "", saved, { values: view.values, errors: view.errors }, { residence: link.r === 1 });
   app.innerHTML =
     header(w, 1) +
     (view.banner ? `<div class="banner bad" role="alert">${esc(view.banner)}</div>` : `<p class="intro">${esc(law(w).intro)}</p>`) +
@@ -193,6 +194,7 @@ async function submit(form: HTMLFormElement): Promise<void> {
   const fields = new URLSearchParams(values);
   const parsed = parseGuest(guestInput(fields), today());
   const problems: Problem[] = [...parsed.problems, ...registryFor(link.c).checkGuest(parsed.draft, saved, link.i)];
+  if (link.r === 1) problems.push(...residenceProblems(parsed.draft, saved));
   const payment = values.payment ?? "";
   if (link.c !== "IT" && saved === 0 && !isPaymentType(payment)) problems.push({ path: "payment", message: "the type of payment is required" });
   if (problems.length > 0 || !parsed.guest) return showForm({ values, errors: errorsByField(problems, w), banner: w.fix });

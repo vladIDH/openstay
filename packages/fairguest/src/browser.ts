@@ -18,3 +18,4 @@ export { padded, webSeal } from "./web-seal.js";
 export type { X25519Fallback } from "./web-seal.js";
 export { BOX_ID, linkFor, readLinkFragment, relayPlace } from "./link.js";
 export type { LinkPayload } from "./link.js";
+export { residenceProblems } from "./istat/record.js";

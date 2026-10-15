@@ -17,6 +17,7 @@ process.exitCode = await main(process.argv.slice(2), {
   airroiFetch: (url, init) => fetch(url, init),
   alloggiatiFetch: (url, init) => fetch(url, init),
   relayFetch: (url, init) => fetch(url, init),
+  istatFetch: (url, init) => fetch(url, init),
   system: {
     platform: process.platform,
     home: os.homedir(),

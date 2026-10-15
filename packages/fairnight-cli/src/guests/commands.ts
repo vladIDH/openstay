@@ -7,10 +7,18 @@
  *   prepare, export. Personal data is never passed as a command-line argument,
  *   so it never ends up in the shell history: corrections are asked for.
  */
+import type { KeyObject } from "node:crypto";
 import { chmodSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
   addDays,
+  ISTAT_REGIONS,
+  monthSummary,
+  rossFile,
+  trentoCsv,
+  umbriaDay,
+  type IstatStay,
+  type RossDay,
   ALLOGGIATI_PORTAL,
   alloggiatiFile,
   changePassphrase,
@@ -39,6 +47,7 @@ import { getMeta, openDb, setMeta, type Db } from "../db.js";
 import { UsageError } from "../errors.js";
 import { DATA_DIR, dbPath, type Io } from "../io.js";
 import { PAGE_HASHES } from "./page-hashes.js";
+import { acceptedDays, applyIstatRetention, blockedDays, keepIstat, loadIstatCredentials, readIstat, recordIstatDay, rossClient, saveIstatCredentials } from "./istat.js";
 import { MRZ_MODEL_SHA256, checkPage, pullRelay, relayOf, stayLink, type PullReport } from "./relay.js";
 import { alloggiatiClient, downloadTables, dropOldReceipts, hasCredentials, loadCredentials, loadTables, receipts, saveCredentials, saveReceipt, TABLES_MAX_DAYS } from "./italy.js";
 import {
@@ -82,6 +91,8 @@ export interface GuestOptions {
   account?: string;
   prova?: boolean;
   verifica?: boolean;
+  mese?: string;
+  istat?: boolean;
 }
 
 export const GUEST_USAGE = `  fairnight ospiti                                 guest communications due, late or open (no passphrase) [--json]
@@ -101,6 +112,8 @@ export const GUEST_USAGE = `  fairnight ospiti                                 g
   fairnight ospiti riconosciuto <stay>             Italy: you saw the guests in person or on a live video call
   fairnight ospiti invia [<stay>…]                 Italy: the schedine due; checks them with --prova, sends them with --applica
   fairnight ospiti ricevute                        Italy: download the Alloggiati Web receipts not saved yet (last 30 days)
+  fairnight ospiti istat [--mese YYYY-MM]          Italy: the month's Istat movement; ROSS1000 sends with --applica, other regions get a file or the figures
+  fairnight ospiti credenziali --istat             Italy: save the ROSS1000 user and password of the structure, sealed [--account NAME]
   fairnight ospiti esporta <stay>                  a guest's data as JSON, on request [--persona N] [--out file]
   fairnight ospiti cancella <stay>                 erase on request; shows what, erases with --applica [--persona N]
   fairnight ospiti pulisci                         apply the retention rules now`;
@@ -193,6 +206,7 @@ export async function runGuests(dir: string, values: GuestOptions, rest: string[
     const retention = applyRetention(db, config, io.now());
     for (const e of retention.erased) io.out(`Erased the personal data of stay ${e.id}: ${e.reason}.`);
     for (const r of dropOldReceipts(db, io.now())) io.out(`Deleted the Alloggiati Web receipt ${r}: kept the 5 years the law asks.`);
+    applyIstatRetention(db, config, io.now());
 
     switch (sub) {
       case "scadenze":
@@ -244,6 +258,8 @@ export async function runGuests(dir: string, values: GuestOptions, rest: string[
       case "ricevute":
       case "receipts":
         return await fetchReceipts(dir, db, config, args, io);
+      case "istat":
+        return await istatCommand(dir, db, config, args, values, io);
       case "esporta":
       case "export":
         return await exportStay(db, config, args, values, io);
@@ -338,6 +354,7 @@ function deadlines(db: Db, config: HostConfig, args: string[], values: GuestOpti
   for (const r of pending) io.out(deadlineLine(r));
   if (late > 0) io.out(`${late} communication${late === 1 ? " is" : "s are"} late: make ${late === 1 ? "it" : "them"} now, then "fairnight ospiti inviato <stay> --tipo …".`);
   if (pending.some((r) => r.country === "IT")) io.out('Italy: "fairnight ospiti invia" shows the schedine due; "--applica" sends them to Alloggiati Web.');
+  for (const line of istatReminders(db, config, io)) io.out(line);
   return late > 0 ? 1 : 0;
 }
 
@@ -727,6 +744,7 @@ const italyAccount = (s: GuestSettings) => s.alloggiati?.account ?? DEFAULT_ALLO
 async function credentials(db: Db, args: string[], values: GuestOptions, io: Io): Promise<number> {
   noExtra(args);
   const account = accountOf(values);
+  if (values.istat) return await istatCredentials(db, account, values, io);
   if (values.verifica) {
     // Asks the service for a token and checks it: no schedina is sent.
     const key = await unlockedKey(db, io);
@@ -949,6 +967,8 @@ async function sendItaly(dir: string, db: Db, config: HostConfig, args: string[]
       offset += item.lines.length;
       const okCount = outcomes.filter((x) => x.ok).length;
       if (sent.result.ok && okCount === item.lines.length) {
+        // What Istat still needs, kept apart (no name, no document) before the guests' data goes.
+        if (item.o.settings.istat) for (const p of keepIstat(db, item.o, tablesNow)) io.out(`${item.o.stay.id}: Istat record incomplete, ${p}`);
         recordSubmission(db, { stayId: item.o.stay.id, kind: "checkin", channel: ALLOGGIATI_CHANNEL, status: "accepted", at, batch: g.account, detail: `${okCount} schedine accepted` });
         io.out(`${item.o.stay.id}: sent to Alloggiati Web, ${okCount} schedin${okCount === 1 ? "a" : "e"} accepted.`);
       } else {
@@ -1037,7 +1057,7 @@ async function link(db: Db, config: HostConfig, args: string[], io: Io): Promise
   if (row.check_in > addDays(today, 110)) throw new SetupError(`Stay ${row.id} starts on ${row.check_in}: a link can be made from 110 days before.`);
   const listing = config.listings.find((l) => l.name === row.listing);
   const settings = settingsOf(config, row);
-  const url = await stayLink(db, io, config, row, { title: listing?.pricing.name ?? row.listing, country: settings.country });
+  const url = await stayLink(db, io, config, row, { title: listing?.pricing.name ?? row.listing, country: settings.country, residence: settings.country === "IT" && !!settings.istat });
   io.out(url);
   io.out("");
   io.out("Send it to the guest the way you usually write to them. It works from any phone, until two days after check-out.");
@@ -1065,4 +1085,173 @@ async function verifyPage(config: HostConfig, args: string[], io: Io): Promise<n
   if (bad === 0) io.out(`${relay} serves exactly the page of this version of Fairguest.`);
   else io.out(`${relay} serves ${bad} file${bad === 1 ? "" : "s"} different from this version: do not send its links until you know why (an update of the relay, or someone changed it).`);
   return bad > 0 ? 1 : 0;
+}
+
+// ---------------------------------------------------------------- Italy, Istat
+
+const monthOf = (day: string) => day.slice(0, 7);
+const previousMonth = (day: string) => addDays(`${monthOf(day)}-01`, -1).slice(0, 7);
+const lastDayOf = (month: string) => addDays(`${addDays(`${month}-28`, 4).slice(0, 7)}-01`, -1);
+
+/** In the first half of the month: the previous month's Istat figures to send, per listing. */
+function istatReminders(db: Db, config: HostConfig, io: Io): string[] {
+  const today = localDateTime(io.now()).slice(0, 10);
+  if (Number(today.slice(8, 10)) > 15) return [];
+  const month = previousMonth(today);
+  const out: string[] = [];
+  for (const l of guestListings(config.listings)) {
+    const istat = l.fairguest.istat;
+    if (l.fairguest.country !== "IT" || !istat) continue;
+    const region = ISTAT_REGIONS[istat.region];
+    if (region.mode === "ross1000") {
+      const done = acceptedDays(db, l.name);
+      let missing = 0;
+      for (let d = `${month}-01`; d <= lastDayOf(month); d = addDays(d, 1)) if (!done.has(d)) missing++;
+      if (missing === 0) continue;
+      out.push(`Istat ${region.name} (${l.name}): ${missing} day${missing === 1 ? "" : "s"} of ${month} not sent yet, ${region.deadline}: fairnight ospiti istat --mese ${month} --applica`);
+    } else out.push(`Istat ${region.name} (${l.name}): the figures of ${month}, ${region.deadline}: fairnight ospiti istat --mese ${month}`);
+  }
+  return out;
+}
+
+async function istatCredentials(db: Db, account: string, values: GuestOptions, io: Io): Promise<number> {
+  if (values.verifica) throw new UsageError('ROSS1000 has no call to check the credentials alone: the first "fairnight ospiti istat --applica" tells.');
+  if (!io.prompt) throw new SetupError("The credentials are asked in a terminal (the password without echo), never written on the command line.");
+  io.out(`ROSS1000, account "${account}": the user and the transmission password of the structure (with SPID/CIE, ask the region's tourism office for a transmission password).`);
+  const user = (await io.prompt("Utente: ", { hidden: false })).trim();
+  const password = await io.prompt("Password: ", { hidden: true });
+  if (!user || !password) throw new SetupError("User and password are both needed: nothing was saved.");
+  saveIstatCredentials(db, account, { user, password });
+  io.out("Saved, sealed with your Fairguest key: they open only with the passphrase.");
+  return 0;
+}
+
+/** The Istat records of the stays of a listing that touch the period, kept when still missing. */
+function istatRecords(db: Db, config: HostConfig, listing: string, from: string, to: string, key: KeyObject, tables: AlloggiatiTables, io: Io) {
+  const records = new Map<string, IstatStay>();
+  const missing = new Map<string, string>();
+  const today = localDateTime(io.now()).slice(0, 10);
+  for (const row of listStays(db, { listing, fromCheckOut: from }).filter((r) => r.check_in <= to && !r.cancelled_at)) {
+    let r = readIstat(db, row.id, key);
+    if (!r && !row.erased_at) {
+      const o = openStay(db, row, settingsOf(config, row), key, today);
+      const problems = keepIstat(db, o, tables);
+      if (problems.length > 0) missing.set(row.id, problems.join("; "));
+      r = readIstat(db, row.id, key);
+    }
+    if (r) records.set(row.id, r);
+    else if (!missing.has(row.id)) missing.set(row.id, "the guests' data is no longer there and no Istat record was kept");
+  }
+  return { records, missing };
+}
+
+async function istatCommand(dir: string, db: Db, config: HostConfig, args: string[], values: GuestOptions, io: Io): Promise<number> {
+  noExtra(args);
+  const today = localDateTime(io.now()).slice(0, 10);
+  const month = values.mese ?? monthOf(today);
+  if (!/^[0-9]{4}-(0[1-9]|1[0-2])$/.test(month)) throw new UsageError(`--mese is a month like 2099-06, got "${month}"`);
+  const from = `${month}-01`;
+  const last = lastDayOf(month);
+  const to = last < today ? last : addDays(today, -1);
+  if (to < from) throw new UsageError(`The month ${month} has no day to communicate yet: Istat takes the days that are over.`);
+  const listings = guestListings(config.listings).filter((l) => l.fairguest.country === "IT" && l.fairguest.istat);
+  if (listings.length === 0) {
+    io.out('No listing in Italy has an "istat" block in fairnight.config.json (region and code): see docs/fairguest-italia.md.');
+    return 0;
+  }
+  const tablesNow = await freshTables(dir, db, io);
+  const key = await unlockedKey(db, io);
+  const folder = path.resolve(io.cwd, values.out ?? path.join(dir, DATA_DIR, "fairguest", "istat"));
+  const at = localDateTime(io.now());
+  let failures = 0;
+  for (const l of listings) {
+    const istat = l.fairguest.istat as NonNullable<GuestSettings["istat"]>;
+    const region = ISTAT_REGIONS[istat.region];
+    io.out(`${l.name} · Istat ${region.name} · ${month} (${from} → ${to}) · ${region.deadline}`);
+    const { records, missing } = istatRecords(db, config, l.name, from, to, key, tablesNow, io);
+    for (const [id, why] of missing) io.out(`  ${id}: ${why}`);
+    const stays = [...records.values()];
+    const rowsOf = listStays(db, { listing: l.name, fromCheckOut: from }).filter((r) => r.check_in <= to && !r.cancelled_at);
+    const missingOn = (day: string) => rowsOf.some((r) => missing.has(r.id) && (r.check_in === day || r.check_out === day));
+    mkdirSync(folder, { recursive: true });
+
+    if (region.mode === "ross1000") {
+      const done = acceptedDays(db, l.name);
+      const closed = blockedDays(db, l.name, from, to);
+      const ready: RossDay[] = [];
+      const incomplete: string[] = [];
+      for (let d = from; d <= to; d = addDays(d, 1)) {
+        if (done.has(d)) continue;
+        if (missingOn(d)) {
+          incomplete.push(d);
+          continue;
+        }
+        const occupied = rowsOf.some((r) => r.check_in <= d && d < r.check_out);
+        const arrivals = stays.filter((s) => s.checkIn === d).flatMap((s) => s.guests);
+        const departures = stays.filter((s) => s.checkOut === d).flatMap((s) => s.guests.map((g) => ({ id: g.id, type: g.type, arrival: s.checkIn })));
+        ready.push({ day: d, open: occupied || !closed.has(d), roomsOccupied: occupied ? (l.fairguest.rooms ?? 1) : 0, rooms: l.fairguest.rooms ?? 1, beds: l.fairguest.beds ?? 1, arrivals, departures });
+      }
+      if (incomplete.length > 0) io.out(`  Not ready: ${incomplete.join(", ")} (a stay without its guests' data). Complete them, then run again.`);
+      if (ready.length === 0) {
+        io.out(incomplete.length === 0 ? "  Every day of the period is already accepted by ROSS1000." : "  Nothing ready to send.");
+        failures += incomplete.length > 0 ? 1 : 0;
+        continue;
+      }
+      const file = path.join(folder, `ross1000-${l.name}-${month}.xml`);
+      writeFileSync(file, rossFile(istat.code, ready), { mode: 0o600 });
+      io.out(`  ${ready.length} day${ready.length === 1 ? "" : "s"} ready (${ready.reduce((n, d) => n + d.arrivals.length, 0)} arrivals, ${ready.reduce((n, d) => n + d.departures.length, 0)} departures). File for the portal: ${file}`);
+      if (!values.applica) {
+        io.out('  Not sent: "--applica" sends them to ROSS1000; or upload the file in the portal ("Importa file gestionale").');
+        continue;
+      }
+      const c = loadIstatCredentials(db, istat.account, key);
+      if (!c) {
+        failures++;
+        io.out(`  No ROSS1000 credentials for account "${istat.account}": "fairnight ospiti credenziali --istat${istat.account === DEFAULT_ALLOGGIATI_ACCOUNT ? "" : ` --account ${istat.account}`}". Nothing was sent.`);
+        continue;
+      }
+      const outcomes = await rossClient(io, region.endpoint as string).send(c.user, c.password, istat.code, ready);
+      for (const o of outcomes) {
+        recordIstatDay(db, l.name, o.day, o.ok, at, o.errors.length ? o.errors.join("; ") : null);
+        if (!o.ok) {
+          failures++;
+          io.out(`  ${o.day}: refused: ${o.errors.join("; ") || "no answer for this day"}`);
+        }
+      }
+      const okDays = outcomes.filter((o) => o.ok).length;
+      io.out(`  ROSS1000 accepted ${okDays} of ${outcomes.length} days.`);
+      rmSync(file, { force: true });
+      continue;
+    }
+    const complete = stays.filter((s) => !rowsOf.some((r) => missing.has(r.id) && r.check_in === s.checkIn && r.check_out === s.checkOut));
+    if (region.mode === "trento-file") {
+      const arriving = complete.filter((s) => s.checkIn >= from && s.checkIn <= to);
+      const file = path.join(folder, `istat-trento-${l.name}-${month}.csv`);
+      writeFileSync(file, trentoCsv(istat.code, arriving), { mode: 0o600 });
+      io.out(`  Wrote ${file}: ${arriving.length} stay${arriving.length === 1 ? "" : "s"}. Upload it on ${region.portal} (menu import › upload): the portal takes arrivals of this month and the previous one.`);
+    } else if (region.mode === "umbria-file") {
+      const sub = path.join(folder, `umbria-${l.name}-${month}`);
+      mkdirSync(sub, { recursive: true });
+      let n = 0;
+      for (let d = from; d <= to; d = addDays(d, 1)) {
+        if (missingOn(d)) continue;
+        const f = umbriaDay(istat.code, l.fairguest.rooms ?? 1, complete, d);
+        writeFileSync(path.join(sub, f.name), f.text, { mode: 0o600 });
+        n++;
+      }
+      io.out(`  Wrote ${n} daily file${n === 1 ? "" : "s"} in ${sub}: on Turismatica, «Inserimento tramite upload da file .txt», one per day.`);
+    } else if (region.mode === "alloggiati-file") {
+      io.out(`  ${region.name}: SPOT Easy takes the Alloggiati Web file. Make it with "fairnight ospiti prepara <stay>" and upload it on ${region.portal}.`);
+    } else {
+      const rows = monthSummary(complete, month);
+      io.out(`  ${region.portal} takes the figures only by hand. ${month}:`);
+      if (rows.length === 0) io.out("  no guest this month.");
+      for (const r of rows) io.out(`  ${r.description.padEnd(28)} arrivals ${String(r.arrivals).padStart(3)} · nights ${String(r.nights).padStart(4)}`);
+      const nights = (d: string) => (rowsOf.some((r) => r.check_in <= d && d < r.check_out) ? 1 : 0);
+      let occupied = 0;
+      for (let d = from; d <= to; d = addDays(d, 1)) occupied += nights(d);
+      io.out(`  Nights the listing was occupied: ${occupied}.`);
+    }
+  }
+  return failures > 0 ? 1 : 0;
 }

@@ -202,7 +202,7 @@ ${c.select("sex", sexes)}
 ${c.select("nationality", c.countries)}
 ${first ? "" : c.select("kinship", KINSHIPS.map((k) => [k, w.kinship[k]]), w.italy.kinshipHint)}
 </fieldset>
-<fieldset><legend>${esc(w.fields.birthPlace as string)}</legend>
+<fieldset><legend>${esc(w.italy.birthSection)}</legend>
 ${c.select("birthCountry", c.countries)}${hint("birthPlace", w.italy.birthPlaceHint)}${province("birthProvince")}
 </fieldset>
 </section>
@@ -211,7 +211,7 @@ ${
   first
     ? `<fieldset><legend>${esc(w.sections.document)}</legend>
 ${c.select("docType", c.documentTypes)}
-${c.input("docNumber", "text", 'maxlength="20" autocapitalize="characters"')}
+${c.input("docNumber", "text", 'maxlength="20" autocapitalize="characters"').replace(/ <span class="hint">[^<]*<\/span>/, "")}
 ${c.select("docCountry", c.countries)}${hint("docPlace", w.italy.docPlaceHint)}${province("docProvince")}
 </fieldset>`
     : `<p class="message">${esc(w.italy.noDocument)}</p>`

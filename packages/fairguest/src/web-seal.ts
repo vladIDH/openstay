@@ -38,7 +38,7 @@ export function fromBase64url(text: string): Uint8Array {
   return Uint8Array.from(s, (c) => c.charCodeAt(0));
 }
 
-const concat = (...parts: Uint8Array[]) => {
+const concat = (...parts: Uint8Array[]): Uint8Array<ArrayBuffer> => {
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   let at = 0;
   for (const p of parts) {
@@ -65,7 +65,10 @@ export async function hasWebX25519(subtle: Subtle = globalThis.crypto.subtle): P
   }
 }
 
-async function ephemeralSecret(subtle: Subtle, recipientSpki: Uint8Array, fallback: X25519Fallback | undefined): Promise<{ secret: Uint8Array; ephSpki: Uint8Array }> {
+/** Bytes that own a plain ArrayBuffer, as Web Crypto's types want them. */
+type Bytes = Uint8Array<ArrayBuffer>;
+
+async function ephemeralSecret(subtle: Subtle, recipientSpki: Bytes, fallback: X25519Fallback | undefined): Promise<{ secret: Bytes; ephSpki: Bytes }> {
   if (!fallback || (await hasWebX25519(subtle))) {
     const eph = (await subtle.generateKey({ name: "X25519" }, true, ["deriveBits"])) as KeyPair;
     const recipient = await subtle.importKey("spki", recipientSpki, { name: "X25519" }, false, []);
@@ -74,7 +77,7 @@ async function ephemeralSecret(subtle: Subtle, recipientSpki: Uint8Array, fallba
     return { secret, ephSpki };
   }
   const pair = fallback.keyPair();
-  return { secret: fallback.shared(pair.privateKey, recipientSpki.slice(12)), ephSpki: concat(SPKI_PREFIX, pair.publicKey) };
+  return { secret: new Uint8Array(fallback.shared(pair.privateKey, recipientSpki.slice(12))), ephSpki: concat(SPKI_PREFIX, pair.publicKey) };
 }
 
 /**

@@ -51,6 +51,23 @@ export interface Words {
     birthPlaceHint: string;
     docPlaceHint: string;
     noDocument: string;
+    birthSection: string;
+  };
+  /** The link that works from anywhere (fairguest-relay): the photo of the document and the sending. */
+  remote: {
+    photoTitle: string;
+    photoButton: string;
+    photoHint: string;
+    reading: string;
+    readOk: string;
+    readPartial: string;
+    readFail: string;
+    encrypted: string;
+    sending: string;
+    sendFail: string;
+    expired: string;
+    oldBrowser: string;
+    noScript: string;
   };
   notFound: string;
   notFoundText: string;
@@ -196,6 +213,23 @@ const es: Words = {
     birthPlaceHint: "Solo si nació en Italia.",
     docPlaceHint: "Solo para documentos expedidos en Italia: el municipio que lo expidió.",
     noDocument: "Para los familiares y los demás miembros del grupo no hace falta el documento: basta con el del titular.",
+    birthSection: "Lugar de nacimiento",
+  },
+  remote: {
+    photoTitle: "Fotografíe el documento",
+    photoButton: "Hacer o elegir una foto",
+    photoHint:
+      "Encuadre la parte con las líneas de letras y «<» (en el reverso del DNI o de la tarjeta, al pie de la página de la foto del pasaporte). La foto se queda en este teléfono: se lee aquí y nunca se envía ni se guarda.",
+    reading: "Leyendo el documento…",
+    readOk: "Datos leídos del documento: revíselos antes de guardar.",
+    readPartial: "He leído el documento, pero algunos caracteres no son seguros: revise bien los datos.",
+    readFail: "No he podido leer las líneas del documento. Pruebe con más luz y el documento recto, o rellene a mano.",
+    encrypted: "Los datos se cifran en este teléfono antes de salir: el servicio que los transporta no puede leerlos.",
+    sending: "Enviando…",
+    sendFail: "No se ha podido enviar. Compruebe la conexión y vuelva a intentarlo: lo escrito sigue aquí.",
+    expired: "Este enlace ya no es válido. Pida uno nuevo al anfitrión.",
+    oldBrowser: "Este navegador es demasiado antiguo para cifrar los datos. Actualícelo o use otro navegador.",
+    noScript: "Este formulario necesita JavaScript para cifrar los datos en su teléfono.",
   },
 };
 
@@ -336,6 +370,23 @@ const en: Words = {
     birthPlaceHint: "Only if born in Italy.",
     docPlaceHint: "Only for documents issued in Italy: the municipality that issued it.",
     noDocument: "Family members and other members of the group do not need a document: the one of the guest who booked is enough.",
+    birthSection: "Place of birth",
+  },
+  remote: {
+    photoTitle: "Take a photo of your document",
+    photoButton: "Take or choose a photo",
+    photoHint:
+      "Frame the part with the lines of letters and «<» (on the back of an identity card, at the bottom of a passport's photo page). The photo stays on this phone: it is read here and never sent or saved.",
+    reading: "Reading the document…",
+    readOk: "Details read from the document: check them before saving.",
+    readPartial: "The document was read, but some characters are uncertain: check the details carefully.",
+    readFail: "The lines of the document could not be read. Try again with more light and the document straight, or fill in by hand.",
+    encrypted: "Your details are encrypted on this phone before they leave: the service that carries them cannot read them.",
+    sending: "Sending…",
+    sendFail: "Sending failed. Check the connection and try again: what you wrote is still here.",
+    expired: "This link is no longer valid. Ask the host for a new one.",
+    oldBrowser: "This browser is too old to encrypt the details. Update it or use another browser.",
+    noScript: "This form needs JavaScript to encrypt your details on your phone.",
   },
 };
 
@@ -476,6 +527,23 @@ const it: Words = {
     birthPlaceHint: "Solo per chi è nato in Italia.",
     docPlaceHint: "Solo per i documenti rilasciati in Italia: il comune che lo ha rilasciato.",
     noDocument: "Per i familiari e gli altri membri del gruppo il documento non serve: basta quello di chi ha prenotato.",
+    birthSection: "Luogo di nascita",
+  },
+  remote: {
+    photoTitle: "Fotografa il documento",
+    photoButton: "Scatta o scegli una foto",
+    photoHint:
+      "Inquadra la parte con le righe di lettere e «<» (sul retro della carta d'identità, in fondo alla pagina con la foto del passaporto). La foto resta su questo telefono: viene letta qui e non viene mai inviata né salvata.",
+    reading: "Sto leggendo il documento…",
+    readOk: "Dati letti dal documento: controllali prima di salvare.",
+    readPartial: "Il documento è stato letto, ma alcuni caratteri non sono sicuri: controlla bene i dati.",
+    readFail: "Non sono riuscito a leggere le righe del documento. Riprova con più luce e il documento dritto, oppure compila a mano.",
+    encrypted: "I dati vengono cifrati su questo telefono prima di partire: il servizio che li trasporta non li può leggere.",
+    sending: "Invio in corso…",
+    sendFail: "Invio non riuscito. Controlla la connessione e riprova: i dati scritti sono ancora qui.",
+    expired: "Questo link non è più valido. Chiedine uno nuovo all'host.",
+    oldBrowser: "Questo browser è troppo vecchio per cifrare i dati. Aggiornalo o usa un altro browser.",
+    noScript: "Questo modulo ha bisogno di JavaScript per cifrare i dati sul tuo telefono.",
   },
 };
 

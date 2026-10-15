@@ -61,3 +61,5 @@ export { checkDigit, findMrzLines, guestFromMrz, parseMrz } from "./mrz.js";
 export type { MrzFields, MrzFormat } from "./mrz.js";
 export { fromBase64url, hasWebX25519, padded, rawPublicKey, toBase64url, webSeal } from "./web-seal.js";
 export type { X25519Fallback } from "./web-seal.js";
+export { BOX_ID, linkFor, readLinkFragment, relayPlace } from "./link.js";
+export type { LinkPayload } from "./link.js";

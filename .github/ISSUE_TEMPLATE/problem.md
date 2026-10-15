@@ -19,7 +19,7 @@ labels: bug
 <!-- Paste the message. For a price, paste the output of `fairnight price --listing <name> --explain` for that night. -->
 
 **My setup**
-- OpenStay version (`fairnight --version`, or `npm ls -g fairnight-cli`):
+- OpenStay version (`npm ls -g fairnight-cli`; with the installer, `npm ls fairnight-cli` inside `Fairnight/programma`):
 - Installed with: installer / npm / from source
 - Node.js version (`node --version`):
 - Windows / macOS / Linux:

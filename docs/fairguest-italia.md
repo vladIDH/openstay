@@ -2,7 +2,7 @@
 
 Fairguest comunica gli ospiti alla **Polizia di Stato** con il servizio **Alloggiati Web**, dal tuo computer. I dati degli ospiti restano cifrati sul tuo computer e si cancellano da soli appena l'invio è registrato. Nessun nostro server sta nel mezzo.
 
-> Versione di Fairguest in sviluppo (ottobre 2026). Questa guida copre **Alloggiati Web**, il **link da mandare all'ospite** e la **foto del documento**. La comunicazione **Istat** (movimento turistico regionale) arriva nella prossima versione e sarà aggiunta qui.
+> Versione di Fairguest in sviluppo (ottobre 2026). Questa guida copre **Alloggiati Web**, la comunicazione **Istat** della tua regione, il **link da mandare all'ospite** e la **foto del documento**.
 >
 > Non è un parere legale. I punti segnati **[NV]** non sono ancora verificati con un invio vero.
 
@@ -140,6 +140,95 @@ Nella pagina del link l'ospite può toccare «Scatta o scegli una foto» e inqua
 - **Senza righe da leggere** (per esempio la vecchia carta d'identità cartacea) si compila a mano.
 
 Schermate da telefono, con dati inventati: [pagina vuota](images/link/link-it-1-vuoto.png), [dati letti dalla foto](images/link/link-it-2-letto.png), [ospite salvato](images/link/link-it-3-salvato.png).
+
+## Istat: il movimento turistico della tua regione
+
+È un obbligo diverso da Alloggiati Web. Ogni regione raccoglie arrivi e presenze con il proprio portale e le proprie scadenze. Fairguest manda **solo quello che serve alla statistica**, senza nomi né documenti:
+- sesso e data di nascita;
+- cittadinanza, Stato e comune di nascita;
+- residenza;
+- tipo di alloggiato (singolo, famiglia o gruppo);
+- date di arrivo e di partenza.
+
+### La tua regione
+
+| Regione o provincia | Portale | Cosa fa Fairguest |
+|---|---|---|
+| Piemonte, Lombardia, Liguria, Emilia-Romagna, Veneto, Toscana (solo Firenze, Prato, Pistoia), Marche, Lazio, Abruzzo, Molise, Calabria, Sardegna, Basilicata | ROSS1000 | **invio automatico** con il servizio web della regione, oppure file XML da caricare |
+| Provincia di Trento | ISTATalloggi | file CSV da caricare |
+| Umbria | Turismatica | un file di testo per giorno (modello C/59) da caricare |
+| Puglia | SPOT Easy | si carica lo stesso file della Questura (`fairnight ospiti prepara`) |
+| Valle d'Aosta, Friuli Venezia Giulia, Provincia di Bolzano, Toscana (altre province), Campania, Sicilia | portale regionale | **solo a mano**: Fairguest stampa le cifre del mese da ricopiare |
+
+Le fonti, regione per regione, sono le pagine ufficiali e i manuali dei portali, letti il 15/10/2026. Il documento di riferimento per ROSS1000 è il «Tracciato record di integrazione dati (XML)», versione 3 del 18/03/2026.
+
+### Come si attiva
+
+Nel blocco `fairguest` dell'alloggio:
+
+```json
+"rooms": 2,
+"beds": 4,
+"istat": { "region": "lazio", "code": "IL-CODICE-DELLA-STRUTTURA" }
+```
+
+- `region`, uno di questi valori:
+  - con ROSS1000: `piemonte`, `lombardia`, `liguria`, `emilia-romagna`, `veneto`, `toscana-fi-po-pt`, `marche`, `lazio`, `abruzzo`, `molise`, `calabria`, `sardegna`, `basilicata`;
+  - con un file: `trento`, `umbria`, `puglia`;
+  - solo a mano: `valle-d-aosta`, `friuli-venezia-giulia`, `bolzano`, `toscana`, `campania`, `sicilia`.
+- `code`: il codice della struttura dato dalla regione (con ROSS1000), il CIPAT (Trento) o il nome della struttura (Umbria e regioni a mano).
+- `rooms` e `beds`: camere e posti letto. Servono solo con ROSS1000, che li vuole per ogni giorno. La configurazione guidata (`fairnight configura`) li chiede solo in quel caso.
+
+Con ROSS1000 servono anche le credenziali di trasmissione della struttura. Chi entra nel portale con SPID o CIE deve chiedere una «password di trasmissione» all'ufficio turismo della regione.
+
+```
+fairnight ospiti credenziali --istat
+```
+
+### Cosa cambia nel modulo dell'ospite
+
+Per un alloggio con Istat attivo il modulo chiede anche la **residenza**: lo Stato, il comune per chi vive in Italia, la città per chi vive all'estero. Per gli altri alloggi non la chiede.
+
+### Il mese
+
+```
+fairnight ospiti istat --mese 2026-10              # prepara il mese: file e cifre, non invia nulla
+fairnight ospiti istat --mese 2026-10 --applica    # ROSS1000: invia i giorni pronti
+```
+
+**Con ROSS1000**
+- Ogni giorno del mese diventa un movimento, anche quelli senza ospiti. I giorni bloccati nel calendario risultano chiusi.
+- Il giorno di arrivo porta gli ospiti, quello di partenza le partenze.
+- Fairguest scrive anche il file XML per il portale («Importa file gestionale»).
+- Con `--applica` invia i giorni pronti e segna quelli accettati, che non manda più.
+- Un giorno con un soggiorno senza i dati degli ospiti resta fuori, finché non lo completi.
+
+**Gli altri casi**
+- **Trento:** il file CSV del mese.
+- **Umbria:** un file per giorno.
+- **Regioni a mano:** arrivi e presenze del mese per provenienza (provincia italiana o Stato estero) e le notti occupate.
+
+Nei primi 15 giorni del mese `fairnight ospiti` ricorda il mese precedente.
+
+### Conservazione
+
+- Quando Alloggiati Web accetta le schedine, i dati degli ospiti si cancellano subito. Prima Fairguest ne tiene a parte, cifrata, la **scheda Istat**, senza nomi né documenti.
+- La scheda si cancella:
+  - con ROSS1000, appena la regione ha accettato il giorno di arrivo e quello di partenza;
+  - negli altri casi, dal 16 del mese dopo la partenza.
+- Una cancellazione chiesta dall'ospite (`fairnight ospiti cancella`) porta via anche la scheda Istat.
+
+### Da verificare con il primo invio vero [NV]
+
+- **ROSS1000:**
+  - le maiuscole di «Non specificato» per tipo di turismo e mezzo di trasporto, scritti come nell'elenco della specifica;
+  - l'ordine delle risposte per giorno;
+  - la versione V1 della Basilicata.
+- **Trento:** i codici di provenienza degli stranieri. L'esempio usa tre lettere (DEU).
+- **Umbria:**
+  - i codici di provenienza del portale (se non li riconosce legge la descrizione);
+  - l'allineamento dei numeri;
+  - gli a capo del file.
 
 ## Il riconoscimento dell'ospite
 

@@ -82,3 +82,13 @@ export function languageProposal(cities: (string | undefined)[], locale: string)
 export function proposedLanguage(cities: (string | undefined)[], locale: string): Language | null {
   return languageProposal(cities, locale)?.language ?? null;
 }
+
+/** The language of `fairnight configura` and `fairnight apri`: Italian or Spanish. */
+export type SetupLang = "it" | "es";
+
+/** Spanish for a Spanish calendar, or the first time on a Spanish computer; Italian otherwise. */
+export function setupLanguage(configLanguage: unknown, locale: string): SetupLang {
+  if (configLanguage === "es" || configLanguage === "it") return configLanguage;
+  if (configLanguage === undefined && languageOfLocale(locale) === "es") return "es";
+  return "it";
+}

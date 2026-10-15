@@ -31,6 +31,7 @@ Draft replies to guests, approved by the host before anything is sent. Everythin
   - Fairnight's price of the free nights nearby, shown to the host only.
 - Before sending: the conversation is read again, freshness is checked, a draft with a price is blocked until the host edits it, and it is claimed once.
 - Database schema 7: `hello_stays`, `hello_messages`, `hello_drafts`, `hello_runs`. Messages are erased 60 days after check-out.
+- **Schema numbers taken next:** the open branches `fairguest-it` and `pilota` use schema 8 and 9, in the order they reach main (the first to merge takes 8). Details in `docs/piano.md`.
 - Secret scan: the Anthropic key file and `ANTHROPIC_API_KEY`.
 
 ### fairnight-mcp

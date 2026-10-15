@@ -142,3 +142,16 @@ Guida: `risposte-ospiti.md`.
 - Nessun nome di funzioni di PriceLabs nel codice o nei testi del prodotto.
 - Le fonti di mercato sono solo adattatori opzionali, con la chiave o il file dell'utente.
 - AirROI resta spento (`market.airroi.enabled: false`) finché non arriva la risposta scritta alla domanda n. 1 di `fonti-mercato.md`.
+
+## Versioni dello schema del database
+
+Ogni ramo che cambia `packages/fairnight-cli/src/db.ts` alza `SCHEMA_VERSION` di uno e aggiunge il suo passo in `MIGRATIONS`, nell'ordine in cui entra in main.
+
+| Versione | Cosa | Stato |
+|---|---|---|
+| 1–6 | calendari, Smoobu, Beds24, zone, Fairguest, piccoli hotel | in main |
+| 7 | Fairhello: tabelle `hello_*` | in main (merge della PR #12, 15 ottobre 2026) |
+| 8 | il primo che entra tra `fairguest-it` e `pilota` | da fare: oggi `fairguest-it` usa 7 e va rinumerato |
+| 9 | il secondo dei due | da fare: `pilota` aggiunge tabelle senza alzare la versione, e deve farlo |
+
+Chi rinumera aggiorna anche `test/db.test.ts`: la versione attesa e un fixture `schema-<n-1>.sql` con lo schema esatto della versione precedente.

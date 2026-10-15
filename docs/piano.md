@@ -105,6 +105,23 @@ Documenti in `docs/`, repo locale, licenza.
 
 **Totale fino alla fase 3: circa 49 giorni di lavoro.** La 0.1 pubblica esce dopo circa 13.
 
+### Fairhello: risposte agli ospiti (ramo `fairhello`, 15 ottobre 2026)
+
+Guida: `risposte-ospiti.md`.
+
+**Nella 0.1:**
+- messaggi letti e inviati tramite le API ufficiali di Smoobu e Beds24, con le chiavi dell'host;
+- bozze scritte da Claude Haiku, con la chiave dell'host, oppure da un modello locale via Ollama;
+- ogni risposta approvata dall'host, dalla pagina `/risposte` o con `fairnight risposte invia --applica`;
+- scheda della casa in `casa/<annuncio>.md`;
+- tool MCP in sola lettura `get_guest_replies`.
+
+**Versioni successive:**
+- **Lettura delle mail di Airbnb e Booking.com** (IMAP in sola lettura, come il co-host da cui viene il controllo di freschezza). I modelli di mail vanno riconosciuti in più lingue. La risposta via mail non è documentata dalle piattaforme: senza una fonte ufficiale resta solo la lettura.
+- **Invio automatico**, spento di default, solo per categorie sicure (wifi, orari, indicazioni), mai per soldi, sconti, rimborsi, reclami o codici d'accesso. Va deciso con l'host.
+- Altri gestionali con un'API messaggi ufficiale.
+- Un modello OpenAI con la chiave dell'host, se richiesto. Il piano gratuito di Gemini resta escluso, perché usa i dati per migliorare i prodotti di Google.
+
 ## Cosa esce nella 0.1 pubblica
 
 - Il motore con tutti i fattori della fase 1, ognuno spiegato notte per notte, con valori predefiniti documentati.

@@ -147,3 +147,19 @@ Pacchetto `packages/fairnight-beds24` e comandi `fairnight beds24 …`. Usa solo
 **Risultato della verifica: non ancora fatta** (nessun account Beds24 vero su cui provarla). Va scritto qui al primo giro vero.
 
 **Lettura degli intervalli (ipotesi).** In lettura Fairnight considera `to` incluso (es. `from` = `to` = un giorno). La rilettura dopo ogni scrittura farebbe emergere subito un'ipotesi sbagliata come notti «non corrispondenti».
+
+## Messaggi degli ospiti (Fairhello, 15 ottobre 2026)
+
+Per l'assistente delle risposte i connettori hanno un file in più, `messages.ts`. I client dei prezzi non sono stati toccati.
+
+- **Smoobu**:
+  - `GET /api/threads` per sapere quali conversazioni sono cambiate;
+  - `GET /api/reservations/{id}/messages` (type 1 = ospite, type 2 = host, nessuna ora: conta l'id);
+  - `POST …/send-message-to-guest` con `messageBody` in testo semplice.
+- **Beds24**:
+  - `GET /bookings/messages?bookingId=…&maxAge=…` (source guest, host o system; le note interne non si leggono mai);
+  - `POST /bookings/messages` con `[{ bookingId, message }]`;
+  - serve lo scope **bookings-personal** in scrittura;
+  - Beds24 invia solo per prenotazioni arrivate da un canale.
+
+Da verificare con una prenotazione vera e un ok esplicito: che il messaggio inviato arrivi nel thread di Airbnb o Booking.com. Beds24 lo scrive in generale, Smoobu non lo dice. Dettagli in `risposte-ospiti.md`.

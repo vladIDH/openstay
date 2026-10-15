@@ -89,6 +89,24 @@ fairnight beds24 spingi           # shows what would change; add --applica to wr
 - **Credits.** Beds24 counts credits (100 every 5 minutes by default). Fairnight never uses more than half of them and prints, after each command, how many it used and how many are left.
 - **Rooms with several identical units** (`qty` > 1) become a room type with one price: see [Small hotels](#small-hotels-piccoli-hotel).
 
+## Autopilot
+
+With Smoobu or Beds24 connected, Fairnight can keep the prices up to date on its own, every day, **only for the listings you turn it on for** (off by default). *In development for 0.2.0.*
+
+- **Every day** it reads the calendars and bookings, prices the next 90 nights, writes the ones that changed to Smoobu or Beds24 and reads them back. On Windows it is a task of your user in Task Scheduler, on a Mac a LaunchAgent: at 06:00 and when you sign in. If the computer was off, it runs when it is back on. While the calendar page is open it also does the day's run if it was missed.
+- **Limits.** A price moves at most 15% a day from the price on the channel (a far price is reached over several days), never under your lowest or over your highest price, which the autopilot needs. Nothing is written for a listing whose calendars could not be read that day. After 3 failed runs in a row, or more than 5 nights that do not match when read back, the listing pauses until you resume it.
+- **You see what it did.** The calendar page says "today: changed 12 nights on Smoobu, all read back" and why each night changed. `fairnight pilota registro` lists every night written (`--out file.csv` for all of them).
+- **Turning it on** shows first what would change now: on the calendar page (only on the computer Fairnight runs on), in "Cambia impostazioni", or with `fairnight pilota accendi <listing>`.
+
+![The autopilot on the calendar page: the last run, each night before and after, and why (invented data)](docs/images/pilota/pilota-desktop.png)
+
+```
+fairnight pilota prova            # what a run would write now, writing nothing
+fairnight pilota accendi loft     # shows the preview, asks, turns it on
+fairnight pilota pianifica        # runs it every day on this computer (--ora 06:00); "togli" removes it
+fairnight pilota stato            # on, off or paused, last run
+```
+
 ## Small hotels (piccoli hotel)
 
 Fairnight prices homes **and small hotels**. In a hotel a room type ("Double") has several identical rooms sold at one price: in Fairnight it is one listing with `"units": 6` in its pricing. The price stays one per night; what changes is how nights are counted.
@@ -129,6 +147,25 @@ fairnight ospiti                         # what is due and what is late
 
 **If you lose the passphrase, the guests' data cannot be recovered by anyone.** The whole guide is in [fairnight-cli](packages/fairnight-cli#guest-registration-fairguest-010-in-development).
 
+## Fairhello: replies to guests
+
+*0.1.0, in development.* Fairhello reads your guests' messages from Smoobu or Beds24 and writes a draft reply for each guest waiting. **You approve every reply before it is sent**: nothing goes out on its own.
+
+- **Your model, your key**: Claude Haiku with your own Anthropic key (about a cent a month for one house), or a model running on your computer with Ollama, where no message leaves it.
+- **Your house file**: `casa/<listing>.md`, written with a few questions. The assistant answers only from what is written there, in the guest's language.
+- **Never a price**: the model never sees one. A draft that contains one anyway cannot be sent until you change it.
+- **Access codes only during the stay**, and only after the guest registration if you use Fairguest.
+- **Checked again before sending**: if the guest wrote again in the meantime, the old draft is not sent.
+
+```
+fairnight risposte collega               # choose the model (your key is asked, never shown)
+fairnight risposte casa --listing loft   # what the assistant knows about the house
+fairnight risposte leggi                 # read new messages, write drafts
+fairnight serve                          # approve and send on http://localhost:4321/risposte
+```
+
+The page opens only on your computer. Messages are erased 60 days after check-out. The guide is in Italian in [docs/risposte-ospiti.md](docs/risposte-ospiti.md).
+
 ## Fairnight today and PriceLabs
 
 PriceLabs is a mature, paid service with market data from millions of listings. Fairnight is a first version that works only with **your** data. This is where it stands, compared with PriceLabs' public feature pages:
@@ -153,7 +190,7 @@ PriceLabs is a mature, paid service with market data from millions of listings. 
 | Pushing prices to channel managers | ✓ 160+ | CSV export; Smoobu and Beds24 in 0.2.0, with confirmation | more connectors: phase 2 |
 | Alerts, portfolio reports, pacing vs last year | ✓ | — | phase 2 |
 | Try the rules on last year first (backtest) | preview of new rules only | — | phase 2 |
-| Market data: neighbourhood prices, comp sets | ✓ | zone demand from your own CSV or the Inside Airbnb files you download (0.2.0); AirROI with your own key, off until AirROI confirms its terms | neighbourhood page, comp sets: phase 3 |
+| Market data: neighbourhood prices, comp sets | ✓ | zone demand from your own CSV, the Inside Airbnb files you download or ISTAC's open data for the Canary Islands (0.2.0); a suggested base price you confirm by hand; AirROI with your own key, off until AirROI confirms its terms | neighbourhood page, comp sets: phase 3 |
 | Price per listing | about $20 a month (third-party sources) | free | — |
 | Your data | in their cloud | on your computer | — |
 
@@ -161,7 +198,7 @@ Direct connections to Airbnb and Vrbo need partner agreements, and OpenStay will
 
 ## Privacy
 
-Everything stays in your folder: your rules, your calendars, your prices. The only internet requests go to the calendar links you write yourself, and to Smoobu or Beds24 if you connect them. Pricing never stores guest names, phone numbers or messages. If you use Fairguest, your guests' details are stored in the same folder, encrypted with your passphrase, and erased as soon as the law allows. There is no account, no tracking and no telemetry.
+Everything stays in your folder: your rules, your calendars, your prices. The only internet requests go to the calendar links you write yourself, and to Smoobu or Beds24 if you connect them. Pricing never stores guest names, phone numbers or messages. If you use Fairguest, your guests' details are stored in the same folder, encrypted with your passphrase, and erased as soon as the law allows. If you use Fairhello, guest messages are kept in the same folder and erased 60 days after check-out; to write a draft, the last messages and your house file go to the model you chose (Anthropic with your key, or Ollama on your computer). There is no account, no tracking and no telemetry.
 
 ## The packages
 
@@ -171,6 +208,7 @@ Everything stays in your folder: your rules, your calendars, your prices. The on
 | [`fairnight-mcp`](packages/fairnight-mcp) | Hosts who use Claude Desktop or another MCP client. |
 | [`fairnight`](packages/fairnight) | Developers: the pricing engine as a pure library (no network, no files). |
 | [`fairguest`](packages/fairguest) | Developers: guest registration as a pure library (rules, deadlines, retention, encryption, the Mossos file). |
+| [`fairhello`](packages/fairhello) | Developers: replies to guests as a pure library (house file, request to the model, freshness, no prices). |
 
 ## Contributing
 

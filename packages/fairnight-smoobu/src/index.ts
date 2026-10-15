@@ -12,3 +12,5 @@ export { buildOperations, chunks, groupByApartments, MAX_RANGE_NIGHTS, planPush,
 export type { DiffRow, PushPlan, RangeEnd, TypeDiffRow, TypePushPlan } from "./plan.js";
 export { canonicalQuery, canonicalString, rfc3986, sha256Hex, signature, signedHeaders, smoobuTimestamp } from "./signing.js";
 export type { Credentials, QueryValue, SignInput } from "./signing.js";
+export { bookingChannel, bookingLanguage, listMessages, listThreads, messageText, sendMessageToGuest } from "./messages.js";
+export type { SmoobuMessage, SmoobuThread } from "./messages.js";

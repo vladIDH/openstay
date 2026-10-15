@@ -17,3 +17,21 @@ export {
 export type { ComparableFilter, InsideAirbnbSummary } from "./insideairbnb.js";
 export { AIRROI_ATTRIBUTION, AIRROI_BASE_URL, AIRROI_MAX_DAYS, AirRoiClient, AirRoiError, monthlyToDays } from "./airroi.js";
 export type { AirRoiClientOptions, AirRoiFilter, AirRoiMarket, FetchLike, MarketSearchEntry, MonthlyMetrics } from "./airroi.js";
+export { getText, OpenDataError, plainName } from "./http.js";
+export type { OpenDataOptions } from "./http.js";
+export {
+  describeIstacBand,
+  isIstacMunicipality,
+  ISTAC_ATTRIBUTION,
+  ISTAC_BANDS,
+  ISTAC_BASE_URL,
+  ISTAC_DATASET,
+  istacBand,
+  istacBandGuests,
+  IstacClient,
+  istacToDays,
+  parseIstacAdrCsv,
+} from "./istac.js";
+export type { IstacAdr, IstacBand, IstacClientOptions, IstacMonth } from "./istac.js";
+export { INE_ATTRIBUTION, INE_BASE_URL, INE_TABLE, IneClient, inePoints, ineToDays, parseIneTable } from "./ine.js";
+export type { IneClientOptions, IneMonth, IneTouristPoint } from "./ine.js";

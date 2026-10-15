@@ -127,6 +127,7 @@ describe("fairnight mercato importa (Inside Airbnb)", () => {
     expect(imp.io.lines).toContain('Zone "playa": imported 30 nights (2026-11-01 → 2026-11-30) from 2 listings of Inside Airbnb.');
     expect(all(imp.io)).toContain("Occupancy is an estimate");
     expect(all(imp.io)).toContain("Inside Airbnb (insideairbnb.com), CC BY 4.0");
+    expect((await run(dir, ["mercato", "stato"])).io.lines).toContain("  Homes: 2 bedrooms, Entire home/apt.");
 
     // Only 2 comparables: below the default minimum of 5, the zone is not used.
     const strict = await run(dir, ["price", "--today", "2026-11-01", "--days", "20", "--explain"]);

@@ -36,6 +36,11 @@ export interface Io {
   airroiFetch?: SmoobuFetchLike;
   /** Only for tests: a fake AirROI server instead of https://api.airroi.com. */
   airroiBaseUrl?: string;
+  /** Network access for the open data services (ISTAC, INE). Default: global fetch. */
+  openDataFetch?: SmoobuFetchLike;
+  /** Only for tests: fake ISTAC and INE servers. */
+  istacBaseUrl?: string;
+  ineBaseUrl?: string;
   /** Network access for the model that writes the guest drafts (Anthropic or Ollama). Default: global fetch. */
   modelFetch?: SmoobuFetchLike;
   /** Only for tests: a fake Anthropic server instead of https://api.anthropic.com. */

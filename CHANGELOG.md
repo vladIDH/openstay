@@ -1,122 +1,32 @@
 # Changelog
 
-All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org).
+All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org). Every package in this repository carries the same version.
 
-## Fairhello [0.1.0] - in development, not released
+## [0.2.0] - unreleased
 
-Draft replies to guests, approved by the host before anything is sent. Everything runs on the host's computer.
+The first version published on npm and on GitHub Releases. It brings the connectors to Smoobu and Beds24, the autopilot, zone data, small hotels, the calendar page in three languages, the installer for hosts, and two new tools: **Fairguest** (guest registration for Spain and Italy) and **Fairhello** (draft replies to guests, approved by the host).
 
-### fairhello (new)
+### Highlights
 
-- The house file `casa/<listing>.md`: free `##` sections. The access codes section is kept apart. Amounts of money are reported.
-- The request to the model:
-  - the rules and the house file in a cacheable system part;
-  - the stay, the conversation inside tags (text to answer, never instructions) and, only from check-in to check-out and after the guest registration, the access codes.
-- No prices: the model never sees one, and a draft with one is flagged.
-- Freshness: newest draft of the conversation, answers the guest's last message, booking not cancelled, stay ended at most 2 days ago.
-- Sensitive topics (money, complaint, cancellation, emergency) in six languages.
-- Request and answer shapes for Anthropic (`claude-haiku-5-5`, JSON schema, low effort) and Ollama. Errors say whether to stop the whole reading.
+- **Smoobu connector** (#1): HMAC-signed API, import of apartments and bookings, prices and minimum stays written only after the host confirms.
+- **Beds24 connector** (#2): invite code and refresh token, credits kept under half of the window, same confirm-then-write flow.
+- **Zone data** (#3, #10): the host's own CSV, Inside Airbnb files the host downloads, ISTAC open data for the Canary Islands, and a suggested base price the host confirms by hand. Every remote source is off unless switched on.
+- **Fairguest** (#4, #9, #13, #14, #15): guest registration on the host's computer, encrypted with a passphrase only the host knows. Spain: the Mossos d'Esquadra file and the SES.HOSPEDAJES rules; Italy: Alloggiati Web and the regional Istat data. A check-in form on the host's network or through a link, with the document read in the guest's browser.
+- **Installer for hosts** (#5, #16): a double-click file for Windows and Mac, a guided setup in Italian (`fairnight configura`) and a one-click calendar (`fairnight apri`), tried in CI on both systems.
+- **Small hotels** (#6): room types with several identical rooms, occupancy by room-night, a few-rooms-left factor.
+- **Calendar page in Italian, Spanish and English** (#7) and **a new look** for the calendar page and the check-in form (#8).
+- **Autopilot** (#11): off by default, per listing; every day it reads, prices the next 90 nights, writes to Smoobu or Beds24 within limits and reads back.
+- **Fairhello** (#12): draft replies to guests from the host's house file, with the host's own model key or a local model; nothing is sent without the host's approval.
 
-### fairnight-smoobu, fairnight-beds24
+### Upgrading from 0.1.0
 
-- Smoobu: conversations (`/api/threads`), messages of a booking, `send-message-to-guest`, the guest's language and the channel.
-- Beds24: `/bookings/messages` for up to 50 bookings per request, without internal notes, and the reply. Needs the bookings-personal scope.
+- The database in `data/fairnight.db` is upgraded on first use, from schema 1 to schema 10. Keep a copy of the folder before the first run if you want to go back.
+- A `fairnight.config.json` written by 0.1.0 still works: every new field is optional.
+- Node.js 20 or newer for the npm packages; Node.js 22 or newer for the installer, which needs the precompiled SQLite module.
 
-### fairnight-cli
+### Fairnight: pricing, connectors and the calendar page
 
-- `fairnight risposte` (`hello`): `collega`, `casa`, `leggi`, `mostra`, `invia` (sends only with `--applica`), `scarta`, `stato`.
-- Page `/risposte` in `fairnight serve`:
-  - this computer only, with signed forms and no JavaScript;
-  - the "Notte" look, in Italian, Spanish and English;
-  - Fairnight's price of the free nights nearby, shown to the host only.
-- Before sending: the conversation is read again, freshness is checked, a draft with a price is blocked until the host edits it, and it is claimed once.
-- Database schema 7: `hello_stays`, `hello_messages`, `hello_drafts`, `hello_runs`. Messages are erased 60 days after check-out.
-- **Schema numbers taken next:** `fairguest-it` takes schema 8. The autopilot (`pilota`) only adds new tables, created when the database is opened, and takes no schema number. Details in `docs/piano.md`.
-- Secret scan: the Anthropic key file and `ANTHROPIC_API_KEY`.
-
-### fairnight-mcp
-
-- `get_guest_replies`: the drafts waiting for the host, read only, texts only when asked.
-
-## Fairguest [0.1.0] - in development, not released
-
-Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web). Everything runs on the host's computer; no server of ours in between.
-
-### Italy, Alloggiati Web (branch fairguest-it)
-
-- fairguest: country `IT` with `alloggiatiRegistry`, the Italian rules (document only for the holder, male or female, places of birth and of issue), deadlines of 24 hours from arrival and 6 for stays of 24 hours or less, erasure as soon as Alloggiati Web accepted the schedine.
-- fairguest: `schedine` (lines of 168 characters, single guest, family or group), `alloggiatiFile` for the portal, `parseAlloggiatiTables`, `stateCode`, `municipalityCode`; `AlloggiatiClient` for the SOAP 1.2 service through a transport (token, Test, Send, Gestione Appartamenti, Ricevuta, Tabella).
-- fairguest: `Place` for the places of birth and of issue; document types `id_card`, `electronic_id`, `driving_licence`; each registry says which document types its form offers and checks one guest for the form (`checkGuest`).
-- fairnight-cli: `fairnight ospiti tabelle`, `credenziali` (sealed, `--verifica`), `riconosciuto`, `invia` (`--prova`, `--applica`; without a terminal only with `"autoSend": true`), `ricevute` (kept 5 years); `prepara` writes the file for the portal; `correggi` reaches three-level fields.
-- fairnight-cli: the check-in form asks the Italian questions for a listing in Italy, and no address, contact or payment.
-- fairnight-cli: database schema 7 (`guest_stays.recognized_at`, `guest_receipts`).
-- fairnight-cli: the calendar page shows how many guest communications are late or due within 24 hours.
-- docs: guide for the host in Italian and Spanish (docs/fairguest-italia.md, docs/fairguest-italia.es.md).
-
-### Spain: the same link and photo for SES.HOSPEDAJES and the Mossos (branch fairguest-it-spagna)
-
-- fairguest: `formValuesFromMrz` fills the form of the listing's country from the MRZ (Spanish DNI with its support number; a document the form does not offer becomes the closest one it does).
-- Tested from the link to the Mossos file; guide for Spanish hosts in Spanish and Italian (docs/fairguest-espana.es.md, docs/fairguest-spagna.md).
-
-### Istat, the regional tourist movement (branch fairguest-it-istat)
-
-- fairguest: `ISTAT_REGIONS`, the official map of 21 territories (13 with the ROSS1000 web service, Trento and Umbria by file, Puglia with the Alloggiati file, the rest by hand); `istatStay` (the statistical record, no name and no document); `rossFile` and `Ross1000Client` (SOAP inviaMovimentazione, HTTP Basic, result per day); `trentoCsv`, `umbriaDay` (C/59), `monthSummary`.
-- fairguest: the Italian form asks the residence when the listing sends Istat data; `beds` and `istat` in the listing settings (rooms and beds required with ROSS1000).
-- fairnight-cli: `fairnight ospiti istat [--mese] [--applica]`, `credenziali --istat`; the record is kept sealed when Alloggiati Web erases the guests and erased once the region has the month (an erasure on request takes it too); reminders of the previous month; `fairnight configura` asks rooms and beds only with ROSS1000; schema 9.
-
-### The check-in link from anywhere, and the photo of the document (branch fairguest-it-link)
-
-- fairguest: the «Carta» form and its words move into the library (`renderForm`, `WORDS`), so the host's form and the link's page are the same code; `fairguest/browser` entry with only what a browser needs.
-- fairguest: `webSeal` seals in the browser with Web Crypto in the same fg1 format (optional X25519 fallback); `padded` gives every guest the same size; `linkFor` / `readLinkFragment` for the link, whose key and stay stay after "#".
-- fairguest: `parseMrz` (TD1, TD2, TD3, ICAO check digits, OCR repairs confirmed by the check digits) and `guestFromMrz` (Spanish DNI: DNI number and support number apart).
-- fairguest-relay (new, private): Cloudflare Worker with one Durable Object per box in the EU jurisdiction; only sealed text, hashed secrets, limits, expiry two days after check-out, no logs; the guest's page with the photo read in the browser (Tesseract and the MRZ model served by the relay); hashes of the page for `verifica-pagina`; `scripts/dev.mjs` to try it locally.
-- fairnight-cli: `fairnight ospiti link`, `scarica` (no passphrase: the guests stay sealed) and `verifica-pagina`; downloads also before `elenco` and `invia` and every 5 minutes while `serve` runs; `"fairguestRelay"` in the config (default https://fairguest.khlumen.com); schema 8.
-
-### fairguest (new)
-
-- One interface for every country (`Registry`: validate, deadlines, prepare, send, status, cancel, retention) over neutral `Guest` and `Stay` types. The network stays outside: send and status take a transport.
-- The rules of RD 933/2021, every problem at once with its field path:
-  - identity document from 18 years old for SES and from 14 for the Mossos;
-  - support number for DNI and NIE, second surname with a DNI, INE code for addresses in Spain;
-  - kinship for minors, a contact for each guest, the payment type.
-- DNI and NIE check letters.
-- 24-hour deadlines from the booking and from check-in. An unknown hour counts from midnight, so the deadline shown is never later than the real one.
-- Retention: 3 years from check-out for professional hosts; for the others, erasure once the check-in communication is confirmed, or 48 hours after a cancellation.
-- Encryption with `node:crypto` only:
-  - X25519 sealing per value with HKDF-SHA256 and AES-256-GCM, bound to the row and column it is stored in;
-  - private key locked with scrypt (N = 2¹⁷) from the host's passphrase;
-  - passphrase change re-encrypts only the key.
-- Mossos d'Esquadra file, from the public manual v8 (May 2025): record 1 with `V24`, record 2 with 32 fields, capitals, CR LF, ISO-8859-1, name `<ID>.001`…`.999`, one establishment per file.
-- SES.HOSPEDAJES: validation, deadlines and retention. `prepare` is an explicit stub that fails with `SES_NOT_READY` until the Ministry's XSD schemas are available.
-- Card numbers and IBANs have no place anywhere; unknown input fields are ignored.
-
-### fairnight-cli
-
-- `fairnight ospiti` with these subcommands: `attiva`, `frase`, `elenco`, `nuovo`, `mostra`, `correggi`, `prepara`, `inviato`, `esporta`, `cancella`, `pulisci`, and the deadlines by default (exit code 1 when something is late, `--json`).
-- A `fairguest` block per listing in `fairnight.config.json`: country, establishment, name, professional, check-in and check-out times, rooms, internet.
-- Database schema 5 (after the zone data of schema 4): `guest_stays`, `guest_people`, `guest_submissions`. Migrations now run as explicit ordered steps, and a test takes a schema 3 database to the latest version. Only random ids, dates and states are in clear.
-- `fairnight sync` creates a stay to register for every booking that ends today or later, marks vanished bookings as cancelled, and applies retention.
-- Check-in form at `/checkin/<code>` in `fairnight serve`:
-  - local network only, refused through proxies and tunnels;
-  - random 96-bit code valid until check-out, slowed down after 20 wrong codes;
-  - signed form token;
-  - no JavaScript, strict CSP;
-  - Spanish, English and Italian;
-  - guests sealed on arrival without the passphrase.
-- The passphrase comes from a hidden prompt or `FAIRGUEST_FRASE`. Corrections are asked, never passed as arguments, so they never end up in the shell history.
-- Erasure deletes the guests, the sealed details, the form code and the generated files, with SQLite `secure_delete`.
-
-### fairnight-smoobu, fairnight-beds24
-
-- Bookings also carry the holder's name, the number of guests (adults plus children) and the channel reference, for guest registration only. Pricing never reads them; they are sealed by Fairguest and never stored in `calendar_events` or printed.
-
-### fairnight-mcp
-
-- New read-only tool `get_guest_deadlines`: the communications due per stay, dates and states only.
-
-## [0.2.0] - in development, not released
-
-### Market data, second part (mercato2)
+#### Market data, second part (mercato2)
 
 - fairnight: `suggestBasePrice`, a suggested base price from zone data (median of the monthly averages of the 12 most recent months, at least 6), with its explanation. Outside the nightly pricing: the expected prices do not change.
 - fairnight-market: ISTAC holiday homes of the Canary Islands (ADR by municipality and size, open data), INE tourist apartments (occupancy by tourist point), Inside Airbnb filter by guests (`accommodates`).
@@ -124,7 +34,7 @@ Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web).
 - Calendar page: the suggested base price with "Use this price" after a confirmation, only on the computer that runs Fairnight.
 - AirROI stays off until AirROI confirms its terms in a formal written document.
 
-### fairnight (engine)
+#### fairnight (engine)
 
 - Small hotels: a listing can be a room type with `units` identical rooms sold at one price (default 1, up to 99). See docs/piccoli-hotel.md.
   - Each night counts the rooms reserved, blocked and free. Stays of the same room (`unit`) are merged; a stay without one takes `units` rooms (default 1); overbookings are reported, never below 0 free.
@@ -139,7 +49,7 @@ Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web).
   - nights measured on fewer than 5 comparable listings are skipped.
 - Zone data comes in `calendar.market`, already read: the engine never fetches it. The explanation names the source and its attribution, and says when the occupancy is an estimate.
 
-### fairnight-market (new)
+#### fairnight-market (new)
 
 - The host's own zone CSV: date, occupancy, average price, comparables, with headers in English, Italian or Spanish.
 - Inside Airbnb: only the files the host downloads (`calendar.csv(.gz)`, optional `listings.csv(.gz)` for comparables), read as a stream. Attribution "Inside Airbnb (insideairbnb.com), CC BY 4.0". The occupancy is marked as estimated, and listings closed on every night are left out.
@@ -149,7 +59,7 @@ Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web).
   - the key never appears in an error.
 - A fake AirROI server for tests, with invented data.
 
-### fairnight-smoobu (new)
+#### fairnight-smoobu (new)
 
 - Smoobu API client using only HMAC-SHA256 request signing: a fresh UUID v4 nonce for every request and UTC timestamps. The legacy key-only header is never sent; Smoobu stops accepting it on 31 October 2026.
 - Our own limit of 300 requests per minute (Smoobu allows 700).
@@ -160,7 +70,7 @@ Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web).
 - Single-night operations until Smoobu's handling of a range end is checked; ranges of at most 7 nights after that.
 - Room types made of several apartments (Smoobu has none of its own): `planTypePush` writes the same price to the apartments still free and skips nights whose free counts differ; `groupByApartments` gives one POST per set of apartments.
 
-### fairnight-beds24 (new)
+#### fairnight-beds24 (new)
 
 - Beds24 API v2 client:
   - an invite code becomes a refresh token;
@@ -172,7 +82,7 @@ Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web).
 - Single nights until Beds24's handling of the range end is checked; ranges of at most 7 nights after that.
 - Rooms with several units: bookings carry their `unitId` (or `roomQty` rooms while unassigned, to check on a real account); the calendar gives `numAvail`; nights where it differs from Fairnight's free rooms are not written (`unitsMismatch`).
 
-### fairnight-cli
+#### fairnight-cli
 
 - `fairnight beds24 collega`: asks for an invite code without echo and keeps the refresh token for the current user only. `BEDS24_REFRESH_TOKEN` takes precedence.
 - `fairnight beds24 importa`: each single-unit Beds24 room becomes a listing (source `beds24`). Rooms with several identical units are skipped with a message.
@@ -213,22 +123,143 @@ Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web).
   - The calendar page shows the last run and why each night changed, and switches the autopilot on (after a preview) from this computer only. `fairnight configura` asks about it for houses on Smoobu or Beds24.
 - The write step of `smoobu spingi` and `beds24 spingi` moved into `channel.ts` (push targets), shared with the autopilot.
 
-### fairnight-mcp
+#### fairnight-mcp
 
 - New read-only tool `get_sync_status`: where each listing's data comes from (iCal, Smoobu or Beds24) and when it was last read.
 - New read-only tool `get_market_area`: the zone data a listing uses, with its attribution.
 - Room types of small hotels: `get_prices`, `explain_night`, `occupancy` (room-nights) and `next_gaps` show the units and the rooms free. `occupancy` and `next_gaps` use the engine's availability.
 
-### Repository
+#### Repository
 
 - `smoobu-credentials.json` is git-ignored.
 - `beds24-credentials.json` is git-ignored.
 - `airroi-credentials.json` is git-ignored.
 - `.gitleaks.toml` adds rules for Smoobu and Beds24 credentials, and a CI job proves on every push that they catch a committed key or token.
 
-## [0.1.0] - not released yet
+### Fairhello: replies to guests
 
-First public version, published as three npm packages: `fairnight`, `fairnight-cli` and `fairnight-mcp`.
+Draft replies to guests, approved by the host before anything is sent. Everything runs on the host's computer.
+
+#### fairhello (new)
+
+- The house file `casa/<listing>.md`: free `##` sections. The access codes section is kept apart. Amounts of money are reported.
+- The request to the model:
+  - the rules and the house file in a cacheable system part;
+  - the stay, the conversation inside tags (text to answer, never instructions) and, only from check-in to check-out and after the guest registration, the access codes.
+- No prices: the model never sees one, and a draft with one is flagged.
+- Freshness: newest draft of the conversation, answers the guest's last message, booking not cancelled, stay ended at most 2 days ago.
+- Sensitive topics (money, complaint, cancellation, emergency) in six languages.
+- Request and answer shapes for Anthropic (`claude-haiku-5-5`, JSON schema, low effort) and Ollama. Errors say whether to stop the whole reading.
+
+#### fairnight-smoobu, fairnight-beds24
+
+- Smoobu: conversations (`/api/threads`), messages of a booking, `send-message-to-guest`, the guest's language and the channel.
+- Beds24: `/bookings/messages` for up to 50 bookings per request, without internal notes, and the reply. Needs the bookings-personal scope.
+
+#### fairnight-cli
+
+- `fairnight risposte` (`hello`): `collega`, `casa`, `leggi`, `mostra`, `invia` (sends only with `--applica`), `scarta`, `stato`.
+- Page `/risposte` in `fairnight serve`:
+  - this computer only, with signed forms and no JavaScript;
+  - the "Notte" look, in Italian, Spanish and English;
+  - Fairnight's price of the free nights nearby, shown to the host only.
+- Before sending: the conversation is read again, freshness is checked, a draft with a price is blocked until the host edits it, and it is claimed once.
+- Database schema 7: `hello_stays`, `hello_messages`, `hello_drafts`, `hello_runs`. Messages are erased 60 days after check-out.
+- Secret scan: the Anthropic key file and `ANTHROPIC_API_KEY`.
+
+#### fairnight-mcp
+
+- `get_guest_replies`: the drafts waiting for the host, read only, texts only when asked.
+
+### Fairguest: guest registration
+
+Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web, Istat). Everything runs on the host's computer; the optional check-in link goes through a relay that only carries sealed data.
+
+#### Italy, Alloggiati Web
+
+- fairguest: country `IT` with `alloggiatiRegistry`, the Italian rules (document only for the holder, male or female, places of birth and of issue), deadlines of 24 hours from arrival and 6 for stays of 24 hours or less, erasure as soon as Alloggiati Web accepted the schedine.
+- fairguest: `schedine` (lines of 168 characters, single guest, family or group), `alloggiatiFile` for the portal, `parseAlloggiatiTables`, `stateCode`, `municipalityCode`; `AlloggiatiClient` for the SOAP 1.2 service through a transport (token, Test, Send, Gestione Appartamenti, Ricevuta, Tabella).
+- fairguest: `Place` for the places of birth and of issue; document types `id_card`, `electronic_id`, `driving_licence`; each registry says which document types its form offers and checks one guest for the form (`checkGuest`).
+- fairnight-cli: `fairnight ospiti tabelle`, `credenziali` (sealed, `--verifica`), `riconosciuto`, `invia` (`--prova`, `--applica`; without a terminal only with `"autoSend": true`), `ricevute` (kept 5 years); `prepara` writes the file for the portal; `correggi` reaches three-level fields.
+- fairnight-cli: the check-in form asks the Italian questions for a listing in Italy, and no address, contact or payment.
+- fairnight-cli: database schema 8 (`guest_stays.recognized_at`, `guest_receipts`).
+- fairnight-cli: the calendar page shows how many guest communications are late or due within 24 hours.
+- docs: guide for the host in Italian and Spanish (docs/fairguest-italia.md, docs/fairguest-italia.es.md).
+
+#### Spain: the same link and photo for SES.HOSPEDAJES and the Mossos
+
+- fairguest: `formValuesFromMrz` fills the form of the listing's country from the MRZ (Spanish DNI with its support number; a document the form does not offer becomes the closest one it does).
+- Tested from the link to the Mossos file; guide for Spanish hosts in Spanish and Italian (docs/fairguest-espana.es.md, docs/fairguest-spagna.md).
+
+#### Istat, the regional tourist movement
+
+- fairguest: `ISTAT_REGIONS`, the official map of 21 territories (13 with the ROSS1000 web service, Trento and Umbria by file, Puglia with the Alloggiati file, the rest by hand); `istatStay` (the statistical record, no name and no document); `rossFile` and `Ross1000Client` (SOAP inviaMovimentazione, HTTP Basic, result per day); `trentoCsv`, `umbriaDay` (C/59), `monthSummary`.
+- fairguest: the Italian form asks the residence when the listing sends Istat data; `beds` and `istat` in the listing settings (rooms and beds required with ROSS1000).
+- fairnight-cli: `fairnight ospiti istat [--mese] [--applica]`, `credenziali --istat`; the record is kept sealed when Alloggiati Web erases the guests and erased once the region has the month (an erasure on request takes it too); reminders of the previous month; `fairnight configura` asks rooms and beds only with ROSS1000; schema 10.
+
+#### The check-in link from anywhere, and the photo of the document
+
+- fairguest: the «Carta» form and its words move into the library (`renderForm`, `WORDS`), so the host's form and the link's page are the same code; `fairguest/browser` entry with only what a browser needs.
+- fairguest: `webSeal` seals in the browser with Web Crypto in the same fg1 format (optional X25519 fallback); `padded` gives every guest the same size; `linkFor` / `readLinkFragment` for the link, whose key and stay stay after "#".
+- fairguest: `parseMrz` (TD1, TD2, TD3, ICAO check digits, OCR repairs confirmed by the check digits) and `guestFromMrz` (Spanish DNI: DNI number and support number apart).
+- fairguest-relay (new, private): Cloudflare Worker with one Durable Object per box in the EU jurisdiction; only sealed text, hashed secrets, limits, expiry two days after check-out, no logs; the guest's page with the photo read in the browser (Tesseract and the MRZ model served by the relay); hashes of the page for `verifica-pagina`; `scripts/dev.mjs` to try it locally.
+- fairnight-cli: `fairnight ospiti link`, `scarica` (no passphrase: the guests stay sealed) and `verifica-pagina`; downloads also before `elenco` and `invia` and every 5 minutes while `serve` runs; `"fairguestRelay"` in the config (default https://fairguest.khlumen.com); schema 9.
+
+#### fairguest (new)
+
+- One interface for every country (`Registry`: validate, deadlines, prepare, send, status, cancel, retention) over neutral `Guest` and `Stay` types. The network stays outside: send and status take a transport.
+- The rules of RD 933/2021, every problem at once with its field path:
+  - identity document from 18 years old for SES and from 14 for the Mossos;
+  - support number for DNI and NIE, second surname with a DNI, INE code for addresses in Spain;
+  - kinship for minors, a contact for each guest, the payment type.
+- DNI and NIE check letters.
+- 24-hour deadlines from the booking and from check-in. An unknown hour counts from midnight, so the deadline shown is never later than the real one.
+- Retention: 3 years from check-out for professional hosts; for the others, erasure once the check-in communication is confirmed, or 48 hours after a cancellation.
+- Encryption with `node:crypto` only:
+  - X25519 sealing per value with HKDF-SHA256 and AES-256-GCM, bound to the row and column it is stored in;
+  - private key locked with scrypt (N = 2¹⁷) from the host's passphrase;
+  - passphrase change re-encrypts only the key.
+- Mossos d'Esquadra file, from the public manual v8 (May 2025): record 1 with `V24`, record 2 with 32 fields, capitals, CR LF, ISO-8859-1, name `<ID>.001`…`.999`, one establishment per file.
+- SES.HOSPEDAJES: validation, deadlines and retention. `prepare` is an explicit stub that fails with `SES_NOT_READY` until the Ministry's XSD schemas are available.
+- Card numbers and IBANs have no place anywhere; unknown input fields are ignored.
+
+#### fairnight-cli
+
+- `fairnight ospiti` with these subcommands: `attiva`, `frase`, `elenco`, `nuovo`, `mostra`, `correggi`, `prepara`, `inviato`, `esporta`, `cancella`, `pulisci`, and the deadlines by default (exit code 1 when something is late, `--json`).
+- A `fairguest` block per listing in `fairnight.config.json`: country, establishment, name, professional, check-in and check-out times, rooms, internet.
+- Database schema 5 (after the zone data of schema 4): `guest_stays`, `guest_people`, `guest_submissions`. Migrations now run as explicit ordered steps, and a test takes a schema 3 database to the latest version. Only random ids, dates and states are in clear.
+- `fairnight sync` creates a stay to register for every booking that ends today or later, marks vanished bookings as cancelled, and applies retention.
+- Check-in form at `/checkin/<code>` in `fairnight serve`:
+  - local network only, refused through proxies and tunnels;
+  - random 96-bit code valid until check-out, slowed down after 20 wrong codes;
+  - signed form token;
+  - no JavaScript, strict CSP;
+  - Spanish, English and Italian;
+  - guests sealed on arrival without the passphrase.
+- The passphrase comes from a hidden prompt or `FAIRGUEST_FRASE`. Corrections are asked, never passed as arguments, so they never end up in the shell history.
+- Erasure deletes the guests, the sealed details, the form code and the generated files, with SQLite `secure_delete`.
+
+#### fairnight-smoobu, fairnight-beds24
+
+- Bookings also carry the holder's name, the number of guests (adults plus children) and the channel reference, for guest registration only. Pricing never reads them; they are sealed by Fairguest and never stored in `calendar_events` or printed.
+
+#### fairnight-mcp
+
+- New read-only tool `get_guest_deadlines`: the communications due per stay, dates and states only.
+
+### Installer and release
+
+- `Installa Fairnight.cmd` (Windows) and `Installa Fairnight.command` (Mac): check Node.js and say what to do when it is missing or too old, install into `~/Fairnight/programma` from the project folder or from npm, put an icon on the desktop, and update in place without touching the host's settings.
+- `fairnight configura`: a guided setup in Italian (name, town, calendar links, prices, seasons proposed from the town, language, autopilot for houses on Smoobu or Beds24); `fairnight apri` starts the calendar page and opens the browser, or finds the one already running.
+- A guide for hosts in Italian with screenshots: `docs/installa.md`.
+- CI tries the installer on Windows and macOS with Node.js 22 and 24, from a folder with a space in its name, with fake calendars.
+- Release workflow on `v*` tags: tests on Node.js 20 and 22, the installer on Windows and Mac, a draft GitHub Release with the npm tarballs, `Fairnight-installa.zip` and checksums; npm publishing waits for a manual approval and only then the release becomes public. The steps are in `scripts/release.mjs`.
+- `CONTRIBUTING.md`, `SECURITY.md`, issue and pull request templates.
+
+
+## [0.1.0] - 2026-10-12, not published on npm
+
+The first version, kept in the repository only: `fairnight`, `fairnight-cli` and `fairnight-mcp`.
 
 ### fairnight (engine)
 

@@ -4,6 +4,22 @@ Abbiamo letto solo le pagine dei fornitori, il 12 ottobre 2026, di nuovo il 13 o
 
 ## AirROI
 
+### Accordo con AirROI (15 ottobre 2026)
+
+**L'adattatore AirROI di Fairnight è usato con l'accordo di AirROI**, che il 15 ottobre 2026 ha dato il permesso scritto per questo uso. L'accordo copre:
+
+- l'uso delle metriche di zona nei prezzi dell'host, compreso il **prezzo base suggerito**;
+- il percorso `/markets/metrics/future/pacing` (consentito; l'adattatore non lo chiama ancora);
+- **nessun limite di 30 giorni** sulla conservazione; AirROI consiglia di aggiornare i dati **almeno una volta al mese**.
+
+Cosa fa Fairnight di conseguenza:
+
+- l'adattatore è acceso di default, ma resta **facoltativo**: senza la chiave AirROI dell'host e senza una zona in `market.airroi.areas` non parte nessuna chiamata; l'host può spegnerlo con `"market": { "airroi": { "enabled": false } }`;
+- i dati non scadono più: il primo `fairnight sync` (anche quello del pilota e del pulsante «Ricalcola» della pagina) dopo 30 giorni dall'ultima lettura rilegge da solo le zone AirROI; se la lettura non riesce, restano i dati di prima e il sync lo dice;
+- dovunque compare un dato AirROI c'è «Powered by AirROI» con il link a [https://www.airroi.com](https://www.airroi.com): spiegazioni delle notti, prezzo base suggerito, pagina del calendario (link vero), export, MCP, messaggi del terminale.
+
+La tabella qui sotto riassume i termini generali letti prima dell'accordo: dove i due dicono cose diverse, per Fairnight vale l'accordo.
+
 Fonti: [airroi.com/tos](https://www.airroi.com/tos) (aggiornati il 10 settembre 2026), [airroi.com/api](https://www.airroi.com/api), [airroi.com/api/pricing](https://www.airroi.com/api/pricing).
 
 ### Cosa dicono i termini
@@ -42,7 +58,7 @@ Fonti: [airroi.com/tos](https://www.airroi.com/tos) (aggiornati il 10 settembre 
 | Adattatore che chiama l'API con la **chiave dell'utente** e non salva dati nel repo | **Plausibilmente sì.** Il contratto è tra l'utente e AirROI. Va detto chiaramente nel README e nella configurazione |
 | Dati di esempio nel repo | **No** (§5.4(i), §10) |
 | Statistiche aggregate incluse nel repo | **Da chiarire**: forse rientrano nell'eccezione §5.10 con l'avviso, ma la §5.7 (opere derivate) le complica |
-| Cache locale per il calcolo | **Chiarito in parte**: al massimo 30 giorni (§10). L'adattatore usa questo tetto |
+| Cache locale per il calcolo | **Sì, con l'accordo del 15 ottobre 2026**: nessun tetto di 30 giorni, aggiornamento almeno mensile, fatto in automatico dal sync |
 
 ### Uso in un servizio ospitato a pagamento
 
@@ -82,15 +98,15 @@ Tutto è facoltativo e spento finché l'host non lo accende per un annuncio.
 - **Motore.** Un fattore «domanda di zona» (`factors.market`) confronta ogni notte della zona con la media della zona stessa. Sposta il prezzo di metà della differenza, al massimo +15% o -10%, e salta le notti misurate su meno di 5 alloggi comparabili. Il motore riceve i dati già letti (`calendar.market`) e non va mai in rete. La spiegazione della notte nomina la fonte con la sua attribuzione.
 - **CSV dell'host.** Data, occupazione di zona, prezzo medio, comparabili, per chi ha dati che può usare.
 - **Inside Airbnb.** Solo import dei file che l'utente scarica da sé (`calendar.csv.gz`, facoltativo `listings.csv.gz` per i comparabili). Nel codice non c'è nessuno scaricatore. Ogni spiegazione dice «Inside Airbnb (insideairbnb.com), CC BY 4.0». L'occupazione è dichiarata **stimata**, perché `available = f` non distingue una notte prenotata da una chiusa dall'host. Gli alloggi chiusi su tutte le notti si scartano.
-- **AirROI.** L'adattatore c'è, ma è **spento** (`market.airroi.enabled: false`) finché i termini d'uso non sono confermati per iscritto da AirROI. `fairnight mercato collega` e `importa --fonte airroi` rifiutano con «in attesa di conferma scritta da AirROI sui termini d'uso». Quando sarà acceso:
+- **AirROI.** Acceso dal ramo `airroi-acceso` (15 ottobre 2026), con l'accordo di AirROI (vedi sopra). Facoltativo: lo spegne `market.airroi.enabled: false`.
   - usa la chiave dell'utente, letta prima da `AIRROI_API_KEY` e poi da `airroi-credentials.json`, e mai stampata;
-  - chiama solo `GET /markets/search` e `POST /markets/metrics/all` (metriche di zona mensili), mai gli endpoint di prezzo consigliato né i dati per singolo annuncio;
-  - mostra «powered by AirROI» in ogni spiegazione;
-  - cancella i dati dopo 30 giorni, o su richiesta con `fairnight mercato cancella --fonte airroi`;
-  - stampa a ogni import il numero di chiamate, perché sono a pagamento.
+  - chiama solo `GET /markets/search` e `POST /markets/metrics/all` (metriche di zona mensili), mai i dati per singolo annuncio;
+  - mostra «Powered by AirROI» con il link a https://www.airroi.com dovunque compare un dato;
+  - rilegge le zone dopo 30 giorni al primo `fairnight sync`; cancella i dati solo su richiesta, con `fairnight mercato cancella --fonte airroi`;
+  - stampa il numero di chiamate a ogni import e a ogni rilettura, perché sono a pagamento.
 - **Mai** scraping di nessun sito. Nel repo e nei test ci sono solo dati inventati e un finto server AirROI.
 
-**Future pacing:** il 15 ottobre la pagina dell'API elenca il percorso `/markets/metrics/future/pacing`. Non lo usiamo finché i termini non sono confermati per iscritto. Per ora ogni notte prende il valore dello stesso mese dell'ultimo anno: è la stagione della zona, non una previsione.
+**Future pacing:** il percorso `/markets/metrics/future/pacing` è compreso nell'accordo del 15 ottobre 2026, ma l'adattatore non lo chiama ancora. Per ora ogni notte prende il valore dello stesso mese dell'ultimo anno: è la stagione della zona, non una previsione.
 
 ## ISTAC: vivienda vacacional delle Canarie (15 ottobre 2026)
 
@@ -125,10 +141,10 @@ Fonti: [aviso legal INE](https://www.ine.es/dyngs/AYU/index.htm?cid=125), tabell
 - **Comparabili:** zona dell'annuncio; camere, ospiti, tipo e quartiere come scelti all'import (Inside Airbnb filtra davvero, il CSV lo dichiara, ISTAC usa la fascia di posti). L'annuncio può dire `guests`.
 - **Avvisi:** dati di tutta la zona; ospiti diversi; sotto il minimo o sopra il massimo; differenza oltre il 30%.
 - **Conferma:** non cambia mai da solo. `fairnight mercato prezzo-base --listing <nome> --applica`, oppure «Usa questo prezzo» con conferma nella pagina, solo dal computer dove gira Fairnight e solo per la cifra mostrata. La configurazione precedente resta in `fairnight.config.json.bak`.
-- **Fonti:** CSV dell'host, Inside Airbnb, ISTAC. AirROI solo se una conferma scritta lo permette in modo esplicito.
+- **Fonti:** CSV dell'host, Inside Airbnb, ISTAC e AirROI (compreso nell'accordo del 15 ottobre 2026, con «Powered by AirROI» e il link).
 
 ## Conclusione
 
 1. **La fase 1 non usa fonti di mercato.** Fairnight funziona solo con i dati dell'host: calendari, storico, eventi caricati da lui. È la scelta più sicura e anche il nostro tratto distintivo.
 2. **Nel codice open source** ogni fonte di mercato entra come **adattatore opzionale**, con la chiave o il file dell'utente, senza dati nel repo e con l'attribuzione mostrata in interfaccia. AirROI è il primo candidato, Inside Airbnb il secondo (solo dove ha copertura).
-3. **Per un servizio ospitato a pagamento** nessuna delle due fonti è usabile così com'è. Serve un accordo scritto con AirROI, oppure dati di mercato aggregati costruiti con il consenso degli host che usano il servizio. Questa seconda strada va progettata a parte.
+3. **Per un servizio ospitato a pagamento** nessuna delle due fonti è usabile così com'è. L'accordo con AirROI del 15 ottobre 2026 riguarda l'adattatore di Fairnight con la chiave dell'host; un servizio ospitato va chiesto a parte. Serve un accordo scritto con AirROI anche per quello, oppure dati di mercato aggregati costruiti con il consenso degli host che usano il servizio. Questa seconda strada va progettata a parte.

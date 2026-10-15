@@ -392,7 +392,7 @@ export async function runPilot(dir: string, io: Io, opts: PilotOptions, config: 
     }
     try {
       const listings = opts.only ? config.listings.filter((l) => opts.only?.includes(l.name)) : config.listings;
-      const { reports } = await syncEverything(db, dir, config.listings, io);
+      const { reports } = await syncEverything(db, dir, config.listings, io, config.market);
       const result: PilotRunResult = { ...empty, notRead: reports.filter((r) => !r.ok) };
       for (const l of listings) result.listings.push(await runListing(db, dir, io, l, reports, opts, startedAt));
       if (opts.dryRun) return result;

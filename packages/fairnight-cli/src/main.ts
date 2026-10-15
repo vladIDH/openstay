@@ -50,7 +50,7 @@ Usage:
   fairnight mercato importa <file> --zona <name>   zone data from your CSV (date, occupancy, average_price, comparables)
                                                    or from Inside Airbnb files you downloaded (calendar.csv.gz)
                                                    [--fonte csv|insideairbnb] [--annunci listings.csv.gz --tipo T --camere N --ospiti N --quartiere Q] [--dry-run]
-  fairnight mercato importa --fonte airroi         AirROI zone metrics with your own key (off until AirROI confirms its terms) [--zona <name>]
+  fairnight mercato importa --fonte airroi         AirROI zone metrics with your own key, read again by sync every 30 days [--zona <name>]
   fairnight mercato importa --fonte istac          ISTAC holiday homes, Canary Islands: average daily rate by municipality, free
                                                    --zona <name> --comune <code, e.g. 38001> [--ospiti N] [--dry-run]
   fairnight mercato importa --fonte ine            INE tourist apartments: season by tourist point (off while INE's licence is unclear)
@@ -223,7 +223,7 @@ async function runSync(dir: string, listing: string | undefined, rest: string[],
   const listings = selectListings(config, listing);
   const db = openDb(dbPath(dir));
   try {
-    const { reports, notes } = await syncEverything(db, dir, listings, io);
+    const { reports, notes } = await syncEverything(db, dir, listings, io, config.market);
     let failed = 0;
     for (const r of reports) {
       if (!r.ok) failed++;

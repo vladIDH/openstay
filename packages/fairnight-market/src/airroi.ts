@@ -6,21 +6,24 @@
  * Only zone metrics, on purpose:
  * - GET  /markets/search        find the market (country, region, locality) of a place;
  * - POST /markets/metrics/all   monthly occupancy, average daily rate and active listings of a market.
- * The client cannot call anything else: never the price recommendation
- * endpoints, never listing-level data.
+ * The client cannot call anything else, and never listing-level data.
  *
- * Terms (airroi.com/tos, 10 September 2026) the callers must honour:
- * - attribution "powered by AirROI" wherever the data is shown (§5.3(c));
- * - no data kept beyond 30 days (§10), all of it deleted on request (§32).
+ * Used with AirROI's agreement (written permission of 15 October 2026), which
+ * sets what the callers must honour:
+ * - "Powered by AirROI", with a link to airroi.com, wherever the data is shown;
+ * - no fixed retention limit; the data should be refreshed at least once a
+ *   month (AIRROI_REFRESH_DAYS), and it is deleted on request.
  * Every call is paid by the host: see airroi.com/api/pricing.
  * The key never appears in an error message.
  */
 import type { MarketDay } from "fairnight";
 
 export const AIRROI_BASE_URL = "https://api.airroi.com";
-export const AIRROI_ATTRIBUTION = "powered by AirROI";
-/** AirROI's terms: API data is not kept for more than 30 days (§10). */
-export const AIRROI_MAX_DAYS = 30;
+export const AIRROI_URL = "https://www.airroi.com";
+/** Shown wherever AirROI data is: the calendar page turns it into a link to AIRROI_URL. */
+export const AIRROI_ATTRIBUTION = `Powered by AirROI (${AIRROI_URL})`;
+/** Data older than this is read again by the next sync (AirROI recommends at least once a month). */
+export const AIRROI_REFRESH_DAYS = 30;
 const MAX_RETRIES = 3;
 
 export type FetchLike = (

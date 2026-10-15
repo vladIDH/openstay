@@ -18,6 +18,31 @@ const placeholders = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1
 const html = renderPage("nonce-0000");
 const script = /<script nonce="[^"]+">([\s\S]*)<\/script>/.exec(html)?.[1] ?? "";
 
+describe("AirROI on the calendar page", () => {
+  /** Runs the page's own helpers with a tiny stand-in for the DOM. */
+  function render(text: string) {
+    type Node = { tag: string; className?: string; textContent?: string; href?: string; target?: string; rel?: string; children: (Node | string)[]; append(...n: (Node | string)[]): void };
+    const document = {
+      createElement: (tag: string): Node => {
+        const node: Node = { tag, children: [], append: (...n) => node.children.push(...n) };
+        return node;
+      },
+    };
+    const helpers = script.slice(script.indexOf("const el ="), script.indexOf("const LANGS"));
+    const fn = new Script(`${helpers}; withSourceLinks("div", "note", TEXT)`);
+    return fn.runInNewContext({ document, TEXT: text }) as Node;
+  }
+
+  it("turns every Powered by AirROI into a link to airroi.com, and leaves the rest as text", () => {
+    const node = render("zone 90% booked vs 70% average · Powered by AirROI (https://www.airroi.com) · read 2026-11-01");
+    expect(node.children).toHaveLength(3);
+    expect(node.children[0]).toBe("zone 90% booked vs 70% average · ");
+    expect(node.children[1]).toMatchObject({ tag: "a", textContent: "Powered by AirROI", href: "https://www.airroi.com", target: "_blank", rel: "noopener noreferrer" });
+    expect(node.children[2]).toBe(" · read 2026-11-01");
+    expect(render("Source: your file").children).toEqual(["Source: your file"]);
+  });
+});
+
 describe("texts of the calendar page", () => {
   it("arrives already in the folder's language: tab title, html lang and the first texts", () => {
     const italian = renderPage("nonce-0000", "it");

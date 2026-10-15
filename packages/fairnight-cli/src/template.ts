@@ -5,8 +5,8 @@
 import type { HostConfig } from "./config.js";
 
 export const EXAMPLE_CONFIG: HostConfig = {
-  // AirROI stays off until AirROI confirms its terms of use in writing.
-  market: { airroi: { enabled: false } },
+  // AirROI is optional: it needs the host's own key and a zone under market.airroi.areas.
+  market: { airroi: { enabled: true } },
   listings: [
     {
       name: "seaview-loft",

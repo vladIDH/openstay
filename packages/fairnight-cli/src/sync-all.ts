@@ -1,13 +1,15 @@
 /**
  * Everything `fairnight sync` reads: the iCal calendars, then the bookings of
- * the listings linked to Smoobu and to Beds24. Used by the command and by the
+ * the listings linked to Smoobu and to Beds24, then the AirROI zones read a
+ * month ago or more. Used by the command and by the
  * Recalculate button of the calendar page.
  */
 import { BEDS24_FEED, beds24Client, beds24Listings, creditsLine, importBookings as importBeds24 } from "./beds24.js";
-import { SetupError, type HostListing } from "./config.js";
+import { SetupError, type HostListing, type MarketSettings } from "./config.js";
 import type { Db } from "./db.js";
 import type { Io } from "./io.js";
 import { applyRetention, prefillFromCalendar } from "./guests/store.js";
+import { refreshAirRoi } from "./mercato.js";
 import { importBookings as importSmoobu, SMOOBU_FEED, smoobuClient, smoobuListings } from "./smoobu.js";
 import { syncListings, type FeedReport } from "./sync.js";
 
@@ -20,7 +22,7 @@ export interface SyncResult {
 const notRead = (listings: HostListing[], feed: string, error: string): FeedReport[] =>
   listings.map((l) => ({ listing: l.name, feed, ok: false, seen: 0, added: 0, changed: 0, removed: 0, restored: 0, skipped: [], error }));
 
-export async function syncEverything(db: Db, dir: string, listings: HostListing[], io: Io): Promise<SyncResult> {
+export async function syncEverything(db: Db, dir: string, listings: HostListing[], io: Io, market?: MarketSettings): Promise<SyncResult> {
   const reports = await syncListings(db, listings, { fetch: io.fetch, now: io.now() });
   const notes: string[] = [];
 
@@ -45,6 +47,8 @@ export async function syncEverything(db: Db, dir: string, listings: HostListing[
       reports.push(...notRead(beds24, BEDS24_FEED, e.message));
     }
   }
+
+  notes.push(...(await refreshAirRoi(db, dir, io, market)));
 
   // Guest registration (only when Fairguest is set up): new bookings get a stay, old data goes.
   const guests = prefillFromCalendar(db, listings, io.now());

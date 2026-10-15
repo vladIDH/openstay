@@ -100,7 +100,7 @@ Documenti in `docs/` (la mappa delle funzioni è in [mappa-funzioni.md](mappa-fu
 **Anticipato sul ramo `mercato` (13 ottobre 2026):**
 - il fattore «domanda di zona» nel motore, spento di default;
 - l'import del CSV dell'host e dei file Inside Airbnb scaricati dall'utente (al posto dello «scaricatore»: nel codice non ce n'è);
-- l'adattatore AirROI, pronto ma spento finché AirROI non conferma per iscritto i termini (vedi `fonti-mercato.md`);
+- l'adattatore AirROI, acceso il 15 ottobre 2026 con l'accordo di AirROI (ramo `airroi-acceso`, vedi `fonti-mercato.md`);
 - i comandi `fairnight mercato importa | collega | stato | cancella` e il tool MCP `get_market_area`.
 
 **Totale fino alla fase 3: circa 49 giorni di lavoro.** La 0.1 pubblica esce dopo circa 13.
@@ -141,7 +141,7 @@ Guida: `risposte-ospiti.md`.
 - Nessun dato reale di host o ospiti nel repo.
 - Nessun nome di prodotti o funzioni di altri software di prezzi nel codice o nei testi del prodotto.
 - Le fonti di mercato sono solo adattatori opzionali, con la chiave o il file dell'utente.
-- AirROI resta spento (`market.airroi.enabled: false`) finché i termini d'uso non sono confermati per iscritto (vedi `fonti-mercato.md`).
+- AirROI è usato con l'accordo di AirROI (15 ottobre 2026): sempre con la chiave dell'host, sempre con «Powered by AirROI» e il link a https://www.airroi.com dove compare un dato (vedi `fonti-mercato.md`).
 
 ## Versioni dello schema del database
 

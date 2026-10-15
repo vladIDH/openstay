@@ -15,7 +15,7 @@ export {
   insideAirbnbMarket,
 } from "./insideairbnb.js";
 export type { ComparableFilter, InsideAirbnbSummary } from "./insideairbnb.js";
-export { AIRROI_ATTRIBUTION, AIRROI_BASE_URL, AIRROI_MAX_DAYS, AirRoiClient, AirRoiError, monthlyToDays } from "./airroi.js";
+export { AIRROI_ATTRIBUTION, AIRROI_BASE_URL, AIRROI_REFRESH_DAYS, AIRROI_URL, AirRoiClient, AirRoiError, monthlyToDays } from "./airroi.js";
 export type { AirRoiClientOptions, AirRoiFilter, AirRoiMarket, FetchLike, MarketSearchEntry, MonthlyMetrics } from "./airroi.js";
 export { getText, OpenDataError, plainName } from "./http.js";
 export type { OpenDataOptions } from "./http.js";

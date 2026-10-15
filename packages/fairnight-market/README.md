@@ -47,17 +47,18 @@ Open data of the [Instituto Canario de Estadística](https://www.gobiernodecanar
 
 Table 2083 of INE's "Encuesta de Ocupación en Apartamentos Turísticos": the occupancy of the registered tourist apartments of each tourist point, month by month, as the zone's season (no prices). One JSON call to `servicios.ine.es`, no key. Citation: "Elaboración propia con datos extraídos del sitio web del INE: www.ine.es". Fairnight keeps it off while the licence is unclear (CC BY 4.0 in INE's legal notice, CC BY-SA 4.0 in the footer of the same site).
 
-### AirROI (switched off until AirROI confirms its terms in writing)
+### AirROI (used with AirROI's agreement)
 
-With **your own** AirROI API key, for your own pricing: no Fairnight key, no hosted service. The client calls only two zone endpoints: `GET /markets/search` and `POST /markets/metrics/all`. It never calls the price recommendation endpoints or listing-level data.
+With **your own** AirROI API key, for your own pricing: no Fairnight key, no hosted service. The client calls only two zone endpoints: `GET /markets/search` and `POST /markets/metrics/all`. It never calls listing-level data.
 
-- **Attribution:** "powered by AirROI", wherever the data is shown.
-- **Retention:** no AirROI data is kept for more than 30 days, and all of it is deleted on request (`fairnight mercato cancella`).
+- **Agreement:** the adapter is used with AirROI's agreement (15 October 2026), which covers the zone metrics in the host's prices and in the suggested base price.
+- **Attribution:** "Powered by AirROI" with a link to [https://www.airroi.com](https://www.airroi.com), wherever the data is shown (`AIRROI_ATTRIBUTION`, `AIRROI_URL`).
+- **Freshness:** no fixed retention limit; data older than 30 days (`AIRROI_REFRESH_DAYS`) is read again by the next `fairnight sync`, as AirROI suggests refreshing at least once a month. All of it is deleted on request (`fairnight mercato cancella`).
 - **Cost:** AirROI charges every call to your account. See [airroi.com/api/pricing](https://www.airroi.com/api/pricing).
 - **Granularity:** AirROI gives one figure per past month. Each night uses the most recent month with the same calendar month, so it shows the zone's season, not a forecast.
 - The key never appears in an error message.
 
-The adapter stays off (`market.airroi.enabled: false`) until AirROI answers in writing on how its terms apply. See `docs/fonti-mercato.md`.
+The adapter is optional: nothing is called without your key and a zone under `market.airroi.areas`, and `market.airroi.enabled: false` switches it off. See `docs/fonti-mercato.md`.
 
 ## Tests
 

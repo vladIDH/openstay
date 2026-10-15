@@ -246,7 +246,7 @@ export function createHandler(opts: ServeOptions): (req: IncomingMessage, res: S
         }
         const config = loadHostConfig(opts.dir);
         const db = openDb(dbPath(opts.dir));
-        const job = syncEverything(db, opts.dir, config.listings, opts.io);
+        const job = syncEverything(db, opts.dir, config.listings, opts.io, config.market);
         refreshing = job;
         try {
           const { reports } = await job;

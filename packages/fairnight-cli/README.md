@@ -207,10 +207,17 @@ fairnight ospiti elenco
 `elenco` lists each stay with its form path, for example `/checkin/Xb3…`. Open `http://<this computer>:4321/checkin/Xb3…` on a phone or tablet on the same Wi-Fi.
 
 - The form opens **only from the local network**. Other addresses are refused, and so is anything that comes through a proxy or tunnel. The code stops working after check-out.
-- It is in Spanish, English and Italian.
-- It asks what the decree asks for, one guest at a time, and says what is missing.
+- It is in Spanish, English and Italian, made for a phone first, light or dark like the guest's phone.
+- Three steps on screen: the guest's details, the document, then a confirmation with "Add another guest". One line at the top says what happens to the data: encrypted on your computer, sent only to the police, erased by itself when the law allows.
+- It asks what the decree asks for, one guest at a time, and says next to each field what is missing or wrong (a date in the future, a support number that is not 9 characters…).
 - It asks only for the **type** of payment. There is no field for a card number or an IBAN, and any such field sent to the server is thrown away.
 - Each guest is encrypted as soon as it arrives. The server does not know your passphrase and cannot read back what it saved.
+
+| Step 1: details | Step 2: document | A field to fix | Confirmation |
+|---|---|---|---|
+| ![Step 1](../../docs/images/visivo/checkin-es-telefono-1-dati.png) | ![Step 2](../../docs/images/visivo/checkin-es-telefono-2-documento.png) | ![Errors](../../docs/images/visivo/checkin-es-telefono-errori.png) | ![Confirmation](../../docs/images/visivo/checkin-es-telefono-3-conferma.png) |
+
+The same screens in Italian, on a computer and in dark mode are in [docs/images/visivo](../../docs/images/visivo). All data in them is invented.
 
 **5. Send, and record it.**
 

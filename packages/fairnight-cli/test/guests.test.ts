@@ -7,6 +7,7 @@ import type { Server } from "node:http";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { isLocalAddress } from "../src/guests/checkin.js";
+import { LANGS, WORDS } from "../src/guests/i18n.js";
 import { openDb } from "../src/db.js";
 import { main } from "../src/main.js";
 import { startServer } from "../src/serve.js";
@@ -244,8 +245,12 @@ describe("check-in form", () => {
     const html = await res.text();
     expect(html).toContain('<html lang="it">');
     expect(html).toContain("Casa di Prova");
-    expect(html).toContain("2099-06-10 → 2099-06-13");
+    expect(html).toContain("10 giugno 2099 → 13 giugno 2099");
     expect(html).toContain("Ospite 1 (chi ha prenotato)");
+    // Three steps on screen, and one line on what really happens to the data.
+    expect(html).toContain('<li aria-current="step">1 · I tuoi dati</li>');
+    expect(html).toContain("I tuoi dati restano cifrati sul computer dell&#39;host, vanno solo alla polizia e si cancellano da soli appena la legge lo permette.");
+    expect(html).toContain('<meta name="color-scheme" content="light dark">');
     expect(html).not.toContain("<script");
     expect(html).toMatch(/name="payment"/);
     expect(html).not.toMatch(/name="[^"]*(card|iban|account|expir)[^"]*"/i);
@@ -276,6 +281,16 @@ describe("check-in form", () => {
     expect(html).toContain("Revise los campos marcados.");
     expect(html).toContain("Indique un teléfono o un correo electrónico");
     expect(html).toContain('value="Ospite"');
+    // A message for the kind of field, next to it.
+    const wrong = await postGuest(base, one(stays).code, { ...HOLDER, docSupport: "123", email: "not-an-address" });
+    const wrongHtml = await wrong.text();
+    expect(wrongHtml).toContain('<div class="err" id="docSupport-err">El número de soporte tiene exactamente 9 letras y cifras.</div>');
+    expect(wrongHtml).toContain('<div class="err" id="email-err">Escriba una dirección completa, como nombre@ejemplo.es.</div>');
+    expect(wrongHtml).toContain('aria-invalid="true" aria-describedby="email-err"');
+    // A missing name is shown on the name, never on the phone: there only the missing contact.
+    const noName = await (await postGuest(base, one(stays).code, { ...HOLDER, surname1: "", email: "" })).text();
+    expect(noName).toContain('<div class="err" id="surname1-err">Obligatorio</div>');
+    expect(noName).toContain('<div class="err" id="phone-err">Indique un teléfono o un correo electrónico</div>');
 
     const ok = await postGuest(base, one(stays).code, { ...HOLDER, cardNumber: "0000 0000 0000 0000", iban: "ZZ00 0000 0000" });
     expect(ok.status).toBe(303);
@@ -285,6 +300,10 @@ describe("check-in form", () => {
     for (const secret of ["Ospite", "ZZ0000000", "example.com", "0000 0000", "platform"]) expect(row.data).not.toContain(secret);
     const after = await (await fetch(`${base}${ok.headers.get("location")}`)).text();
     expect(after).toContain("Viajero 1 guardado.");
+    expect(after).toContain("<h2>Viajero 1 guardado.</h2><p>Si ya están todos, puede cerrar esta página.</p>");
+    expect(after).toContain('<li aria-current="step">3 · Confirmación</li>');
+    // The form for the next guest is there, folded under "Añadir otro viajero".
+    expect(after).toContain('<details class="another"><summary>Añadir otro viajero</summary>');
     expect(after).toContain("Viajero 2");
 
     const t = io(dir);
@@ -426,5 +445,18 @@ describe("requests of a guest", () => {
     const shown = io(dir);
     expect(await main(["ospiti", "mostra", one(stays).id], shown)).toBe(0);
     expect(shown.lines[1]).toMatch(/payment cash/);
+  });
+});
+
+describe("words of the check-in form", () => {
+  it("has the steps, the privacy line and a message for each kind of field in every language", () => {
+    const fields = Object.keys(WORDS.es.invalidFor).sort();
+    for (const l of LANGS) {
+      const w = WORDS[l];
+      expect(Object.keys(w.invalidFor).sort(), l).toEqual(fields);
+      for (const text of [w.steps.data, w.steps.document, w.steps.confirm, w.privacyShort, w.saved(1), w.stepLabel(1), ...Object.values(w.invalidFor)]) {
+        expect(text.trim(), l).not.toBe("");
+      }
+    }
   });
 });

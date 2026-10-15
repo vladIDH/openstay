@@ -120,11 +120,21 @@ Fairnight legge i calendari e apre il calendario dei prezzi nel browser.
 
 ![Il calendario dei prezzi in italiano](images/installa/09-calendario.png)
 
-- Ogni giorno libero mostra il prezzo e il soggiorno minimo. Le notti già prenotate sono scure. Clicca una notte per vedere da dove viene il prezzo: ogni regola è spiegata con le sue parole (buco tra due prenotazioni, ultimo minuto, stagione, prezzo minimo e massimo…).
+- In alto c'è il riassunto del mese: notti in vendita, prenotate, prezzo medio e occupazione.
+- Ogni notte libera mostra il prezzo grande e il soggiorno minimo. Le notti sopra il prezzo base sono color ambra, quelle sotto verde acqua; le prenotate sono grigie, le chiuse a righe. Oggi ha un bordo azzurro, sabato e domenica hanno il nome colorato.
+- Clicca una notte per vedere da dove viene il prezzo: in grande il prezzo finale, sotto una piccola scala di barre dal prezzo base al prezzo finale, con ogni regola spiegata con le sue parole (buco tra due prenotazioni, ultimo minuto, stagione, prezzo minimo e massimo…).
+- I colori seguono il computer o il telefono: tema scuro se è scuro, chiaro se è chiaro.
 - «Aggiorna i prezzi» rilegge i calendari e ricalcola.
 - Il calendario parla italiano, spagnolo o inglese. Per cambiare lingua usa il piccolo menu **IT · ES · EN** in alto: la scelta resta in quel browser. In fondo al pannello di una notte, «Testo completo (in inglese)» apre la spiegazione originale di Fairnight: è quella da mandare se chiedi aiuto.
 
-![Lo stesso calendario in spagnolo](images/installa/09-calendario-es.png)
+![Lo stesso calendario in spagnolo, con il tema chiaro](images/installa/09-calendario-es.png)
+
+Dal telefono (con `fairnight serve --lan`, sulla stessa rete Wi-Fi) il calendario si stringe e il pannello della notte si apre dal basso:
+
+| Il mese | Una notte |
+|---|---|
+| ![Il calendario sul telefono](images/visivo/calendario-it-telefono.png) | ![Il pannello della notte sul telefono](images/visivo/notte-it-telefono.png) |
+
 - **La finestra nera deve restare aperta** mentre usi il calendario: quando la chiudi, Fairnight si spegne. Puoi ridurla a icona.
 
 **Le volte successive** non serve il terminale:

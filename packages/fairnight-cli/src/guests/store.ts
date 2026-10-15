@@ -11,8 +11,10 @@ import { randomBytes, type KeyObject } from "node:crypto";
 import { existsSync, rmSync } from "node:fs";
 import {
   addHours,
+  isPaymentType,
   localDateTime,
   open,
+  parseGuest,
   publicKeyOf,
   registryFor,
   seal,
@@ -281,13 +283,34 @@ export function addPerson(db: Db, stayId: string, data: PersonData, by: "host" |
   return id;
 }
 
-export function people(db: Db, stayId: string): { id: string; added_at: string; added_by: string; data: string }[] {
-  return db.prepare("SELECT id, added_at, added_by, data FROM guest_people WHERE stay_id = ? ORDER BY added_at, rowid").all(stayId) as {
+/** A guest who came through the check-in link: still sealed for the relay's place, opened only with the passphrase. */
+export function addRelayPerson(db: Db, stayId: string, sealed: string, sealedPlace: string, now: Date): string {
+  const id = newPersonId();
+  db.prepare("INSERT INTO guest_people (id, stay_id, added_at, added_by, data, place) VALUES (?, ?, ?, 'form', ?, ?)").run(id, stayId, localDateTime(now), sealed, sealedPlace);
+  return id;
+}
+
+export function people(db: Db, stayId: string): { id: string; added_at: string; added_by: string; data: string; place: string | null }[] {
+  const withPlace = hasColumnOf(db, "guest_people", "place");
+  return db.prepare(`SELECT id, added_at, added_by, data, ${withPlace ? "place" : "NULL AS place"} FROM guest_people WHERE stay_id = ? ORDER BY added_at, rowid`).all(stayId) as {
     id: string;
     added_at: string;
     added_by: string;
     data: string;
+    place: string | null;
   }[];
+}
+
+const hasColumnOf = (db: Db, table: string, column: string) => (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).some((c) => c.name === column);
+
+/**
+ * A guest from the link was written by a browser, not by our form handler:
+ * it goes through the same reading as the form (unknown fields dropped).
+ */
+function fromRelay(raw: PersonData, today: string): PersonData {
+  const guest = parseGuest((raw as { guest?: unknown }).guest, today).draft;
+  const payment = (raw as { payment?: unknown }).payment;
+  return isPaymentType(payment) ? { guest, payment } : { guest };
 }
 
 export interface OpenedStay {
@@ -300,10 +323,14 @@ export interface OpenedStay {
 }
 
 /** Everything about a stay, decrypted with the private key, as the registry wants it. */
-export function openStay(db: Db, row: StayRow, settings: GuestSettings, key: KeyObject): OpenedStay {
+export function openStay(db: Db, row: StayRow, settings: GuestSettings, key: KeyObject, today = localDateTime(new Date()).slice(0, 10)): OpenedStay {
   const channel = row.channel_data ? open<ChannelData>(key, row.channel_data, place.channel(row.id)) : {};
   const host = row.host_data ? open<HostData>(key, row.host_data, place.host(row.id)) : {};
-  const list = people(db, row.id).map((p) => ({ id: p.id, addedBy: p.added_by, data: open<PersonData>(key, p.data, place.person(p.id)) }));
+  const list = people(db, row.id).map((p) => ({
+    id: p.id,
+    addedBy: p.added_by,
+    data: p.place ? fromRelay(open<PersonData>(key, p.data, p.place), today) : open<PersonData>(key, p.data, place.person(p.id)),
+  }));
   const guests = list.map((p) => p.data.guest);
   if (guests.length === 0 && channel.holder?.givenName) {
     guests.push({ givenName: channel.holder.givenName, surname1: channel.holder.surname1 ?? "" });
@@ -338,7 +365,8 @@ export function writeHostData(db: Db, stayId: string, data: HostData): void {
 }
 
 export function writePerson(db: Db, personId: string, data: PersonData): void {
-  db.prepare("UPDATE guest_people SET data = ? WHERE id = ?").run(seal(publicKey(db), data, place.person(personId)), personId);
+  // Sealed again for its own row: a guest from the link becomes like any other.
+  db.prepare(`UPDATE guest_people SET data = ?${hasColumnOf(db, "guest_people", "place") ? ", place = NULL" : ""} WHERE id = ?`).run(seal(publicKey(db), data, place.person(personId)), personId);
 }
 
 export function submissions(db: Db, stayId: string): SubmissionRow[] {

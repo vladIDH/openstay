@@ -30,8 +30,8 @@ function oldDatabase(version: 3 | 4 | 5): string {
 }
 
 describe("schema migrations", () => {
-  it("the latest version is 7: zone data (4), Fairguest (5), rooms of small hotels (6), Fairguest in Italy (7)", () => {
-    expect(SCHEMA_VERSION).toBe(7);
+  it("the latest version is 8: zone data (4), Fairguest (5), rooms of small hotels (6), Fairguest in Italy (7), check-in link (8)", () => {
+    expect(SCHEMA_VERSION).toBe(8);
   });
 
   it("takes a database from schema 3 to the latest, keeping its data", () => {
@@ -69,6 +69,9 @@ describe("schema migrations", () => {
     // Fairguest in Italy: the recognition of the guests and the receipts.
     expect(hasColumn(db, "guest_stays", "recognized_at")).toBe(true);
     expect(tables(db)).toContain("guest_receipts");
+    // The check-in link: the mailbox of a stay, and where a guest from it was sealed.
+    expect(hasColumn(db, "guest_stays", "relay_box")).toBe(true);
+    expect(hasColumn(db, "guest_people", "place")).toBe(true);
     db.close();
   });
 

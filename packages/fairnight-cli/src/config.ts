@@ -116,6 +116,8 @@ export interface HostConfig {
   market?: MarketSettings;
   /** Language of the calendar page: "it", "es" or "en". Missing: English. */
   language?: Language;
+  /** The relay of the guests' check-in link. Missing: https://fairguest.khlumen.com. */
+  fairguestRelay?: string;
 }
 
 const NAME = /^[a-z0-9][a-z0-9-]{0,62}$/;
@@ -260,7 +262,10 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
   if (!isObj(input)) {
     return { ok: false, issues: [{ path: "config", message: "must be an object with a listings list" }] };
   }
-  unknownFields(input, "config", ["listings", "market", "language"], issues);
+  unknownFields(input, "config", ["listings", "market", "language", "fairguestRelay"], issues);
+  if (input.fairguestRelay !== undefined && (typeof input.fairguestRelay !== "string" || !/^(https:\/\/[a-z0-9.-]+|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)\/?$/i.test(input.fairguestRelay))) {
+    issues.push({ path: "config.fairguestRelay", message: `must be the https address of a Fairguest relay, like "https://fairguest.khlumen.com", got ${JSON.stringify(input.fairguestRelay)}` });
+  }
   const market = input.market === undefined ? undefined : checkMarket(input.market, issues);
   if (input.language !== undefined && !isLanguage(input.language)) {
     issues.push({ path: "config.language", message: `must be "it", "es" or "en", got ${JSON.stringify(input.language)}` });
@@ -349,6 +354,7 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
   if (issues.length > 0) return { ok: false, issues };
   const value: HostConfig = market ? { listings, market } : { listings };
   if (isLanguage(input.language)) value.language = input.language;
+  if (typeof input.fairguestRelay === "string" && !issues.some((i) => i.path === "config.fairguestRelay")) value.fairguestRelay = input.fairguestRelay.replace(/\/+$/, "");
   return { ok: true, value };
 }
 

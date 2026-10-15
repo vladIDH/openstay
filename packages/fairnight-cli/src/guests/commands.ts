@@ -38,6 +38,8 @@ import { loadHostConfig, SetupError, type HostConfig } from "../config.js";
 import { getMeta, openDb, setMeta, type Db } from "../db.js";
 import { UsageError } from "../errors.js";
 import { DATA_DIR, dbPath, type Io } from "../io.js";
+import { PAGE_HASHES } from "./page-hashes.js";
+import { MRZ_MODEL_SHA256, checkPage, pullRelay, relayOf, stayLink, type PullReport } from "./relay.js";
 import { alloggiatiClient, downloadTables, dropOldReceipts, hasCredentials, loadCredentials, loadTables, receipts, saveCredentials, saveReceipt, TABLES_MAX_DAYS } from "./italy.js";
 import {
   addManualStay,
@@ -86,6 +88,9 @@ export const GUEST_USAGE = `  fairnight ospiti                                 g
   fairnight ospiti attiva                          turn on guest registration: choose the passphrase
   fairnight ospiti frase                           change the passphrase (the data stays as it is)
   fairnight ospiti elenco                          stays to register, with the link of their check-in form
+  fairnight ospiti link <stay>                     the check-in link to send to the guest: works from anywhere, encrypted in the guest's browser
+  fairnight ospiti scarica                         download what the guests sent through their links (no passphrase needed)
+  fairnight ospiti verifica-pagina                 check that the relay serves exactly the page of this version
   fairnight ospiti nuovo --listing <name> --da DATE --a DATE   a stay that is in no calendar
   fairnight ospiti mostra <stay>                   the data of a stay and what is still missing
   fairnight ospiti correggi <stay> <field>         change one field (the value is asked) [--persona N]
@@ -198,7 +203,16 @@ export async function runGuests(dir: string, values: GuestOptions, rest: string[
         return await passphrase(db, args, io);
       case "elenco":
       case "list":
+        await pullQuietly(db, io, config);
         return list(db, args, values, io);
+      case "link":
+        return await link(db, config, args, io);
+      case "scarica":
+      case "download":
+        return await download(db, config, args, io);
+      case "verifica-pagina":
+      case "check-page":
+        return await verifyPage(config, args, io);
       case "nuovo":
       case "new":
         return newStay(db, config, args, values, io);
@@ -225,6 +239,7 @@ export async function runGuests(dir: string, values: GuestOptions, rest: string[
         return recognized(db, config, args, io);
       case "invia":
       case "send":
+        await pullQuietly(db, io, config);
         return await sendItaly(dir, db, config, args, values, io);
       case "ricevute":
       case "receipts":
@@ -340,7 +355,8 @@ function list(db: Db, args: string[], values: GuestOptions, io: Io): number {
   const erased = rows.length - live.length;
   if (erased > 0) io.out(`${erased} more stay${erased === 1 ? "" : "s"} with the personal data already erased.`);
   if (live.some((r) => formPath(r, today))) {
-    io.out('The forms open only on this computer and the local network: "fairnight serve --lan", then http://<this computer>:4321 plus the form path, on a phone or tablet.');
+    io.out('The forms open on this computer and the local network: "fairnight serve --lan", then http://<this computer>:4321 plus the form path, on a phone or tablet.');
+    io.out('To send a guest a link that works from anywhere: "fairnight ospiti link <stay>".');
   }
   return 0;
 }
@@ -362,7 +378,7 @@ async function opened(db: Db, config: HostConfig, row: StayRow, io: Io): Promise
   notErased(row);
   const pass = await askPassphrase(io);
   try {
-    return openStay(db, row, settingsOf(config, row), unlockKeys(db, pass));
+    return openStay(db, row, settingsOf(config, row), unlockKeys(db, pass), localDateTime(io.now()).slice(0, 10));
   } catch (e) {
     if (e instanceof PassphraseError) throw new SetupError(e.message);
     throw e;
@@ -386,9 +402,12 @@ async function showStay(db: Db, config: HostConfig, args: string[], io: Io): Pro
     const doc = g.document ? `${g.document.type} ${g.document.number}` : "no document";
     io.out(`  ${i + 1}. ${g.givenName} ${g.surname1}${g.surname2 ? ` ${g.surname2}` : ""} · born ${g.birthDate ?? "—"} · ${g.nationality ?? "—"} · ${doc} · added by ${p.addedBy}`);
   });
-  for (const kind of ["reservation", "checkin"] as Kind[]) {
+  // Italy has only the guests' communication (Alloggiati Web); Spain has the booking and the check-in.
+  const kinds: Kind[] = o.settings.country === "IT" ? ["checkin"] : ["reservation", "checkin"];
+  const label = (kind: Kind) => (o.settings.country === "IT" ? "schedine (Alloggiati Web)" : KIND_LABEL[kind]);
+  for (const kind of kinds) {
     const problems = registry.validate(s, kind);
-    io.out(problems.length === 0 ? `  ${KIND_LABEL[kind]}: complete` : `  ${KIND_LABEL[kind]}: missing or wrong`);
+    io.out(problems.length === 0 ? `  ${label(kind)}: complete` : `  ${label(kind)}: missing or wrong`);
     for (const p of problems) io.out(`    - ${p.path}: ${p.message}`);
   }
   if (o.settings.country === "IT") io.out(row.recognized_at ? `  Guests recognized ${show(row.recognized_at)}.` : '  Guests not recognized yet: see them in person or on a live video call, then "fairnight ospiti riconosciuto".');
@@ -536,7 +555,7 @@ async function prepare(dir: string, db: Db, config: HostConfig, args: string[], 
     if (e instanceof PassphraseError) throw new SetupError(e.message);
     throw e;
   }
-  const stays = rows.map((r) => openStay(db, r, settingsOf(config, r), key));
+  const stays = rows.map((r) => openStay(db, r, settingsOf(config, r), key, localDateTime(io.now()).slice(0, 10)));
   const registry = registryFor("ES-CT");
   let failed = false;
   for (const o of stays) {
@@ -776,7 +795,7 @@ async function prepareItaly(dir: string, db: Db, config: HostConfig, rows: StayR
   if (values.tipo !== undefined && kindOf(values.tipo, "checkin") !== "checkin") throw new UsageError("In Italy only the guests are communicated: there is no booking to prepare.");
   const tablesNow = await freshTables(dir, db, io);
   const key = await unlockedKey(db, io);
-  const stays = rows.map((r) => openStay(db, r, settingsOf(config, r), key));
+  const stays = rows.map((r) => openStay(db, r, settingsOf(config, r), key, localDateTime(io.now()).slice(0, 10)));
   let failed = false;
   const ready: { o: OpenedStay; lines: string[] }[] = [];
   for (const o of stays) {
@@ -857,7 +876,7 @@ async function sendItaly(dir: string, db: Db, config: HostConfig, args: string[]
   const ready: SendItem[] = [];
   let blocked = 0;
   for (const r of rows) {
-    const o = openStay(db, r, settingsOf(config, r), key);
+    const o = openStay(db, r, settingsOf(config, r), key, localDateTime(io.now()).slice(0, 10));
     const check = problemsOfItaly(o, tablesNow);
     if (check.problems.length > 0) {
       blocked++;
@@ -993,4 +1012,57 @@ async function fetchReceipts(dir: string, db: Db, config: HostConfig, args: stri
     io.out(`Saved ${saveReceipt(dir, db, account, day, r.pdf, io.now())}: keep it 5 years (it is deleted by itself after that).`);
   }
   return missing > 0 ? 1 : 0;
+}
+
+// ---------------------------------------------------------------- the check-in link (relay)
+
+function reportPull(r: PullReport, io: Io): void {
+  if (r.guests > 0) io.out(`Downloaded ${r.guests} guest${r.guests === 1 ? "" : "s"} sent through the check-in link${r.stays > 1 ? ` (${r.stays} stays)` : ""}. They stay encrypted; "fairnight ospiti mostra <stay>" opens them.`);
+  for (const e of r.errors) io.out(`Check-in link: ${e}`);
+}
+
+/** Before the commands that show or send guests: what came through the links, without stopping on a network error. */
+async function pullQuietly(db: Db, io: Io, config: HostConfig): Promise<void> {
+  reportPull(await pullRelay(db, io, config), io);
+}
+
+async function link(db: Db, config: HostConfig, args: string[], io: Io): Promise<number> {
+  const [id, ...extra] = args;
+  noExtra(extra);
+  const row = stayOrFail(db, id);
+  notErased(row);
+  if (row.cancelled_at) throw new SetupError(`Stay ${row.id} is cancelled: no link.`);
+  const today = localDateTime(io.now()).slice(0, 10);
+  if (today > row.check_out) throw new SetupError(`Stay ${row.id} ended on ${row.check_out}: no link.`);
+  if (row.check_in > addDays(today, 110)) throw new SetupError(`Stay ${row.id} starts on ${row.check_in}: a link can be made from 110 days before.`);
+  const listing = config.listings.find((l) => l.name === row.listing);
+  const settings = settingsOf(config, row);
+  const url = await stayLink(db, io, config, row, { title: listing?.pricing.name ?? row.listing, country: settings.country });
+  io.out(url);
+  io.out("");
+  io.out("Send it to the guest the way you usually write to them. It works from any phone, until two days after check-out.");
+  io.out("Whoever has the link can add guests to this stay, not read them: the details are encrypted in the guest's browser with your key, and the relay cannot open them.");
+  io.out('Then "fairnight ospiti scarica" downloads them (also by itself with "fairnight serve" running, and before "elenco" and "invia").');
+  if (settings.country === "IT") io.out("Italy: the link does not replace recognizing the guests in person or on a live video call (fairnight ospiti riconosciuto).");
+  return 0;
+}
+
+async function download(db: Db, config: HostConfig, args: string[], io: Io): Promise<number> {
+  noExtra(args);
+  const r = await pullRelay(db, io, config);
+  reportPull(r, io);
+  if (r.guests === 0 && r.errors.length === 0) io.out("Nothing new through the check-in links.");
+  if (r.closed > 0) io.out(`Deleted ${r.closed} mailbox${r.closed === 1 ? "" : "es"} of stays that are over.`);
+  return r.errors.length > 0 ? 1 : 0;
+}
+
+async function verifyPage(config: HostConfig, args: string[], io: Io): Promise<number> {
+  noExtra(args);
+  const relay = relayOf(config);
+  const results = await checkPage(io, config, { ...PAGE_HASHES, "/ocr/mrz.traineddata": MRZ_MODEL_SHA256 });
+  for (const r of results) io.out(`${r.ok ? "same     " : "DIFFERENT"}  ${r.path}${r.ok ? "" : r.got ? `  (sha256 ${r.got})` : "  (not served)"}`);
+  const bad = results.filter((r) => !r.ok).length;
+  if (bad === 0) io.out(`${relay} serves exactly the page of this version of Fairguest.`);
+  else io.out(`${relay} serves ${bad} file${bad === 1 ? "" : "s"} different from this version: do not send its links until you know why (an update of the relay, or someone changed it).`);
+  return bad > 0 ? 1 : 0;
 }

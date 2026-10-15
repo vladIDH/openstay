@@ -42,6 +42,8 @@ export interface Io {
   alloggiatiUrl?: string;
   /** Only for tests: where the Alloggiati Web code tables are downloaded from (file name → URL). */
   alloggiatiTableUrls?: { municipalities: string; states: string; documents: string };
+  /** Network access for the relay of the guests' check-in link. Default: global fetch. */
+  relayFetch?: RelayFetchLike;
   /** Open a link in the default browser (`fairnight apri`). Default: nothing is opened. */
   openUrl?(url: string): void;
   /** Waiting (rate limits, retries). Default: real time. */
@@ -49,6 +51,11 @@ export interface Io {
   /** Only for tests: a cheaper scrypt for the Fairguest passphrase. */
   scryptCost?: ScryptParams;
 }
+
+export type RelayFetchLike = (
+  url: string,
+  init: { method: string; headers: Record<string, string>; body?: string; signal?: AbortSignal },
+) => Promise<{ status: number; text(): Promise<string>; arrayBuffer(): Promise<ArrayBuffer> }>;
 
 export type SmoobuFetchLike = (
   url: string,

@@ -20,6 +20,7 @@ import { loadHostConfig, type HostConfig } from "./config.js";
 import { openDb } from "./db.js";
 import { dbPath, localToday, type Io } from "./io.js";
 import { handleCheckin, type CheckinContext } from "./guests/checkin.js";
+import { pullRelay } from "./guests/relay.js";
 import { applyRetention, guestDeadlines, guestsEnabled, prefillFromCalendar } from "./guests/store.js";
 import { renderPage } from "./page.js";
 import { lastSync, priceOne } from "./price.js";
@@ -167,6 +168,32 @@ export function lanAddresses(): string[] {
     .map((a) => a.address);
 }
 
+/** How often the server downloads what guests sent through their check-in links. */
+export const RELAY_PULL_MS = 5 * 60_000;
+
+/** While the server runs: download the links' guests now and every few minutes (outgoing requests only). */
+function watchRelay(server: Server, opts: ServeOptions): void {
+  let running = false;
+  const pull = async () => {
+    if (running) return;
+    running = true;
+    const db = openDb(dbPath(opts.dir));
+    try {
+      const r = await pullRelay(db, opts.io, loadHostConfig(opts.dir));
+      if (r.guests > 0 && !opts.quiet) opts.io.out(`Fairguest: ${r.guests} guest${r.guests === 1 ? "" : "s"} arrived through the check-in link (kept encrypted).`);
+    } catch {
+      // A broken config or network: the next round tries again.
+    } finally {
+      db.close();
+      running = false;
+    }
+  };
+  const timer = setInterval(() => void pull(), RELAY_PULL_MS);
+  timer.unref();
+  server.once("close", () => clearInterval(timer));
+  void pull();
+}
+
 export async function startServer(opts: ServeOptions & { port: number; lan: boolean }): Promise<Server> {
   const config = loadHostConfig(opts.dir); // fail early on a broken config
   const db = openDb(dbPath(opts.dir));
@@ -179,6 +206,7 @@ export async function startServer(opts: ServeOptions & { port: number; lan: bool
     db.close();
   }
   const server = createServer(createHandler(opts));
+  if (guests) watchRelay(server, opts);
   const host = opts.lan ? "0.0.0.0" : "127.0.0.1";
   return new Promise((resolve, reject) => {
     server.once("error", reject);

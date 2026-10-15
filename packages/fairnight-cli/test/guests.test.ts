@@ -204,7 +204,8 @@ describe("deadlines and stays", () => {
     const t = io(dir);
     expect(await main(["ospiti", "elenco"], t)).toBe(0);
     expect(t.lines[0]).toBe(`${one(stays).id}  casa-prova  2099-06-10 → 2099-06-13  from airbnb  0 guests registered  form /checkin/${one(stays).code}`);
-    expect(t.lines).toHaveLength(4);
+    expect(t.lines).toHaveLength(5);
+    expect(t.lines[4]).toBe('To send a guest a link that works from anywhere: "fairnight ospiti link <stay>".');
   });
 
   it("marks a booking that disappears from the calendar as cancelled", async () => {

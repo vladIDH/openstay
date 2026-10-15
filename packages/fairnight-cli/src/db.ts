@@ -14,7 +14,7 @@ import { SetupError } from "./config.js";
 
 export type Db = Database.Database;
 
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (
@@ -165,6 +165,10 @@ CREATE TABLE IF NOT EXISTS guest_stays (
   erased_at    TEXT,
   -- Italy: when the host confirmed they saw the guests in person or on a live video call
   recognized_at TEXT,
+  -- the mailbox of the check-in link on the relay (version 8): its id and secrets, no personal data
+  relay_box    TEXT,
+  relay_read   TEXT,
+  relay_write  TEXT,
   UNIQUE (listing, source, source_uid)
 );
 
@@ -174,7 +178,9 @@ CREATE TABLE IF NOT EXISTS guest_people (
   stay_id  TEXT NOT NULL REFERENCES guest_stays (id),
   added_at TEXT NOT NULL,
   added_by TEXT NOT NULL CHECK (added_by IN ('host', 'form')),
-  data     TEXT NOT NULL
+  data     TEXT NOT NULL,
+  -- version 8: where a guest from the check-in link was sealed (relay/<box>); null = guest_people/<id>/data
+  place    TEXT
 );
 
 -- Every communication prepared, sent or confirmed, with its outcome.
@@ -228,6 +234,13 @@ const MIGRATIONS: { to: number; run(db: Database.Database): void }[] = [
     to: 7, // Fairguest Italy: the recognition of the guests (and the receipts table, new)
     run: (db) => {
       if (hasTable(db, "guest_stays") && !hasColumn(db, "guest_stays", "recognized_at")) db.exec("ALTER TABLE guest_stays ADD COLUMN recognized_at TEXT");
+    },
+  },
+  {
+    to: 8, // the check-in link: the relay mailbox of a stay, and where a guest from it was sealed
+    run: (db) => {
+      for (const c of ["relay_box", "relay_read", "relay_write"]) if (!hasColumn(db, "guest_stays", c)) db.exec(`ALTER TABLE guest_stays ADD COLUMN ${c} TEXT`);
+      if (!hasColumn(db, "guest_people", "place")) db.exec("ALTER TABLE guest_people ADD COLUMN place TEXT");
     },
   },
 ];

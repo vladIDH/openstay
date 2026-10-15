@@ -18,6 +18,7 @@ import {
   seal,
   unlock,
   type Country,
+  type DeadlineInput,
   type Guest,
   type GuestSettings,
   type KeyRecord,
@@ -44,6 +45,8 @@ export interface StayRow {
   host_data: string | null;
   cancelled_at: string | null;
   erased_at: string | null;
+  /** Italy: when the host saw the guests in person or on a live video call. Absent on a read-only database of an older version. */
+  recognized_at?: string | null;
 }
 
 /** What a channel manager knows about the guests of a booking. Sealed, never logged. */
@@ -130,7 +133,9 @@ function publicKey(db: Db): KeyObject {
 
 export const guestListings = (listings: HostListing[]) => listings.filter((l): l is HostListing & { fairguest: GuestSettings } => !!l.fairguest);
 
-const STAY_COLUMNS = "id, listing, source, source_uid, check_in, check_out, booked_at, seen_at, code, channel_data, host_data, cancelled_at, erased_at";
+/** The columns every schema since 5 has: what read-only readers (the MCP server) may ask for. */
+const BASE_COLUMNS = "id, listing, source, source_uid, check_in, check_out, booked_at, seen_at, code, channel_data, host_data, cancelled_at, erased_at";
+const STAY_COLUMNS = `${BASE_COLUMNS}, recognized_at`;
 
 export function getStay(db: Db, id: string): StayRow | null {
   return (db.prepare(`SELECT ${STAY_COLUMNS} FROM guest_stays WHERE id = ?`).get(id) as StayRow | undefined) ?? null;
@@ -323,6 +328,11 @@ export function openStay(db: Db, row: StayRow, settings: GuestSettings, key: Key
   return { row, settings, stay, people: list, channel, host };
 }
 
+/** Italy: the host saw the guests (in person or on a live video call) and checked them against the documents. */
+export function markRecognized(db: Db, stayId: string, now: Date): void {
+  db.prepare("UPDATE guest_stays SET recognized_at = ? WHERE id = ?").run(localDateTime(now), stayId);
+}
+
 export function writeHostData(db: Db, stayId: string, data: HostData): void {
   db.prepare("UPDATE guest_stays SET host_data = ? WHERE id = ?").run(seal(publicKey(db), data, place.host(stayId)), stayId);
 }
@@ -433,7 +443,7 @@ export function guestDeadlines(db: Db, config: HostConfig, now: Date): DeadlineR
   const at = localDateTime(now);
   const settings = new Map(guestListings(config.listings).map((l) => [l.name, l.fairguest]));
   const rows: DeadlineRow[] = [];
-  for (const row of db.prepare(`SELECT ${STAY_COLUMNS} FROM guest_stays WHERE erased_at IS NULL ORDER BY check_in, id`).all() as StayRow[]) {
+  for (const row of db.prepare(`SELECT ${BASE_COLUMNS} FROM guest_stays WHERE erased_at IS NULL ORDER BY check_in, id`).all() as StayRow[]) {
     const s = settings.get(row.listing);
     if (!s) continue;
     const subs = submissions(db, row.id);
@@ -449,8 +459,9 @@ export function guestDeadlines(db: Db, config: HostConfig, now: Date): DeadlineR
       if (doneAt("reservation")) push("cancellation", addHours(row.cancelled_at, 24), `the cancellation (seen ${row.cancelled_at.replace("T", " ")})`);
       continue;
     }
-    const input: { checkIn: string; checkInTime?: string; bookedAt: string | null; seenAt: string } = { checkIn: row.check_in, bookedAt: row.booked_at, seenAt: row.seen_at };
+    const input: DeadlineInput = { checkIn: row.check_in, checkOut: row.check_out, bookedAt: row.booked_at, seenAt: row.seen_at };
     if (s.checkInTime) input.checkInTime = s.checkInTime;
+    if (s.checkOutTime) input.checkOutTime = s.checkOutTime;
     for (const d of registryFor(s.country).deadlines(input)) push(d.kind, d.due, d.from);
   }
   return rows.sort((a, b) => a.due.localeCompare(b.due) || a.stay.localeCompare(b.stay));

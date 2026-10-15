@@ -22,6 +22,7 @@ import { connect, importFromSmoobu, push } from "./smoobu.js";
 import { connect as connectBeds24, creditsLine, importFromBeds24, push as pushBeds24 } from "./beds24.js";
 import { Beds24Error } from "fairnight-beds24";
 import { AirRoiError, InsideAirbnbError } from "fairnight-market";
+import { AlloggiatiError } from "fairguest";
 import { connectAirRoi, deleteMarketData, importAirRoi, importFile, marketStatus } from "./mercato.js";
 import { formatFeedReport, syncEverything } from "./sync-all.js";
 import { GUEST_USAGE, runGuests } from "./guests/commands.js";
@@ -76,6 +77,10 @@ const OPTIONS = {
   // --tipo: the communication for "ospiti", the room type for "mercato".
   tipo: { type: "string" },
   persona: { type: "string" },
+  // ospiti credenziali / invia (Italy, Alloggiati Web)
+  account: { type: "string" },
+  prova: { type: "boolean" },
+  verifica: { type: "boolean" },
   "usa-storico-smoobu": { type: "boolean" },
   "usa-storico-beds24": { type: "boolean" },
   zona: { type: "string" },
@@ -154,7 +159,7 @@ export async function main(argv: string[], io: Io): Promise<number> {
       io.err(USAGE);
       return 2;
     }
-    if (e instanceof ConfigError || e instanceof SetupError || e instanceof SmoobuError || e instanceof Beds24Error || e instanceof AirRoiError || e instanceof InsideAirbnbError) {
+    if (e instanceof ConfigError || e instanceof SetupError || e instanceof SmoobuError || e instanceof Beds24Error || e instanceof AirRoiError || e instanceof InsideAirbnbError || e instanceof AlloggiatiError) {
       io.err(e.message);
       return 1;
     }

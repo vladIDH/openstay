@@ -54,6 +54,8 @@ select.lang { padding: 8px 10px; font-size: 13px; color: var(--muted); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; }
 .status { color: var(--muted); font-size: 13px; margin: -4px 0 14px; min-height: 18px; }
 .status.error { color: #f0a0a0; }
+.reminder { background: var(--card); border: 1px solid var(--line); border-left: 4px solid #e0a43a; border-radius: 10px; padding: 10px 14px; margin: -4px 0 14px; font-size: 14px; }
+.reminder[hidden] { display: none; }
 @media (prefers-color-scheme: light) { .status.error { color: #b42318; } }
 .summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 24px; padding: 14px 18px; margin-bottom: 18px;
   background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
@@ -312,8 +314,22 @@ function render() {
   $("#sum-reserved").textContent = num(reserved);
   $("#sum-average").textContent = avg == null ? "—" : money(Math.round(avg), l.currency);
   $("#sum-occupancy").textContent = sellable === 0 ? "—" : new Intl.NumberFormat(state.lang, { style: "percent" }).format(reserved / sellable);
+  renderGuests();
   if (message) setStatus(t(message.key, message.vars), message.isError);
   else setStatus(l.lastSync ? t("status_read", { when: new Intl.DateTimeFormat(state.lang, { dateStyle: "medium", timeStyle: "short" }).format(new Date(l.lastSync)) }) : t("status_not_read"));
+}
+
+// Guest communications late or due within 24 hours: how many, and the command to run.
+function renderGuests() {
+  const g = state.data.guests;
+  const box = $("#guests");
+  if (!g) { box.hidden = true; return; }
+  const parts = [];
+  if (g.late) parts.push(tn("guests_late", g.late));
+  if (g.soon) parts.push(tn("guests_soon", g.soon));
+  parts.push(t(g.italy ? "guests_hint_italy" : "guests_hint"));
+  box.textContent = parts.join(" ");
+  box.hidden = false;
 }
 
 function openNight(iso) {
@@ -457,6 +473,7 @@ export function renderPage(nonce: string): string {
     <button class="btn primary" id="refresh" type="button" data-t="recalculate">${PAGE_TEXTS.en.recalculate}</button>
   </header>
   <div class="status" id="status" role="status"></div>
+  <div class="reminder" id="guests" role="status" hidden></div>
   <section class="summary" aria-live="polite">
     <div><b id="sum-for-sale">—</b><span data-t="summary_for_sale">${PAGE_TEXTS.en.summary_for_sale}</span></div>
     <div><b id="sum-reserved">—</b><span data-t="summary_reserved">${PAGE_TEXTS.en.summary_reserved}</span></div>

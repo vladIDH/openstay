@@ -40,6 +40,17 @@ export interface Words {
   privacyShort: string;
   /** A message for each kind of field, saying the rule it did not meet. */
   invalidFor: Record<string, string>;
+  /** What changes for a listing in Italy (Alloggiati Web): the law, the privacy line, the hints. */
+  italy: {
+    intro: string;
+    privacy: string;
+    privacyShort: string;
+    surname: string;
+    kinshipHint: string;
+    birthPlaceHint: string;
+    docPlaceHint: string;
+    noDocument: string;
+  };
   notFound: string;
   notFoundText: string;
   forbidden: string;
@@ -79,6 +90,12 @@ const es: Words = {
     email: "Correo electrónico",
     kinship: "Parentesco con el titular",
     payment: "Tipo de pago",
+    birthCountry: "País de nacimiento",
+    birthPlace: "Municipio de nacimiento",
+    birthProvince: "Provincia de nacimiento",
+    docCountry: "País de expedición",
+    docPlace: "Municipio de expedición",
+    docProvince: "Provincia de expedición",
   },
   hints: {
     surname2: "Obligatorio con DNI español.",
@@ -89,7 +106,15 @@ const es: Words = {
   },
   choose: "Elija…",
   sex: { female: "Mujer", male: "Hombre", other: "Otro" },
-  documentTypes: { dni: "DNI / NIF español", nie: "NIE (extranjero en España)", passport: "Pasaporte", other: "Otro documento de identidad" },
+  documentTypes: {
+    dni: "DNI / NIF español",
+    nie: "NIE (extranjero en España)",
+    passport: "Pasaporte",
+    id_card: "Documento de identidad",
+    electronic_id: "Carta de identidad electrónica italiana (CIE)",
+    driving_licence: "Permiso de conducir",
+    other: "Otro documento de identidad",
+  },
   kinship: {
     parent: "Padre / madre",
     child: "Hijo / hija",
@@ -150,9 +175,27 @@ const es: Words = {
     docType: "Elija un tipo de documento de la lista.",
     kinship: "Elija una opción de la lista.",
     payment: "Elija una opción de la lista.",
+    birthCountry: "Elija un país de la lista.",
+    docCountry: "Elija un país de la lista.",
+    birthPlace: "Escríbalo como en el documento; si hay dos con el mismo nombre, indique la provincia.",
+    docPlace: "Escríbalo como en el documento; si hay dos con el mismo nombre, indique la provincia.",
+    birthProvince: "Las dos letras de la provincia, como RM o MI.",
+    docProvince: "Las dos letras de la provincia, como RM o MI.",
   },
   forbiddenText: "Este formulario se abre solo desde la red del alojamiento.",
   tooMany: "Demasiados intentos. Espere unos minutos.",
+  italy: {
+    intro:
+      "La ley italiana (art. 109 del Texto único de las leyes de seguridad pública) obliga al alojamiento a comunicar a la Polizia di Stato, por el servicio Alloggiati Web, los datos de cada persona que se aloja. Rellene un formulario por persona, menores incluidos. A la llegada el anfitrión le reconocerá en persona o por videollamada, con el documento.",
+    privacy:
+      "Sus datos se guardan cifrados solo en el ordenador del anfitrión y se envían únicamente a la Polizia di Stato (Alloggiati Web). Se borran en cuanto existe el recibo del envío: solo se conserva el recibo, 5 años, como pide la ley.",
+    privacyShort: "Sus datos se guardan cifrados en el ordenador del anfitrión, solo se envían a la Polizia di Stato y se borran solos después del envío.",
+    surname: "Apellidos",
+    kinshipHint: "Solo para familiares del titular; déjelo vacío para amigos o compañeros de viaje.",
+    birthPlaceHint: "Solo si nació en Italia.",
+    docPlaceHint: "Solo para documentos expedidos en Italia: el municipio que lo expidió.",
+    noDocument: "Para los familiares y los demás miembros del grupo no hace falta el documento: basta con el del titular.",
+  },
 };
 
 const en: Words = {
@@ -187,6 +230,12 @@ const en: Words = {
     email: "Email",
     kinship: "Relationship to the guest who booked",
     payment: "Type of payment",
+    birthCountry: "Country of birth",
+    birthPlace: "Municipality of birth",
+    birthProvince: "Province of birth",
+    docCountry: "Country of issue",
+    docPlace: "Municipality of issue",
+    docProvince: "Province of issue",
   },
   hints: {
     surname2: "Required with a Spanish DNI.",
@@ -197,7 +246,15 @@ const en: Words = {
   },
   choose: "Choose…",
   sex: { female: "Female", male: "Male", other: "Other" },
-  documentTypes: { dni: "Spanish DNI / NIF", nie: "NIE (foreigner in Spain)", passport: "Passport", other: "Other identity document" },
+  documentTypes: {
+    dni: "Spanish DNI / NIF",
+    nie: "NIE (foreigner in Spain)",
+    passport: "Passport",
+    id_card: "Identity card",
+    electronic_id: "Italian electronic identity card (CIE)",
+    driving_licence: "Driving licence",
+    other: "Other identity document",
+  },
   kinship: {
     parent: "Parent",
     child: "Son / daughter",
@@ -258,9 +315,27 @@ const en: Words = {
     docType: "Choose a type of document from the list.",
     kinship: "Choose one from the list.",
     payment: "Choose one from the list.",
+    birthCountry: "Choose a country from the list.",
+    docCountry: "Choose a country from the list.",
+    birthPlace: "Write it as on the document; if two share the name, add the province.",
+    docPlace: "Write it as on the document; if two share the name, add the province.",
+    birthProvince: "The two letters of the province, like RM or MI.",
+    docProvince: "The two letters of the province, like RM or MI.",
   },
   forbiddenText: "This form opens only from the accommodation's network.",
   tooMany: "Too many attempts. Please wait a few minutes.",
+  italy: {
+    intro:
+      "Italian law (art. 109 of the Consolidated Law on Public Security) requires the accommodation to send the Polizia di Stato, through the Alloggiati Web service, the details of everyone who stays. Fill in one form per person, children included. On arrival the host will recognize you in person or on a video call, with your document.",
+    privacy:
+      "Your data is stored encrypted only on the host's computer and sent only to the Polizia di Stato (Alloggiati Web). It is erased as soon as the receipt of the communication exists: only the receipt is kept, for 5 years, as the law asks.",
+    privacyShort: "Your data is kept encrypted on the host's computer, sent only to the Polizia di Stato and erased by itself after it is sent.",
+    surname: "Surname(s)",
+    kinshipHint: "Only for family members of the guest who booked; leave it empty for friends or travel companions.",
+    birthPlaceHint: "Only if born in Italy.",
+    docPlaceHint: "Only for documents issued in Italy: the municipality that issued it.",
+    noDocument: "Family members and other members of the group do not need a document: the one of the guest who booked is enough.",
+  },
 };
 
 const it: Words = {
@@ -295,6 +370,12 @@ const it: Words = {
     email: "Email",
     kinship: "Parentela con chi ha prenotato",
     payment: "Tipo di pagamento",
+    birthCountry: "Stato di nascita",
+    birthPlace: "Comune di nascita",
+    birthProvince: "Provincia di nascita",
+    docCountry: "Stato di rilascio",
+    docPlace: "Comune di rilascio",
+    docProvince: "Provincia di rilascio",
   },
   hints: {
     surname2: "Obbligatorio con un DNI spagnolo.",
@@ -305,7 +386,15 @@ const it: Words = {
   },
   choose: "Scegli…",
   sex: { female: "Donna", male: "Uomo", other: "Altro" },
-  documentTypes: { dni: "DNI / NIF spagnolo", nie: "NIE (straniero in Spagna)", passport: "Passaporto", other: "Altro documento d'identità" },
+  documentTypes: {
+    dni: "DNI / NIF spagnolo",
+    nie: "NIE (straniero in Spagna)",
+    passport: "Passaporto",
+    id_card: "Carta d'identità cartacea o straniera",
+    electronic_id: "Carta d'identità elettronica (CIE)",
+    driving_licence: "Patente di guida",
+    other: "Altro documento d'identità",
+  },
   kinship: {
     parent: "Padre / madre",
     child: "Figlio / figlia",
@@ -366,9 +455,27 @@ const it: Words = {
     docType: "Scegli un tipo di documento dall'elenco.",
     kinship: "Scegli una voce dall'elenco.",
     payment: "Scegli una voce dall'elenco.",
+    birthCountry: "Scegli uno Stato dall'elenco.",
+    docCountry: "Scegli uno Stato dall'elenco.",
+    birthPlace: "Scrivilo come sul documento; se ce ne sono due con lo stesso nome, indica la provincia.",
+    docPlace: "Scrivilo come sul documento; se ce ne sono due con lo stesso nome, indica la provincia.",
+    birthProvince: "Le due lettere della provincia, come RM o MI.",
+    docProvince: "Le due lettere della provincia, come RM o MI.",
   },
   forbiddenText: "Questo modulo si apre solo dalla rete dell'alloggio.",
   tooMany: "Troppi tentativi. Aspetta qualche minuto.",
+  italy: {
+    intro:
+      "La legge italiana (art. 109 del Testo unico delle leggi di pubblica sicurezza) obbliga l'alloggio a comunicare alla Polizia di Stato, con il servizio Alloggiati Web, i dati di ogni persona che vi soggiorna. Compila un modulo per persona, bambini compresi. All'arrivo l'host vi riconoscerà di persona o in videochiamata, con il documento.",
+    privacy:
+      "I tuoi dati sono conservati cifrati solo sul computer dell'host e inviati solo alla Polizia di Stato (Alloggiati Web). Vengono cancellati appena esiste la ricevuta dell'invio: resta solo la ricevuta, per 5 anni, come chiede la legge.",
+    privacyShort: "I tuoi dati restano cifrati sul computer dell'host, vanno solo alla Polizia di Stato e si cancellano da soli dopo l'invio.",
+    surname: "Cognome",
+    kinshipHint: "Solo per i familiari di chi ha prenotato; lascialo vuoto per amici o compagni di viaggio.",
+    birthPlaceHint: "Solo per chi è nato in Italia.",
+    docPlaceHint: "Solo per i documenti rilasciati in Italia: il comune che lo ha rilasciato.",
+    noDocument: "Per i familiari e gli altri membri del gruppo il documento non serve: basta quello di chi ha prenotato.",
+  },
 };
 
 export const WORDS: Record<Lang, Words> = { es, en, it };

@@ -20,7 +20,7 @@ import { loadHostConfig, type HostConfig } from "./config.js";
 import { openDb } from "./db.js";
 import { dbPath, localToday, type Io } from "./io.js";
 import { handleCheckin, type CheckinContext } from "./guests/checkin.js";
-import { applyRetention, guestsEnabled, prefillFromCalendar } from "./guests/store.js";
+import { applyRetention, guestDeadlines, guestsEnabled, prefillFromCalendar } from "./guests/store.js";
 import { renderPage } from "./page.js";
 import { lastSync, priceOne } from "./price.js";
 import { syncEverything } from "./sync-all.js";
@@ -54,12 +54,24 @@ function send(res: ServerResponse, status: number, type: string, body: string, e
 const json = (res: ServerResponse, status: number, data: unknown) =>
   send(res, status, "application/json; charset=utf-8", JSON.stringify(data));
 
-export function pricesPayload(dir: string, config: HostConfig, today: string, days: number) {
+/**
+ * A reminder for the page when guest communications are late or due within
+ * 24 hours: only how many, never who. Null when there is nothing to say.
+ */
+function guestReminder(db: ReturnType<typeof openDb>, config: HostConfig, now: Date): { late: number; soon: number; italy: boolean } | null {
+  if (!guestsEnabled(db)) return null;
+  const pending = guestDeadlines(db, config, now).filter((d) => d.state === "late" || (d.state === "open" && d.hoursLeft <= 24));
+  if (pending.length === 0) return null;
+  return { late: pending.filter((d) => d.state === "late").length, soon: pending.filter((d) => d.state === "open").length, italy: pending.some((d) => d.country === "IT") };
+}
+
+export function pricesPayload(dir: string, config: HostConfig, today: string, days: number, now?: Date) {
   const db = openDb(dbPath(dir));
   try {
     return {
       today,
       days,
+      guests: now ? guestReminder(db, config, now) : null,
       // The page starts in this language unless the browser has another one saved.
       language: config.language ?? "en",
       listings: config.listings.map((l) => {
@@ -110,7 +122,7 @@ export function createHandler(opts: ServeOptions): (req: IncomingMessage, res: S
         return;
       }
       if (req.method === "GET" && url.pathname === "/api/data") {
-        json(res, 200, pricesPayload(opts.dir, loadHostConfig(opts.dir), today, opts.days));
+        json(res, 200, pricesPayload(opts.dir, loadHostConfig(opts.dir), today, opts.days, opts.io.now()));
         return;
       }
       if (req.method === "POST" && url.pathname === "/api/refresh") {

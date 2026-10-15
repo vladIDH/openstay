@@ -36,6 +36,12 @@ export interface Io {
   airroiFetch?: SmoobuFetchLike;
   /** Only for tests: a fake AirROI server instead of https://api.airroi.com. */
   airroiBaseUrl?: string;
+  /** Network access for the Alloggiati Web service (Italy). Default: global fetch. */
+  alloggiatiFetch?: SmoobuFetchLike;
+  /** Only for tests: a fake Alloggiati Web service instead of the Polizia di Stato's. */
+  alloggiatiUrl?: string;
+  /** Only for tests: where the Alloggiati Web code tables are downloaded from (file name → URL). */
+  alloggiatiTableUrls?: { municipalities: string; states: string; documents: string };
   /** Open a link in the default browser (`fairnight apri`). Default: nothing is opened. */
   openUrl?(url: string): void;
   /** Waiting (rate limits, retries). Default: real time. */

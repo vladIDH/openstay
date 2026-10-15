@@ -14,7 +14,7 @@ import { SetupError } from "./config.js";
 
 export type Db = Database.Database;
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (
@@ -163,6 +163,8 @@ CREATE TABLE IF NOT EXISTS guest_stays (
   host_data    TEXT,
   cancelled_at TEXT,
   erased_at    TEXT,
+  -- Italy: when the host confirmed they saw the guests in person or on a live video call
+  recognized_at TEXT,
   UNIQUE (listing, source, source_uid)
 );
 
@@ -188,6 +190,16 @@ CREATE TABLE IF NOT EXISTS guest_submissions (
   file     TEXT,
   detail   TEXT
 );
+
+-- Version 7: the Alloggiati Web receipts (one PDF per account and day), kept
+-- 5 years. No personal data: the PDF holds only the number of schedine.
+CREATE TABLE IF NOT EXISTS guest_receipts (
+  account    TEXT NOT NULL,
+  day        TEXT NOT NULL,
+  file       TEXT NOT NULL,
+  fetched_at TEXT NOT NULL,
+  PRIMARY KEY (account, day)
+);
 `;
 
 /**
@@ -212,7 +224,17 @@ const MIGRATIONS: { to: number; run(db: Database.Database): void }[] = [
       if (!hasColumn(db, "calendar_events", "units")) db.exec("ALTER TABLE calendar_events ADD COLUMN units INTEGER");
     },
   },
+  {
+    to: 7, // Fairguest Italy: the recognition of the guests (and the receipts table, new)
+    run: (db) => {
+      if (hasTable(db, "guest_stays") && !hasColumn(db, "guest_stays", "recognized_at")) db.exec("ALTER TABLE guest_stays ADD COLUMN recognized_at TEXT");
+    },
+  },
 ];
+
+function hasTable(db: Database.Database, table: string): boolean {
+  return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table);
+}
 
 function upgrade(db: Database.Database): void {
   const current = Number(getMeta(db, "schema_version") ?? "1");

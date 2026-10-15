@@ -30,8 +30,8 @@ function oldDatabase(version: 3 | 4 | 5): string {
 }
 
 describe("schema migrations", () => {
-  it("the latest version is 6: zone data (4), Fairguest (5), then rooms of small hotels (6)", () => {
-    expect(SCHEMA_VERSION).toBe(6);
+  it("the latest version is 7: zone data (4), Fairguest (5), rooms of small hotels (6), Fairguest in Italy (7)", () => {
+    expect(SCHEMA_VERSION).toBe(7);
   });
 
   it("takes a database from schema 3 to the latest, keeping its data", () => {
@@ -66,6 +66,9 @@ describe("schema migrations", () => {
     const db = openDb(file);
     expect(getMeta(db, "schema_version")).toBe(String(SCHEMA_VERSION));
     expect(db.prepare("SELECT uid, unit, units FROM calendar_events").all()).toEqual([{ uid: "prova-1", unit: null, units: null }]);
+    // Fairguest in Italy: the recognition of the guests and the receipts.
+    expect(hasColumn(db, "guest_stays", "recognized_at")).toBe(true);
+    expect(tables(db)).toContain("guest_receipts");
     db.close();
   });
 

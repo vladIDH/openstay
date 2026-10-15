@@ -110,8 +110,29 @@ select.lang { padding: 8px 10px; font-size: 13px; color: var(--muted); }
 .panel .raw { margin-top: 18px; color: var(--faint); font-size: 12px; }
 .panel details.raw summary { cursor: pointer; }
 .panel details.raw div { margin-top: 6px; }
+.pilot { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 18px 14px; margin-bottom: 18px; }
+.pilot-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pilot-head b { font-weight: 650; }
+.pilot-head .spacer { flex: 1; }
+.chip { font-size: 12px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.chip.on { color: var(--down); border-color: var(--down); }
+.chip.paused { color: var(--up); border-color: var(--up); }
+.pilot p { margin: 8px 0 0; font-size: 14px; }
+.pilot .muted { color: var(--muted); }
+.pilot .warn { color: var(--up); }
+.pilot details { margin-top: 8px; font-size: 14px; }
+.pilot summary { cursor: pointer; }
+.pilot-nights { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; max-height: 320px; overflow-y: auto; }
+.pilot-nights li { display: grid; grid-template-columns: 8.5em auto 1fr; gap: 2px 12px; font-size: 13px; align-items: baseline; }
+.pilot-nights .chg { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.pilot-nights .why { color: var(--muted); }
+.pilot-nights .bad { color: var(--up); }
+.pilot-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 @media (max-width: 600px) {
   .wrap { padding: 14px 10px 40px; }
+  .pilot { padding: 10px 14px 12px; }
+  .pilot-nights li { grid-template-columns: auto 1fr; }
+  .pilot-nights .why { grid-column: 1 / -1; }
   header { gap: 8px; }
   .brand { width: 100%; }
   select { flex: 1; max-width: none; }
@@ -143,7 +164,7 @@ const $ = (sel) => document.querySelector(sel);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 const LANGS = ["it", "es", "en"];
 const STORE = "fairnight.language";
-const state = { data: null, listing: 0, month: null, selected: null, lang: "en" };
+const state = { data: null, listing: 0, month: null, selected: null, lang: "en", pilot: null, preview: null };
 
 // ---- language: the texts come from page-texts.ts, numbers and dates from Intl
 function savedLang() { try { const v = localStorage.getItem(STORE); return LANGS.includes(v) ? v : null; } catch { return null; } }
@@ -312,6 +333,7 @@ function render() {
   $("#sum-reserved").textContent = num(reserved);
   $("#sum-average").textContent = avg == null ? "—" : money(Math.round(avg), l.currency);
   $("#sum-occupancy").textContent = sellable === 0 ? "—" : new Intl.NumberFormat(state.lang, { style: "percent" }).format(reserved / sellable);
+  renderPilot();
   if (message) setStatus(t(message.key, message.vars), message.isError);
   else setStatus(l.lastSync ? t("status_read", { when: new Intl.DateTimeFormat(state.lang, { dateStyle: "medium", timeStyle: "short" }).format(new Date(l.lastSync)) }) : t("status_not_read"));
 }
@@ -398,6 +420,7 @@ async function refresh() {
     if (!res.ok) throw new Error(body.error || res.statusText);
     const failed = body.reports.filter((r) => !r.ok);
     await load();
+    await loadPilot();
     if (failed.length) {
       say("status_not_read_list", { list: failed.map((r) => r.listing + " · " + r.feed + " (" + r.error + ")").join("; ") }, true);
     }
@@ -408,6 +431,149 @@ async function refresh() {
   }
 }
 
+// ---- the autopilot: on, off or paused for this listing, the last run and why each night changed
+async function loadPilot() {
+  try {
+    const res = await fetch("/api/pilot");
+    state.pilot = res.ok ? await res.json() : null;
+  } catch { state.pilot = null; }
+  renderPilot();
+}
+
+function pilotOf(l) { return state.pilot ? state.pilot.listings.find((x) => x.name === l.name) : null; }
+function when(iso) { return new Intl.DateTimeFormat(state.lang, { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso)); }
+function nightDate(iso) { return cap(dateFmt({ weekday: "short", day: "numeric", month: "short" }).format(utc(iso))); }
+
+// Why a night changed: the steps of the engine that moved its price, said like on the night panel.
+function reasons(steps, currency) {
+  return steps.filter((x) => x.factor !== "base" && x.factor !== "rounding" && x.before !== x.after).map((x) => {
+    const label = stepText(x, currency).label;
+    return x.percent != null ? label + " " + (x.percent >= 0 ? "+" : "−") + num(Math.abs(x.percent)) + "%" : label;
+  }).join(" · ") || t("step_base");
+}
+
+function nightList(nights, s, l) {
+  const list = el("ul", "pilot-nights");
+  for (const n of nights) {
+    const li = el("li");
+    li.append(el("span", null, nightDate(n.date)));
+    li.append(el("span", "chg", (n.oldPrice == null ? "—" : money(n.oldPrice, l.currency)) + " → " + money(n.newPrice, l.currency)));
+    let why = reasons(n.steps, l.currency);
+    if (n.limited === "cap") why += " · " + t("pilot_held_cap", { p: num(s.maxChange), target: money(n.target, l.currency) });
+    if (n.limited === "floor") why += " · " + t("pilot_held_floor");
+    if (n.limited === "ceiling") why += " · " + t("pilot_held_ceiling");
+    li.append(el("span", "why", why));
+    if (n.verified === false) li.append(el("span", "bad", t("pilot_mismatch_night", { channel: s.channel })));
+    list.append(li);
+  }
+  return list;
+}
+
+function lastRunView(s, l) {
+  const r = s.last;
+  if (!r) return null;
+  const vars = { when: when(r.at), channel: s.channel };
+  let text;
+  if (r.status === "written") text = tn("pilot_last", r.nights, vars) + " · " + (r.wrong > 0 ? tn("pilot_mismatch", r.wrong, vars) : t("pilot_checked"));
+  else if (r.status === "nothing") text = t("pilot_last_none", vars);
+  else if (r.status === "not-read") text = t("pilot_not_read", vars);
+  else if (r.status === "error") text = t("pilot_error", Object.assign({ error: r.error || "" }, vars));
+  else return null;
+  if (!s.changes.length) return el("p", null, text);
+  const box = el("details");
+  box.append(el("summary", null, text), nightList(s.changes, s, l));
+  return box;
+}
+
+function pilotButton(label, primary, action) {
+  const b = el("button", primary ? "btn primary" : "btn", t(label));
+  b.type = "button";
+  b.addEventListener("click", action);
+  return b;
+}
+
+function renderPilot() {
+  const box = $("#pilot");
+  const l = state.data ? current() : null;
+  const s = l ? pilotOf(l) : null;
+  if (!s) { box.hidden = true; return; }
+  box.hidden = false;
+  const chip = $("#pilot-state");
+  const parts = [];
+  const actions = el("div", "pilot-actions");
+  const m = (v) => money(v, l.currency);
+  if (!s.channel) {
+    chip.textContent = t("pilot_off");
+    chip.className = "chip";
+    $("#pilot-body").replaceChildren(el("p", "muted", t("pilot_no_channel")));
+    return;
+  }
+  const st = s.paused ? "paused" : s.enabled ? "on" : "off";
+  chip.textContent = t("pilot_" + st);
+  chip.className = "chip " + st;
+  const preview = state.preview && state.preview.listing === s.name ? state.preview : null;
+  if (s.paused) parts.push(el("p", "warn", t("pilot_paused_reason", { reason: s.paused.reason || "" })));
+  if (s.floor == null) parts.push(el("p", "muted", t("pilot_no_limits")));
+  else parts.push(el("p", "muted", t("pilot_explain", { days: num(s.days), channel: s.channel, p: num(s.maxChange), floor: m(s.floor), ceiling: m(s.ceiling) })));
+  if (preview) {
+    if (preview.loading) parts.push(el("p", null, t("pilot_preparing", { channel: s.channel })));
+    else {
+      parts.push(el("p", null, preview.nights.length ? tn("pilot_preview", preview.nights.length, { channel: s.channel }) : t("pilot_preview_none", { channel: s.channel })));
+      if (preview.nights.length) parts.push(nightList(preview.nights, s, l));
+      actions.append(pilotButton("pilot_confirm", true, () => pilotPost("on", { token: preview.token })), pilotButton("pilot_cancel", false, () => { state.preview = null; renderPilot(); }));
+    }
+  } else {
+    if (s.enabled && state.pilot.stale) parts.push(el("p", "warn", state.pilot.hoursSinceRun == null ? t("pilot_never") : t("pilot_stale", { h: num(state.pilot.hoursSinceRun) })));
+    const last = lastRunView(s, l);
+    if (last) parts.push(last);
+    if (state.pilot.control) {
+      if (s.paused) actions.append(pilotButton("pilot_resume", true, () => pilotPost("resume", {})));
+      if (s.enabled) actions.append(pilotButton("pilot_turn_off", false, () => pilotPost("off", {})));
+      else if (s.floor != null) actions.append(pilotButton("pilot_turn_on", false, pilotPreview));
+    } else parts.push(el("p", "muted", t("pilot_local_only")));
+  }
+  if (actions.childElementCount) parts.push(actions);
+  $("#pilot-body").replaceChildren(...parts);
+}
+
+function pilotError(code) {
+  if (code === "no-limits") return t("pilot_no_limits");
+  if (code === "no-channel") return t("pilot_no_channel");
+  if (code === "busy") return t("error_busy");
+  return code;
+}
+
+async function pilotRequest(path, body) {
+  const res = await fetch(path, { method: "POST", headers: { "X-Fairnight": "1", "content-type": "application/json" }, body: JSON.stringify(body) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(pilotError(data.error || res.statusText));
+  return data;
+}
+
+async function pilotPreview() {
+  const listing = current().name;
+  state.preview = { listing: listing, loading: true };
+  renderPilot();
+  try {
+    const r = await pilotRequest("/api/pilot/preview", { listing: listing });
+    state.preview = Object.assign({ listing: listing }, r);
+  } catch (e) {
+    state.preview = null;
+    say("pilot_preview_failed", { error: e.message }, true);
+  }
+  renderPilot();
+}
+
+async function pilotPost(action, extra) {
+  try {
+    await pilotRequest("/api/pilot/" + action, Object.assign({ listing: current().name }, extra));
+    state.preview = null;
+  } catch (e) {
+    say("pilot_failed", { error: e.message }, true);
+  }
+  await loadPilot();
+}
+
 $("#lang").addEventListener("change", (e) => {
   state.lang = e.target.value;
   saveLang(state.lang);
@@ -415,7 +581,7 @@ $("#lang").addEventListener("change", (e) => {
   if (!state.data) { if (message) setStatus(t(message.key, message.vars), message.isError); return; }
   if (state.selected) openNight(state.selected); else render();
 });
-$("#listing").addEventListener("change", (e) => { state.listing = Number(e.target.value); state.month = null; closePanel(); });
+$("#listing").addEventListener("change", (e) => { state.listing = Number(e.target.value); state.month = null; state.preview = null; closePanel(); });
 $("#prev").addEventListener("click", () => { const ms = monthsOf(current().nights); state.month = ms[Math.max(0, ms.indexOf(state.month) - 1)]; render(); });
 $("#next").addEventListener("click", () => { const ms = monthsOf(current().nights); state.month = ms[Math.min(ms.length - 1, ms.indexOf(state.month) + 1)]; render(); });
 $("#refresh").addEventListener("click", refresh);
@@ -428,7 +594,7 @@ document.addEventListener("keydown", (e) => {
 });
 state.lang = savedLang() || "en";
 applyLang();
-load().catch((e) => say("status_load_failed", { error: e.message }, true));
+load().then(loadPilot).catch((e) => say("status_load_failed", { error: e.message }, true));
 `;
 
 /** The texts as a script literal: "<" escaped so no text can close the script tag. */
@@ -457,6 +623,10 @@ export function renderPage(nonce: string): string {
     <button class="btn primary" id="refresh" type="button" data-t="recalculate">${PAGE_TEXTS.en.recalculate}</button>
   </header>
   <div class="status" id="status" role="status"></div>
+  <section class="pilot" id="pilot" hidden aria-live="polite">
+    <div class="pilot-head"><b data-t="pilot_title">${PAGE_TEXTS.en.pilot_title}</b><span class="chip" id="pilot-state"></span><span class="spacer"></span></div>
+    <div id="pilot-body"></div>
+  </section>
   <section class="summary" aria-live="polite">
     <div><b id="sum-for-sale">—</b><span data-t="summary_for_sale">${PAGE_TEXTS.en.summary_for_sale}</span></div>
     <div><b id="sum-reserved">—</b><span data-t="summary_reserved">${PAGE_TEXTS.en.summary_reserved}</span></div>

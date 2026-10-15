@@ -7,7 +7,10 @@ import { addDays } from "../src/channel.js";
 import { validateHostConfig } from "../src/config.js";
 import { openDb, setMeta } from "../src/db.js";
 import { main } from "../src/main.js";
+import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { guardPrice, runPilot } from "../src/pilota.js";
+import { handlePilot, pageRunIfDue } from "../src/pilota-pagina.js";
+import { startServer } from "../src/serve.js";
 import { fakeFetch, tempDir, testIo, type TestIo } from "./helpers.js";
 
 // 2026-11-01 is a Sunday. Everything here is invented: no real account is ever called.
@@ -387,5 +390,106 @@ describe("the autopilot in fairnight.config.json", () => {
       "listings[0].pilot.maxDailyChangePercent",
       "listings[0].pilot.days",
     ]);
+  });
+});
+
+describe("the autopilot on the calendar page", () => {
+  const servers: Server[] = [];
+  afterEach(async () => {
+    for (const s of servers.splice(0)) await new Promise((ok) => s.close(ok));
+  });
+
+  async function page(dir: string) {
+    const server = await startServer({ dir, io: io(dir), days: 30, port: 0, lan: false, quiet: true });
+    servers.push(server);
+    const base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+    const post = (what: string, body: object, headers: Record<string, string> = { "X-Fairnight": "1" }) =>
+      fetch(`${base}/api/pilot/${what}`, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) });
+    const state = async () => (await (await fetch(`${base}/api/pilot`)).json()) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    return { base, post, state };
+  }
+
+  it("turns on only after a preview, from this computer, and never writes while previewing", async () => {
+    const dir = await setUp(100, {});
+    const { post, state } = await page(dir);
+    const before = await state();
+    expect(before.control).toBe(true);
+    expect(before.listings[0]).toMatchObject({ name: "loft", channel: "Smoobu", enabled: false, paused: null, maxChange: 15, days: 90, floor: 60, ceiling: 260, last: null });
+
+    expect((await post("on", { listing: "loft" })).status).toBe(400); // no preview, no switch
+    expect((await post("preview", { listing: "loft" }, {})).status).toBe(403); // no header: another site
+    const preview = (await (await post("preview", { listing: "loft" })).json()) as { token: string; nights: { date: string; newPrice: number }[] };
+    expect(preview.nights).toHaveLength(12);
+    expect(preview.nights[0]).toMatchObject({ date: "2026-11-07", newPrice: 110 });
+    expect(posts()).toEqual([]);
+    expect((await post("on", { listing: "loft", token: "made-up" })).status).toBe(400);
+
+    expect((await post("on", { listing: "loft", token: preview.token })).status).toBe(200);
+    expect(JSON.parse(readFileSync(path.join(dir, "fairnight.config.json"), "utf8")).listings[0].pilot).toEqual({ enabled: true });
+    expect((await post("on", { listing: "loft", token: preview.token })).status).toBe(400); // a token works once
+
+    await post("off", { listing: "loft" });
+    expect((await state()).listings[0].enabled).toBe(false);
+  });
+
+  it("an old preview does not turn it on", async () => {
+    const dir = await setUp(100, {});
+    const { post } = await page(dir);
+    const { token } = (await (await post("preview", { listing: "loft" })).json()) as { token: string };
+    clock = new Date(clock.getTime() + 16 * 60_000);
+    expect((await post("on", { listing: "loft", token })).status).toBe(400);
+  });
+
+  it("shows the last run with the nights changed and why, and resumes a paused listing", async () => {
+    const dir = await setUp(100);
+    await main(["pilota", "giro"], io(dir));
+    const d = db(dir);
+    d.prepare("UPDATE pilot_state SET failures = 3, paused_at = ?, paused_reason = 'invented outage' WHERE listing = 'loft'").run(NOW);
+    const { post, state } = await page(dir);
+    const s = (await state()).listings[0];
+    expect(s.last).toMatchObject({ status: "written", nights: 12, wrong: 0 });
+    expect(s.changes[0]).toMatchObject({ date: "2026-11-07", oldPrice: 100, newPrice: 110, verified: true });
+    expect(s.changes[0].steps.map((x: { factor: string }) => x.factor)).toContain("dayOfWeek");
+    expect(s.paused).toEqual({ at: NOW, reason: "invented outage" });
+    await post("resume", { listing: "loft" });
+    expect((await state()).listings[0].paused).toBeNull();
+  });
+
+  it("says when the computer was off for a day and a half", async () => {
+    const dir = await setUp(100);
+    await main(["pilota", "giro"], io(dir));
+    const { state } = await page(dir);
+    expect((await state()).stale).toBe(false);
+    clock = new Date(Date.parse(NOW) + 40 * 3_600_000);
+    expect(await state()).toMatchObject({ stale: true, hoursSinceRun: 40 });
+  });
+
+  it("does not take switches from another device on the network", async () => {
+    const dir = await setUp(100, {});
+    const sent: { status?: number; body?: string } = {};
+    const res = {
+      writeHead: (status: number) => (sent.status = status),
+      end: (body: string) => (sent.body = body),
+    } as unknown as ServerResponse;
+    const req = { method: "POST", headers: { "x-fairnight": "1" }, socket: { remoteAddress: "192.168.1.20" } } as unknown as IncomingMessage;
+    const ctx = { dir, io: io(dir), previews: new Map(), busy: false };
+    expect(await handlePilot(req, res, new URL("http://x/api/pilot/off"), ctx)).toBe(true);
+    expect(sent.status).toBe(403);
+    expect(JSON.parse(sent.body ?? "{}").error).toMatch(/only from the computer/);
+  });
+
+  it("while the page is open it does today's run once, only when some listing is on", async () => {
+    const off = await setUp(100, {});
+    const ctx = { dir: off, io: io(off), previews: new Map(), busy: false };
+    await pageRunIfDue(off, io(off), ctx);
+    expect(db(off).prepare("SELECT COUNT(*) AS n FROM pilot_runs").get()).toEqual({ n: 0 });
+    await smoobu?.close();
+
+    const on = await setUp(100);
+    const t = io(on);
+    await pageRunIfDue(on, t, { ...ctx, dir: on, io: t });
+    await pageRunIfDue(on, t, { ...ctx, dir: on, io: t });
+    expect(db(on).prepare("SELECT trigger FROM pilot_runs").all()).toEqual([{ trigger: "page" }]);
+    expect(t.lines).toEqual(["Pilota automatico: giro fatto (12 notti cambiate)."]);
   });
 });

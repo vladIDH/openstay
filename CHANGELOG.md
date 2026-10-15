@@ -4,7 +4,18 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 
 ## Fairguest [0.1.0] - in development, not released
 
-Guest registration for Spain (Real Decreto 933/2021). Everything runs on the host's computer; no server of ours in between.
+Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web). Everything runs on the host's computer; no server of ours in between.
+
+### Italy, Alloggiati Web (branch fairguest-it)
+
+- fairguest: country `IT` with `alloggiatiRegistry`, the Italian rules (document only for the holder, male or female, places of birth and of issue), deadlines of 24 hours from arrival and 6 for stays of 24 hours or less, erasure as soon as Alloggiati Web accepted the schedine.
+- fairguest: `schedine` (lines of 168 characters, single guest, family or group), `alloggiatiFile` for the portal, `parseAlloggiatiTables`, `stateCode`, `municipalityCode`; `AlloggiatiClient` for the SOAP 1.2 service through a transport (token, Test, Send, Gestione Appartamenti, Ricevuta, Tabella).
+- fairguest: `Place` for the places of birth and of issue; document types `id_card`, `electronic_id`, `driving_licence`; each registry says which document types its form offers and checks one guest for the form (`checkGuest`).
+- fairnight-cli: `fairnight ospiti tabelle`, `credenziali` (sealed, `--verifica`), `riconosciuto`, `invia` (`--prova`, `--applica`; without a terminal only with `"autoSend": true`), `ricevute` (kept 5 years); `prepara` writes the file for the portal; `correggi` reaches three-level fields.
+- fairnight-cli: the check-in form asks the Italian questions for a listing in Italy, and no address, contact or payment.
+- fairnight-cli: database schema 7 (`guest_stays.recognized_at`, `guest_receipts`).
+- fairnight-cli: the calendar page shows how many guest communications are late or due within 24 hours.
+- docs: guide for the host in Italian and Spanish (docs/fairguest-italia.md, docs/fairguest-italia.es.md).
 
 ### fairguest (new)
 

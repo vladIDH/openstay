@@ -2,10 +2,7 @@
 
 Fairguest comunica los huéspedes a la **Polizia di Stato** desde su ordenador, con el servicio **Alloggiati Web**. Los datos de los huéspedes quedan cifrados en su ordenador y se borran solos en cuanto el envío queda registrado. No hay ningún servidor nuestro en medio.
 
-> Versión de Fairguest en desarrollo (octubre de 2026). Esta guía cubre **Alloggiati Web**. Lo siguiente llega en las próximas versiones y se añadirá aquí:
-> - la comunicación a **Istat** (movimiento turístico regional);
-> - el **enlace para el huésped** que funciona desde cualquier lugar;
-> - la **foto del documento**.
+> Versión de Fairguest en desarrollo (octubre de 2026). Esta guía cubre **Alloggiati Web**, el **enlace para el huésped** y la **foto del documento**. La comunicación a **Istat** (movimiento turístico regional) llega en la próxima versión y se añadirá aquí.
 >
 > No es un asesoramiento legal. Los puntos marcados **[NV]** aún no se han comprobado con un envío real.
 
@@ -75,11 +72,10 @@ fairnight ospiti credenziali --verifica
 
 ## Qué ve el huésped
 
-`fairnight ospiti elenco` muestra el enlace del formulario de cada estancia. Por ahora el formulario solo se abre desde la red de casa:
-- ejecute `fairnight serve --lan`;
-- abra el enlace en un teléfono o una tableta conectados a su red.
+El formulario se abre de dos maneras:
 
-El enlace que funciona desde cualquier lugar llega en la próxima versión.
+- **desde la red de casa:** `fairnight serve --lan` y el enlace de `fairnight ospiti elenco`, en un teléfono o una tableta conectados a su red;
+- **desde cualquier lugar:** el enlace de `fairnight ospiti link <estancia>`, que se manda al huésped como le escribe normalmente. Vea «El enlace para el huésped» más abajo.
 
 El formulario está en italiano, inglés y español, en tres pasos: sus datos, documento y confirmación. Para un alojamiento en Italia pide solo lo que pide Alloggiati Web:
 
@@ -92,6 +88,64 @@ El formulario está en italiano, inglés y español, en tres pasos: sus datos, d
 **No pide** dirección, teléfono, email ni pago: en Italia la ley no los exige, así que el formulario no los recoge.
 
 Arriba, el huésped lee una línea sobre qué pasa con sus datos: quedan cifrados en su ordenador, van solo a la Polizia di Stato y se borran solos después del envío. También se le dice que **a la llegada usted le reconocerá en persona o por videollamada**, con el documento.
+
+## El enlace para el huésped
+
+```
+fairnight ospiti link <estancia>
+```
+
+Imprime una dirección como `https://fairguest.khlumen.com/c/…#v1.…`. Mándela al huésped: funciona desde cualquier teléfono hasta dos días después de la salida. Su ordenador **no abre ningún puerto**: solo hace peticiones de salida.
+
+**Cómo viajan los datos**
+1. El huésped rellena el formulario en su teléfono. Tiene el mismo aspecto y las mismas preguntas que el de casa.
+2. **El teléfono cifra los datos** con la clave pública de su carpeta Fairguest antes de enviarlos.
+3. El servicio de reenvío (`fairguest.khlumen.com`) solo recibe texto cifrado y lo guarda en un buzón de la estancia.
+4. Su ordenador lo descarga y lo borra del servicio:
+   - con `fairnight ospiti scarica`;
+   - solo, cada 5 minutos, mientras `fairnight serve` está en marcha;
+   - antes de `ospiti elenco` y de `ospiti invia`.
+5. En su ordenador los datos siguen cifrados: solo se abren con la frase secreta.
+
+**Qué ve quien gestiona el servicio de reenvío**
+- Ve la dirección IP del teléfono y la hora, como cualquier web.
+- Ve un texto cifrado, siempre de la misma longitud.
+- No ve nombres ni documentos, ni cuántos caracteres escribió el huésped.
+- No ve su clave, el alojamiento ni las fechas: van detrás del `#` del enlace, y los navegadores nunca los envían al servidor.
+- No guarda registros de las peticiones.
+- Cada buzón se borra solo dos días después de la salida.
+
+**Qué puede hacer quien tenga el enlace:** añadir huéspedes a esa estancia, no leerlos. Si un enlace acaba en malas manos:
+- revise los huéspedes con `fairnight ospiti mostra`;
+- borre los que sobren con `fairnight ospiti cancella <estancia> --persona N --applica`.
+
+**Comprobar la página**
+
+```
+fairnight ospiti verifica-pagina
+```
+
+Compara cada fichero que el servicio manda al teléfono con la huella (SHA-256) de la página de esta versión de Fairguest. Cada línea debe decir `same`.
+
+Hace falta porque quien gestiona el servicio podría cambiar la página para leer los datos antes de cifrarlos: es el límite de cualquier formulario en la web. Para tener el control completo:
+- aloje el servicio usted mismo: instrucciones en [packages/fairguest-relay/README.md](../packages/fairguest-relay/README.md);
+- después ponga su dirección en `fairnight.config.json` con `"fairguestRelay": "https://…"`.
+
+## La foto del documento
+
+En la página del enlace, el huésped puede tocar «Hacer o elegir una foto» y encuadrar las líneas de letras y `<<<` del documento:
+- en el pasaporte, al pie de la página de la foto;
+- en el DNI o la carta de identidad electrónica, en el reverso.
+
+**Qué se rellena solo:** nombre, apellidos, fecha de nacimiento, sexo, ciudadanía, tipo y número del documento, Estado de expedición. En el DNI español también el número de soporte. El huésped revisa los datos y completa el resto.
+
+**Dónde pasa todo:**
+- **La lectura se hace en el teléfono.** El programa de lectura (Tesseract) y su modelo para esas líneas son ficheros del propio servicio: no se contacta con ningún otro sitio.
+- **La foto nunca se envía ni se guarda.** Está en memoria solo mientras se lee y después se borra. Fairguest no guarda copias del documento en ningún sitio, que es lo que piden la AEPD y el Garante italiano.
+- **Las cifras de control** de esas líneas dicen si la lectura es correcta. Si no cuadran, el huésped ve un aviso y revisa los datos.
+- **Sin esas líneas** (por ejemplo, la antigua carta de identidad italiana de papel) se rellena a mano.
+
+Captura desde un teléfono, con datos inventados: [datos leídos de la foto](images/link/link-es-2-letto.png).
 
 ## El reconocimiento del huésped
 
@@ -182,7 +236,8 @@ fairnight ospiti ricevute
 | Qué | Cuánto se guarda |
 |---|---|
 | Datos de los huéspedes (cifrados) | hasta que Alloggiati Web acepta el envío; después se borran en el acto (DM 7/1/2013, art. 4-bis). Una reserva anulada se borra en el acto |
-| Fotos o copias del documento | nunca: Fairguest no las hace |
+| Fotos o copias del documento | nunca: la foto se lee en el teléfono del huésped y no se guarda ni se envía |
+| Servicio de reenvío del enlace | solo texto cifrado, borrado al descargarlo; cada buzón se borra solo dos días después de la salida |
 | Recibos de Alloggiati Web | 5 años, luego se borran |
 | Credenciales de Alloggiati Web | selladas, hasta que las cambie |
 | Tablas de códigos | en su ordenador, se descargan de nuevo cada mes |

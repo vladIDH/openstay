@@ -6,10 +6,13 @@
 import { existsSync } from "node:fs";
 import { Availability, formatAmount, type NightQuote } from "fairnight";
 import {
+  conversation,
   dbPath,
   feedKeys,
+  flagsOf,
   guestDeadlines,
   guestsEnabled,
+  helloTablesExist,
   lastSync,
   listMarketAreas,
   loadMarket,
@@ -17,9 +20,11 @@ import {
   loadStays,
   localToday,
   openDbReadOnly,
+  openDrafts,
   priceOne,
   selectListings,
   SetupError,
+  textToSend,
   unitsOf,
   type Db,
   type HostListing,
@@ -386,6 +391,62 @@ export function guestDeadlinesOf(folder: Folder, args: { includeDone?: boolean }
         guestsRegistered: r.guestsRegistered,
         hoursLeft: r.hoursLeft,
       })),
+    };
+  });
+}
+
+export type GuestReplies = {
+  today: string;
+  /** False on a folder whose database has no guest assistant tables yet. */
+  enabled: boolean;
+  waiting: number;
+  outdated: number;
+  drafts: {
+    draft: number;
+    listing: string;
+    checkIn: string;
+    checkOut: string;
+    channel: string | null;
+    language: string | null;
+    needsHost: boolean;
+    flags: string[];
+    sendable: boolean;
+    reason: string | null;
+    guestMessage?: string;
+    draftText?: string;
+  }[];
+};
+
+/**
+ * The replies to guests waiting for the host (Fairhello). Read only: nothing
+ * is approved or sent from here. Message texts only when asked for.
+ */
+export function guestRepliesOf(folder: Folder, args: { includeText?: boolean }): GuestReplies {
+  return withFolder(folder, (db) => {
+    const today = localToday(folder.now());
+    if (!helloTablesExist(db)) return { today, enabled: false, waiting: 0, outdated: 0, drafts: [] };
+    const views = openDrafts(db, today);
+    return {
+      today,
+      enabled: true,
+      waiting: views.filter((v) => v.freshness.sendable).length,
+      outdated: views.filter((v) => !v.freshness.sendable).length,
+      drafts: views.map((v) => {
+        const lastGuest = args.includeText ? [...conversation(db, v.stay.id)].reverse().find((m) => m.sender === "guest") : undefined;
+        return {
+          draft: v.draft.id,
+          listing: v.stay.listing,
+          checkIn: v.stay.check_in,
+          checkOut: v.stay.check_out,
+          channel: v.stay.channel,
+          language: v.draft.language ?? v.stay.language,
+          needsHost: v.draft.needs_host === 1,
+          flags: flagsOf(v.draft),
+          sendable: v.freshness.sendable,
+          reason: v.freshness.reason,
+          ...(args.includeText ? { guestMessage: lastGuest?.text ?? "", draftText: textToSend(v.draft) } : {}),
+        };
+      }),
     };
   });
 }

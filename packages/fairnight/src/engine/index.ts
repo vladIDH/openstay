@@ -20,3 +20,5 @@ export type { ConfigIssue, ValidationResult } from "./schema.js";
 export { WEEKDAYS } from "./dates.js";
 export type { Weekday } from "./dates.js";
 export type * from "./types.js";
+export { DEFAULT_BASE_PRICE, describeComparables, suggestBasePrice } from "./base-price.js";
+export type { BasePriceMonth, BasePriceOptions, BasePriceResult, BasePriceSuggestion, ComparableHomes, NoBasePriceSuggestion } from "./base-price.js";

@@ -23,9 +23,12 @@ import { connect as connectBeds24, creditsLine, importFromBeds24, push as pushBe
 import { Beds24Error } from "fairnight-beds24";
 import { AirRoiError, InsideAirbnbError } from "fairnight-market";
 import { AlloggiatiError } from "fairguest";
-import { connectAirRoi, deleteMarketData, importAirRoi, importFile, marketStatus } from "./mercato.js";
+import { connectAirRoi, deleteMarketData, importAirRoi, importFile, importIne, importIstac, marketStatus } from "./mercato.js";
+import { basePriceCommand } from "./prezzo-base.js";
 import { formatFeedReport, syncEverything } from "./sync-all.js";
 import { GUEST_USAGE, runGuests } from "./guests/commands.js";
+import { runPilotCommand } from "./pilota-comandi.js";
+import { HELLO_USAGE, runHello } from "./hello/commands.js";
 
 export const USAGE = `Fairnight: dynamic prices for short-term rentals, on your own computer.
 
@@ -46,14 +49,31 @@ Usage:
   fairnight beds24 spingi                          compare with Beds24; writes only with --applica [--da DATE] [--a DATE] [--alloggio ROOM]
   fairnight mercato importa <file> --zona <name>   zone data from your CSV (date, occupancy, average_price, comparables)
                                                    or from Inside Airbnb files you downloaded (calendar.csv.gz)
-                                                   [--fonte csv|insideairbnb] [--annunci listings.csv.gz --tipo T --camere N --quartiere Q] [--dry-run]
+                                                   [--fonte csv|insideairbnb] [--annunci listings.csv.gz --tipo T --camere N --ospiti N --quartiere Q] [--dry-run]
   fairnight mercato importa --fonte airroi         AirROI zone metrics with your own key (off until AirROI confirms its terms) [--zona <name>]
+  fairnight mercato importa --fonte istac          ISTAC holiday homes, Canary Islands: average daily rate by municipality, free
+                                                   --zona <name> --comune <code, e.g. 38001> [--ospiti N] [--dry-run]
+  fairnight mercato importa --fonte ine            INE tourist apartments: season by tourist point (off while INE's licence is unclear)
+                                                   --zona <name> --punto <name, e.g. Adeje> [--dry-run]
   fairnight mercato collega                        save your own AirROI API key (asked, never shown)
+  fairnight mercato prezzo-base                    the base price the zone data suggests, and why [--listing <name>] [--applica]
   fairnight mercato stato                          zone data, sources, which listings use them
   fairnight mercato cancella                       delete zone data [--zona <name>] [--fonte csv|insideairbnb|airroi]
 
+Autopilot (every day: read the calendars, price, write to Smoobu or Beds24 where it is on, read back):
+  fairnight pilota giro                            one run now [--pianificato: skip if today's run is done, log to data/pilota.log]
+  fairnight pilota prova                           what a run would write, writing nothing [--listing <name>]
+  fairnight pilota stato                           on or off, paused, last run, daily task of this computer
+  fairnight pilota accendi|spegni <name>           turn it on (shows the preview and asks first) or off; off by default
+  fairnight pilota riprendi <name>                 start a paused listing again
+  fairnight pilota registro                        the nights written and why [--listing <name>] [--out file.csv]
+  fairnight pilota pianifica [--ora 06:00]         run it every day on this computer (Windows, Mac); "togli" removes it
+
 Guest registration (Fairguest, Spain: SES.HOSPEDAJES and Mossos d'Esquadra):
 ${GUEST_USAGE}
+
+Replies to guests (Fairhello: drafts from Smoobu and Beds24 messages, every reply approved by you):
+${HELLO_USAGE}
 
 Every command works in the current folder; use --dir <folder> to point at another one.`;
 
@@ -90,7 +110,13 @@ const OPTIONS = {
   fonte: { type: "string" },
   annunci: { type: "string" },
   camere: { type: "string" },
+  ospiti: { type: "string" },
+  comune: { type: "string" },
+  punto: { type: "string" },
   quartiere: { type: "string" },
+  pianificato: { type: "boolean" },
+  ora: { type: "string" },
+  "senza-bozze": { type: "boolean" },
   help: { type: "boolean", short: "h" },
 } as const;
 
@@ -150,9 +176,16 @@ export async function main(argv: string[], io: Io): Promise<number> {
       case "mercato":
       case "market":
         return await runMercato(dir, values, rest, io);
+      case "pilota":
+      case "autopilot":
+        return await runPilotCommand(dir, values, rest, io);
       case "ospiti":
       case "guests":
         return await runGuests(dir, values, rest, io);
+      case "risposte":
+      case "hello":
+      case "replies":
+        return await runHello(dir, values, rest, io);
       default:
         throw new UsageError(`Unknown command "${command}".`);
     }
@@ -428,7 +461,20 @@ async function runBeds24(
 
 async function runMercato(
   dir: string,
-  values: { zona?: string; fonte?: string; annunci?: string; tipo?: string; camere?: string; quartiere?: string; "dry-run"?: boolean },
+  values: {
+    zona?: string;
+    fonte?: string;
+    annunci?: string;
+    tipo?: string;
+    camere?: string;
+    ospiti?: string;
+    comune?: string;
+    punto?: string;
+    quartiere?: string;
+    listing?: string;
+    applica?: boolean;
+    "dry-run"?: boolean;
+  },
   rest: string[],
   io: Io,
 ): Promise<number> {
@@ -436,12 +482,35 @@ async function runMercato(
   switch (sub) {
     case "importa":
     case "import": {
+      let guests: number | undefined;
+      if (values.ospiti !== undefined) {
+        guests = Number(values.ospiti);
+        if (!Number.isInteger(guests) || guests < 1) throw new UsageError(`--ospiti must be a whole number of guests, got "${values.ospiti}"`);
+      }
+      const dryRun = values["dry-run"] ?? false;
       if (values.fonte === "airroi") {
         noExtra(extra);
         return importAirRoi(dir, io, values.zona !== undefined ? { area: values.zona } : {});
       }
+      if (values.fonte === "istac") {
+        noExtra(extra);
+        return importIstac(dir, io, {
+          ...(values.zona !== undefined ? { area: values.zona } : {}),
+          ...(values.comune !== undefined ? { municipality: values.comune } : {}),
+          ...(guests !== undefined ? { guests } : {}),
+          dryRun,
+        });
+      }
+      if (values.fonte === "ine") {
+        noExtra(extra);
+        return importIne(dir, io, {
+          ...(values.zona !== undefined ? { area: values.zona } : {}),
+          ...(values.punto !== undefined ? { point: values.punto } : {}),
+          dryRun,
+        });
+      }
       const [file, ...more] = extra;
-      if (file === undefined) throw new UsageError("Which file? fairnight mercato importa <file> --zona <name> (or --fonte airroi).");
+      if (file === undefined) throw new UsageError("Which file? fairnight mercato importa <file> --zona <name> (or --fonte airroi, istac or ine).");
       noExtra(more);
       let bedrooms: number | undefined;
       if (values.camere !== undefined) {
@@ -456,15 +525,20 @@ async function runMercato(
         filter: {
           ...(values.tipo !== undefined ? { roomType: values.tipo } : {}),
           ...(bedrooms !== undefined ? { bedrooms } : {}),
+          ...(guests !== undefined ? { guests } : {}),
           ...(values.quartiere !== undefined ? { neighbourhood: values.quartiere } : {}),
         },
-        dryRun: values["dry-run"] ?? false,
+        dryRun,
       });
     }
     case "collega":
     case "connect":
       noExtra(extra);
       return connectAirRoi(dir, io);
+    case "prezzo-base":
+    case "base-price":
+      noExtra(extra);
+      return basePriceCommand(dir, io, { ...(values.listing !== undefined ? { listing: values.listing } : {}), apply: values.applica ?? false });
     case "stato":
     case "status":
       noExtra(extra);
@@ -478,7 +552,7 @@ async function runMercato(
       });
     default:
       throw new UsageError(
-        sub === undefined ? "Which zone data command? importa, collega, stato or cancella." : `Unknown command "mercato ${sub}". Use importa, collega, stato or cancella.`,
+        sub === undefined ? "Which zone data command? importa, prezzo-base, collega, stato or cancella." : `Unknown command "mercato ${sub}". Use importa, prezzo-base, collega, stato or cancella.`,
       );
   }
 }

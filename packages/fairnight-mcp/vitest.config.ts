@@ -13,6 +13,7 @@ export default defineConfig({
       { find: /^fairnight-smoobu$/, replacement: src("../fairnight-smoobu/src/index.ts") },
       { find: /^fairnight-market$/, replacement: src("../fairnight-market/src/index.ts") },
       { find: /^fairguest$/, replacement: src("../fairguest/src/index.ts") },
+      { find: /^fairhello$/, replacement: src("../fairhello/src/index.ts") },
     ],
   },
   test: {

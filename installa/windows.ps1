@@ -25,7 +25,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $NodeMinimo = 22
 $PaginaNode = 'https://nodejs.org/it/download'
-$Pacchetti = @('fairnight', 'fairguest', 'fairnight-smoobu', 'fairnight-beds24', 'fairnight-market', 'fairnight-cli')
+$Pacchetti = @('fairnight', 'fairguest', 'fairhello', 'fairnight-smoobu', 'fairnight-beds24', 'fairnight-market', 'fairnight-cli')
 
 $Programma = Join-Path $Cartella 'programma'
 $Log = Join-Path $Cartella 'installazione.log'

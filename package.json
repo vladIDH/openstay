@@ -19,7 +19,7 @@
     "lint": "eslint .",
     "test": "npm run test --workspaces --if-present",
     "coverage": "npm run coverage --workspaces --if-present",
-    "build": "npm run build -w fairnight && npm run build -w fairguest && npm run build -w fairnight-smoobu && npm run build -w fairnight-beds24 && npm run build -w fairnight-market && npm run build -w fairguest-relay && npm run build -w fairnight-cli && npm run build -w fairnight-mcp",
+    "build": "npm run build -w fairnight && npm run build -w fairguest && npm run build -w fairhello && npm run build -w fairnight-smoobu && npm run build -w fairnight-beds24 && npm run build -w fairnight-market && npm run build -w fairguest-relay && npm run build -w fairnight-cli && npm run build -w fairnight-mcp",
     "check": "npm run typecheck && npm run lint && npm run test && npm run build"
   },
   "devDependencies": {

@@ -34,6 +34,9 @@ beds24-credentials.json
 # The host's AirROI key written by "fairnight mercato collega": never commit it
 airroi-credentials.json
 
+# The host's Anthropic key written by "fairnight risposte collega": never commit it
+fairhello-credentials.json
+
 # documenti del Ministero (SES): restano fuori dal repo, mai committati
 openstay-ses-docs/
 installa/pacchetto/

@@ -22,8 +22,10 @@ export const OLLAMA_URL = "http://127.0.0.1:11434";
 export class ModelError extends Error {
   constructor(
     message: string,
-    /** False when trying again later will not help (wrong key, refusal, broken answer). */
+    /** False when trying again later will not help (wrong key, refusal). */
     readonly retry: boolean,
+    /** True when every other request would fail the same way (wrong key, model missing, no connection): stop. */
+    readonly fatal = false,
   ) {
     super(message);
     this.name = "ModelError";
@@ -77,8 +79,8 @@ export function readAnthropic(status: number, text: string): ModelAnswer {
   if (status !== 200) {
     const said = errorText(text);
     const tail = said ? ` Anthropic says: "${said}".` : "";
-    if (status === 401) throw new ModelError(`Anthropic refused the key (401).${tail} Save it again with "fairnight risposte collega".`, false);
-    if (status === 403) throw new ModelError(`Anthropic does not allow this request (403).${tail}`, false);
+    if (status === 401) throw new ModelError(`Anthropic refused the key (401).${tail} Save it again with "fairnight risposte collega".`, false, true);
+    if (status === 403) throw new ModelError(`Anthropic does not allow this request (403).${tail}`, false, true);
     if (status === 400) throw new ModelError(`Anthropic did not accept the request (400).${tail}`, false);
     if (status === 429 || status === 529 || status >= 500) throw new ModelError(`Anthropic is busy (${status}).${tail} Try again in a few minutes.`, true);
     throw new ModelError(`Anthropic answered ${status}.${tail}`, false);
@@ -122,7 +124,7 @@ export function ollamaRequest(prompt: Prompt, options: { model: string; baseUrl?
 }
 
 export function readOllama(status: number, text: string, model: string): ModelAnswer {
-  if (status === 404) throw new ModelError(`Ollama does not have the model "${model}": run "ollama pull ${model}" first.`, false);
+  if (status === 404) throw new ModelError(`Ollama does not have the model "${model}": run "ollama pull ${model}" first.`, false, true);
   if (status !== 200) throw new ModelError(`Ollama answered ${status}. Is it running ("ollama serve")?`, true);
   let b: { message?: { content?: string }; prompt_eval_count?: number; eval_count?: number };
   try {

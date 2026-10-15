@@ -42,6 +42,8 @@ describe("Anthropic", () => {
     };
     expect(err(401, JSON.stringify({ error: { message: "invalid x-api-key" } })).message).toContain('Anthropic says: "invalid x-api-key"');
     expect(err(401).retry).toBe(false);
+    expect(err(401).fatal).toBe(true);
+    expect(err(429).fatal).toBe(false);
     expect(err(429).retry).toBe(true);
     expect(err(529).retry).toBe(true);
     expect(err(400).retry).toBe(false);
@@ -68,6 +70,11 @@ describe("Ollama", () => {
       usage: { input: 300, output: 50, cacheRead: 0, cacheWrite: 0 },
     });
     expect(() => readOllama(404, "", "qwen3:8b")).toThrow('ollama pull qwen3:8b');
+    try {
+      readOllama(404, "", "m");
+    } catch (e) {
+      expect((e as { fatal: boolean }).fatal).toBe(true);
+    }
     expect(() => readOllama(500, "", "m")).toThrow("ollama serve");
     expect(() => readOllama(200, "{", "m")).toThrow("not JSON");
   });

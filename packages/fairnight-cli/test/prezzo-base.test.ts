@@ -1,9 +1,11 @@
 import { readFileSync, writeFileSync } from "node:fs";
+import type { IncomingMessage, Server } from "node:http";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { openDb } from "../src/db.js";
 import { main } from "../src/main.js";
 import { loadComparables } from "../src/market-store.js";
+import { fromThisComputer, startServer } from "../src/serve.js";
 import { dbPath } from "../src/io.js";
 import { tempDir, testIo, type TestIo } from "./helpers.js";
 
@@ -151,5 +153,70 @@ describe("fairnight mercato prezzo-base", () => {
     const flag = await run(ok, ["mercato", "importa", "x.csv", "--zona", "costa", "--ospiti", "due"]);
     expect(flag.code).not.toBe(0);
     expect(flag.io.errors.join(" ")).toContain("--ospiti must be a whole number");
+  });
+});
+
+describe("suggested base price on the calendar page", () => {
+  const servers: Server[] = [];
+  afterEach(async () => {
+    for (const s of servers.splice(0)) await new Promise((ok) => s.close(ok));
+  });
+
+  async function serve(dir: string) {
+    const server = await startServer({ dir, io: testIo(dir), days: 30, today: "2026-11-01", port: 0, lan: false, quiet: true });
+    servers.push(server);
+    return `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  }
+
+  it("sends the facts of the suggestion with the prices", async () => {
+    const dir = await folder({ guests: 4 });
+    writeFileSync(path.join(dir, "zona.csv"), zoneCsv(YEAR));
+    await run(dir, ["mercato", "importa", "zona.csv", "--zona", "costa", "--camere", "2", "--ospiti", "4"]);
+    const base = await serve(dir);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data: any = await (await fetch(base + "/api/data")).json();
+    expect(data.local).toBe(true);
+    expect(data.listings[0].suggestion).toMatchObject({
+      suggested: 118,
+      current: 100,
+      differencePercent: 18,
+      farOff: false,
+      months: 12,
+      from: "2025-11",
+      to: "2026-10",
+      comparables: 30,
+      homes: { bedrooms: 2, guests: 4 },
+      area: "costa",
+      warnings: [],
+    });
+  });
+
+  it("changes the base price only with the header, from this computer, for the figure shown", async () => {
+    const dir = await folder();
+    writeFileSync(path.join(dir, "zona.csv"), zoneCsv(YEAR));
+    await run(dir, ["mercato", "importa", "zona.csv", "--zona", "costa", "--camere", "2"]);
+    const base = await serve(dir);
+    const post = (body: unknown, headers: Record<string, string> = { "X-Fairnight": "1" }) =>
+      fetch(base + "/api/base-price", { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) });
+
+    expect((await post({ listing: "loft", price: 118 }, {})).status).toBe(403);
+    expect((await post({ listing: "loft", price: 150 })).status).toBe(409);
+    expect((await post({ listing: "nope", price: 118 })).status).toBe(404);
+    expect((await post({ listing: "loft" })).status).toBe(400);
+    expect(basePrice(dir)).toBe(100);
+
+    const ok = await post({ listing: "loft", price: 118 });
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({ listing: "loft", before: 100, basePrice: 118 });
+    expect(basePrice(dir)).toBe(118);
+    expect(readFileSync(path.join(dir, "fairnight.config.json.bak"), "utf8")).toContain('"basePrice": 100');
+  });
+
+  it("tells requests from this computer from the network", () => {
+    const req = (remoteAddress: string) => ({ socket: { remoteAddress } }) as unknown as IncomingMessage;
+    expect(fromThisComputer(req("127.0.0.1"))).toBe(true);
+    expect(fromThisComputer(req("::1"))).toBe(true);
+    expect(fromThisComputer(req("::ffff:127.0.0.1"))).toBe(true);
+    expect(fromThisComputer(req("192.168.1.20"))).toBe(false);
   });
 });

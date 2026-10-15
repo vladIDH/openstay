@@ -30,7 +30,6 @@ import {
   localDateTime,
   MOSSOS_PORTAL,
   mossosFile,
-  NotAvailableError,
   parseGuest,
   passphraseProblem,
   PassphraseError,
@@ -49,6 +48,7 @@ import { DATA_DIR, dbPath, type Io } from "../io.js";
 import { PAGE_HASHES } from "./page-hashes.js";
 import { acceptedDays, applyIstatRetention, blockedDays, keepIstat, loadIstatCredentials, readIstat, recordIstatDay, rossClient, saveIstatCredentials } from "./istat.js";
 import { MRZ_MODEL_SHA256, checkPage, pullRelay, relayOf, stayLink, type PullReport } from "./relay.js";
+import { prepareSes, sendSes, sesCredentials, sesOutcome, type SesHelpers } from "./ses.js";
 import { alloggiatiClient, downloadTables, dropOldReceipts, hasCredentials, loadCredentials, loadTables, receipts, saveCredentials, saveReceipt, TABLES_MAX_DAYS } from "./italy.js";
 import {
   addManualStay,
@@ -93,6 +93,8 @@ export interface GuestOptions {
   verifica?: boolean;
   mese?: string;
   istat?: boolean;
+  ses?: boolean;
+  ambiente?: string;
 }
 
 export const GUEST_USAGE = `  fairnight ospiti                                 guest communications due, late or open (no passphrase) [--json]
@@ -111,6 +113,10 @@ export const GUEST_USAGE = `  fairnight ospiti                                 g
   fairnight ospiti credenziali [--account NAME]    Italy: save the Alloggiati Web user, password and key, sealed [--verifica]
   fairnight ospiti riconosciuto <stay>             Italy: you saw the guests in person or on a live video call
   fairnight ospiti invia [<stay>…]                 Italy: the schedine due; checks them with --prova, sends them with --applica
+  fairnight ospiti credenziali --ses               Spain: save the SES.HOSPEDAJES web-service user and password, sealed [--ambiente prova|produzione] [--account NAME]
+  fairnight ospiti prepara --ses <stay…>           Spain: what SES.HOSPEDAJES will receive, and its XML [--tipo checkin|prenotazione]
+  fairnight ospiti invia --ses [<stay…>]           Spain: sends to SES.HOSPEDAJES with --applica and a typed confirmation [--tipo] [--ambiente prova|produzione]
+  fairnight ospiti esito --ses                     Spain: the outcome of the batches sent, communication by communication
   fairnight ospiti ricevute                        Italy: download the Alloggiati Web receipts not saved yet (last 30 days)
   fairnight ospiti istat [--mese YYYY-MM]          Italy: the month's Istat movement; ROSS1000 sends with --applica, other regions get a file or the figures
   fairnight ospiti credenziali --istat             Italy: save the ROSS1000 user and password of the structure, sealed [--account NAME]
@@ -186,6 +192,17 @@ function personIndex(raw: string | undefined, count: number): number | null {
   return n - 1;
 }
 
+/** What the SES commands (ses.ts) borrow from here. */
+function sesHelpers(db: Db, config: HostConfig, io: Io): SesHelpers {
+  return {
+    stayOrFail: (id) => stayOrFail(db, id),
+    settingsOf: (row) => settingsOf(config, row),
+    notErased,
+    unlockedKey: () => unlockedKey(db, io),
+    kindOf: (raw) => kindOf(raw, "checkin"),
+  };
+}
+
 /** The form link of a stay, while it is valid (until check-out). */
 export function formPath(row: StayRow, today: string): string | null {
   return row.code && !row.erased_at && !row.cancelled_at && today <= row.check_out ? `/checkin/${row.code}` : null;
@@ -247,6 +264,10 @@ export async function runGuests(dir: string, values: GuestOptions, rest: string[
         return await tables(dir, db, args, io);
       case "credenziali":
       case "credentials":
+        if (values.ses) {
+          noExtra(args);
+          return await sesCredentials(db, values, io);
+        }
         return await credentials(db, args, values, io);
       case "riconosciuto":
       case "recognized":
@@ -254,7 +275,12 @@ export async function runGuests(dir: string, values: GuestOptions, rest: string[
       case "invia":
       case "send":
         await pullQuietly(db, io, config);
+        if (values.ses) return await sendSes(db, config, args, values, io, sesHelpers(db, config, io));
         return await sendItaly(dir, db, config, args, values, io);
+      case "esito":
+      case "outcome":
+        noExtra(args);
+        return await sesOutcome(db, config, values, io, sesHelpers(db, config, io));
       case "ricevute":
       case "receipts":
         return await fetchReceipts(dir, db, config, args, io);
@@ -551,19 +577,9 @@ async function prepare(dir: string, db: Db, config: HostConfig, args: string[], 
   const countries = new Set(rows.map((r) => settingsOf(config, r).country));
   if (countries.size > 1) throw new UsageError("These stays go to different authorities: prepare SES and Mossos stays separately.");
   const country = [...countries][0];
+  if (values.ses && country !== "ES") throw new UsageError("--ses is for stays that go to SES.HOSPEDAJES (\"country\": \"ES\").");
   if (country === "IT") return await prepareItaly(dir, db, config, rows, values, io);
-  if (country === "ES") {
-    // Stop before asking for the passphrase: nothing can be prepared for SES yet.
-    try {
-      registryFor("ES").prepare([], kind, localDateTime(io.now()));
-    } catch (e) {
-      if (e instanceof NotAvailableError) {
-        io.err(e.message);
-        return 1;
-      }
-      throw e;
-    }
-  }
+  if (country === "ES") return await prepareSes(dir, db, rows, values, io, sesHelpers(db, config, io));
   const pass = await askPassphrase(io);
   let key;
   try {

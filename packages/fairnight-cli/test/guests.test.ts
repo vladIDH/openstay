@@ -389,14 +389,12 @@ describe("prepare, confirm, retention", () => {
     expect(shown.errors[0]).toMatch(/was erased/);
   });
 
-  it("Spain (SES): stops with the clear stub message before asking for the passphrase", async () => {
+  it("Spain (SES): prepare says what is missing and writes nothing (more in guests-ses.test.ts)", async () => {
     const { dir, stays } = await ready({ country: "ES" });
-    let asked = false;
-    const t = io(dir, undefined, { env: {}, prompt: async () => ((asked = true), PASS) });
+    const t = io(dir, undefined, { sesSchema: null });
     expect(await main(["ospiti", "prepara", one(stays).id], t)).toBe(1);
-    expect(asked).toBe(false);
-    expect(t.errors[0]).toMatch(/^SES\.HOSPEDAJES: the XML for the web service is not written yet/);
-    expect(t.errors[0]).toMatch(/openstay-ses-docs/);
+    expect(t.lines.join("\n")).toMatch(/the parte de viajeros \(PV\) cannot be made yet/);
+    expect(t.lines.join("\n")).toMatch(/Nothing was written/);
   });
 
   it("professional host: keeps the data 3 years after check-out, then erases it", async () => {

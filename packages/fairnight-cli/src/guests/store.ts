@@ -414,8 +414,15 @@ export function erasePerson(db: Db, personId: string): void {
   db.prepare("DELETE FROM guest_people WHERE id = ?").run(personId);
 }
 
+/** Records of the SES test service (pre-ses): never a communication made, never a reason to erase. */
+const isTestRecord = (r: SubmissionRow) => r.channel === "ses-prova";
+
+/** A SES batch first taken ("sent") and later refused for this stay is not a communication made. */
+const refusedLater = (rows: SubmissionRow[], r: SubmissionRow) =>
+  r.channel.startsWith("ses-") && r.batch !== null && rows.some((y) => y.id > r.id && y.kind === r.kind && y.channel === r.channel && y.batch === r.batch && y.status === "rejected");
+
 const asRecords = (rows: SubmissionRow[]): SubmissionRecord[] =>
-  rows.filter((r) => r.kind !== "cancellation").map((r) => ({ kind: r.kind as "reservation" | "checkin", status: r.status, at: r.at }));
+  rows.filter((r) => r.kind !== "cancellation" && !isTestRecord(r) && !refusedLater(rows, r)).map((r) => ({ kind: r.kind as "reservation" | "checkin", status: r.status, at: r.at }));
 
 /** The retention rule of each stay, from its country, the host's duty and the communications made. */
 export function retentionOf(db: Db, row: StayRow, settings: GuestSettings) {
@@ -478,7 +485,7 @@ export function guestDeadlines(db: Db, config: HostConfig, now: Date): DeadlineR
     const s = settings.get(row.listing);
     if (!s) continue;
     const subs = submissions(db, row.id);
-    const doneAt = (kind: SubmissionKind) => subs.find((x) => x.kind === kind && DONE.includes(x.status))?.at ?? null;
+    const doneAt = (kind: SubmissionKind) => subs.find((x) => x.kind === kind && DONE.includes(x.status) && !isTestRecord(x) && !refusedLater(subs, x))?.at ?? null;
     const base = { stay: row.id, listing: row.listing, country: s.country, checkIn: row.check_in, checkOut: row.check_out, guestsRegistered: peopleCount(db, row.id) };
     const push = (kind: SubmissionKind, due: string, from: string) => {
       const done = doneAt(kind);

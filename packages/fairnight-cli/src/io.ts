@@ -3,7 +3,7 @@
  * tests can run them with a fake network, a fixed clock and captured output.
  */
 import path from "node:path";
-import type { ScryptParams } from "fairguest";
+import type { ScryptParams, SesEnvironment, SesSchema } from "fairguest";
 
 export type FetchLike = (url: string, init?: { signal?: AbortSignal; headers?: Record<string, string> }) => Promise<{
   ok: boolean;
@@ -42,6 +42,12 @@ export interface Io {
   alloggiatiUrl?: string;
   /** Only for tests: where the Alloggiati Web code tables are downloaded from (file name → URL). */
   alloggiatiTableUrls?: { municipalities: string; states: string; documents: string };
+  /** Network access for the SES.HOSPEDAJES web service (Spain). Default: global fetch. */
+  sesFetch?: SmoobuFetchLike;
+  /** Only for tests: a fake SES.HOSPEDAJES service instead of the Ministry's. */
+  sesUrls?: Partial<Record<SesEnvironment, string>>;
+  /** Only for tests: the schema values of the XML (es-ses-parte.ts) instead of SES_SCHEMA. */
+  sesSchema?: SesSchema | null;
   /** Network access for the regions' Istat web service (ROSS1000). Default: global fetch. */
   istatFetch?: SmoobuFetchLike;
   /** Only for tests: a fake ROSS1000 service instead of the region's. */

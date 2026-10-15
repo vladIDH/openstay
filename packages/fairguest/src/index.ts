@@ -14,6 +14,21 @@ export {
   spainRetention,
 } from "./spain.js";
 export { SES_NOT_READY, sesRegistry } from "./countries/es-ses.js";
+export {
+  SES_MAX_PER_REQUEST,
+  SES_SCHEMA,
+  SES_SCHEMA_DRAFT,
+  SES_XSD_MISSING,
+  sesCommunication,
+  sesDateTime,
+  sesLines,
+  sesMunicipality,
+  sesRequests,
+  sesXml,
+} from "./countries/es-ses-parte.js";
+export type { SesNode, SesRequest, SesSchema } from "./countries/es-ses-parte.js";
+export { crc32, SES_APPLICATION, SES_ENDPOINTS, SesClient, SesError, sesPayload, zipOne } from "./countries/es-ses-ws.js";
+export type { SesAnswer, SesBatch, SesCredentials, SesEnvironment, SesLine } from "./countries/es-ses-ws.js";
 export { MOSSOS_PORTAL, mossosFile, mossosRegistry } from "./countries/es-mossos.js";
 export {
   ALLOGGIATI_DOCUMENT_CODES,
@@ -50,7 +65,7 @@ export type { AlloggiatiCredentials, AlloggiatiPlace, AlloggiatiTables, LinesOut
 export { changePassphrase, createKeys, DEFAULT_SCRYPT, open, PassphraseError, passphraseProblem, publicKeyOf, seal, SealError, unlock } from "./crypto.js";
 export type { KeyRecord, ScryptParams } from "./crypto.js";
 export { DEFAULT_ALLOGGIATI_ACCOUNT, SETTINGS_FIELDS, validateGuestSettings } from "./settings.js";
-export type { AlloggiatiSettings, GuestSettings, IstatSettings } from "./settings.js";
+export type { AlloggiatiSettings, GuestSettings, IstatSettings, SesSettings } from "./settings.js";
 
 export { registryFor } from "./registry.js";
 export { LANGS, pickLang, WORDS } from "./form/words.js";

@@ -81,7 +81,7 @@ function io(dir: string, extra: Partial<TestIo> = {}): TestIo {
   const base = testIo(dir, undefined, NOW);
   Object.assign(base, {
     env: ENV,
-    smoobuBaseUrl: (smoobu as FakeSmoobu).baseUrl,
+    smoobuBaseUrl: smoobu?.baseUrl,
     smoobuFetch: (url: string, init: RequestInit) => fetch(url, init),
     sleep: async () => {},
     now: () => clock,
@@ -491,5 +491,74 @@ describe("the autopilot on the calendar page", () => {
     await pageRunIfDue(on, t, { ...ctx, dir: on, io: t });
     expect(db(on).prepare("SELECT trigger FROM pilot_runs").all()).toEqual([{ trigger: "page" }]);
     expect(t.lines).toEqual(["Pilota automatico: giro fatto (12 notti cambiate)."]);
+  });
+});
+
+describe("the autopilot in the guided setup", () => {
+  const WINDOWS = { platform: "win32" as const, home: "C:/Users/anna", user: "anna", uid: null, node: "C:/node.exe", script: "C:/fairnight.js" };
+
+  function host(dir: string, answers: string[]) {
+    const calls: string[][] = [];
+    const queue = [...answers];
+    const questions: string[] = [];
+    const t = io(dir, {
+      system: WINDOWS,
+      run: (cmd: string, args: string[]) => {
+        calls.push([cmd, ...args]);
+        return { status: args[0] === "/Query" ? 1 : 0, stdout: "", stderr: "" };
+      },
+      prompt: async (q: string) => {
+        questions.push(q);
+        if (queue.length === 0) throw new Error(`no answer left for "${q}"`);
+        return queue.shift() as string;
+      },
+    });
+    return { t, calls, questions, left: () => queue.length };
+  }
+
+  it("asks for the houses on Smoobu, shows the preview, keeps it on when confirmed and sets up the daily run", async () => {
+    const dir = await setUp(100, {});
+    const { t, calls, questions, left } = host(dir, ["f", "s", "20", "7.30", "", ""]);
+    expect(await main(["configura"], t)).toBe(0);
+    expect(left()).toBe(0);
+    expect(questions[1]).toBe("  «loft» → Smoobu: mando i prezzi da solo ogni giorno? [s/N]: ");
+    expect(questions[3]).toBe("  A che ora ogni giorno? [06:00]: ");
+    expect(t.lines).toContain("    Al primo giro cambierebbero 12 notti su Smoobu, per esempio:");
+    expect(t.lines).toContain("      2026-11-07: 100 → 110");
+    expect(t.lines).toContain("    ✓ Pilota acceso per «loft».");
+    expect(t.lines).toContain("  Il pilota gira ogni giorno alle 07:30. Se a quell'ora il computer è spento, gira appena lo riaccendi.");
+    const raw = JSON.parse(readFileSync(path.join(dir, "fairnight.config.json"), "utf8"));
+    expect(raw.listings[0].pilot).toEqual({ enabled: true, maxDailyChangePercent: 20 });
+    expect(raw.pilot).toEqual({ time: "07:30" });
+    expect(calls[0]?.slice(0, 2)).toEqual(["schtasks", "/Create"]);
+    expect(posts()).toEqual([]); // the preview writes nothing
+  });
+
+  it("leaves it off when the host does not confirm the preview, and sets up nothing", async () => {
+    const dir = await setUp(100, {});
+    const { t, calls } = host(dir, ["f", "s", "", "", "", "n"]);
+    expect(await main(["configura"], t)).toBe(0);
+    expect(t.lines).toContain("    Pilota spento per «loft».");
+    expect(JSON.parse(readFileSync(path.join(dir, "fairnight.config.json"), "utf8")).listings[0].pilot).toEqual({ enabled: false });
+    expect(calls.filter((c) => c[1] === "/Create")).toEqual([]);
+  });
+
+  it("turning the last house off removes the daily run", async () => {
+    const dir = await setUp(100, { pilot: { enabled: true } }, { pilot: { time: "06:00" }, language: "it" });
+    const calls: string[][] = [];
+    const { t } = host(dir, ["f", "n"]);
+    t.run = (cmd, args) => (calls.push([cmd, ...args]), { status: 0, stdout: "", stderr: "" });
+    expect(await main(["configura"], t)).toBe(0);
+    expect(calls.map((c) => c[1])).toEqual(["/Query", "/Query", "/Delete"]);
+    expect(t.lines).toContain("  Nessuna casa ha più il pilota acceso: ho tolto il giro di ogni giorno da questo computer.");
+  });
+
+  it("does not ask about houses that are only on Airbnb, Booking or Vrbo", async () => {
+    const dir = tempDir();
+    await main(["init"], testIo(dir));
+    writeFileSync(path.join(dir, "fairnight.config.json"), JSON.stringify({ language: "it", listings: [{ name: "flat", calendars: [], pricing: LOFT }] }));
+    const { t, questions } = host(dir, ["f"]);
+    expect(await main(["configura"], t)).toBe(0);
+    expect(questions.some((q) => q.includes("mando i prezzi"))).toBe(false);
   });
 });

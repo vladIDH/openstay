@@ -57,7 +57,7 @@ export { LANGS, pickLang, WORDS } from "./form/words.js";
 export type { Lang, Words } from "./form/words.js";
 export { errorsByField, esc, FORM_KEYS, guestInput, LOCK, page, renderForm, stayDay, stepsBar, STYLE, TICK } from "./form/render.js";
 export type { FormState } from "./form/render.js";
-export { checkDigit, findMrzLines, guestFromMrz, parseMrz } from "./mrz.js";
+export { checkDigit, findMrzLines, formValuesFromMrz, guestFromMrz, parseMrz } from "./mrz.js";
 export type { MrzFields, MrzFormat } from "./mrz.js";
 export { fromBase64url, hasWebX25519, padded, rawPublicKey, toBase64url, webSeal } from "./web-seal.js";
 export type { X25519Fallback } from "./web-seal.js";

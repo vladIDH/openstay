@@ -3,7 +3,9 @@
  * check digits: nobody is called Ospite Prova and no document ZZ0000000 exists.
  */
 import { describe, expect, it } from "vitest";
-import { checkDigit, findMrzLines, guestFromMrz, parseMrz as parseOrNull, type MrzFields } from "../src/mrz.js";
+import { checkDigit, findMrzLines, formValuesFromMrz, guestFromMrz, parseMrz as parseOrNull, type MrzFields } from "../src/mrz.js";
+import { ITALY_DOCUMENT_TYPES } from "../src/italy.js";
+import { SPAIN_DOCUMENT_TYPES } from "../src/spain.js";
 
 const TODAY = "2099-06-01";
 /** The parse, failing the test when no MRZ is found. */
@@ -142,5 +144,35 @@ describe("finding the MRZ", () => {
   it("returns null when there is none", () => {
     expect(findMrzLines("CARTA DI IDENTITÀ\nComune di Prova")).toBeNull();
     expect(parseOrNull("", TODAY)).toBeNull();
+  });
+});
+
+describe("from the MRZ to the form", () => {
+  const dni = guestFromMrz(parseMrz(td1({ code: "ID", state: "ESP", number: "ZZZ000000", optional1: "00000000T", birth: "600315", sex: "F", expiry: "990110", nat: "ESP", names: "PRUEBA<EJEMPLO<<OSPITE" }), TODAY));
+  const cie = guestFromMrz(parseMrz(td1({ code: "C", state: "ITA", number: "ZZ00000ZZ", optional1: "", birth: "600315", sex: "M", expiry: "990110", nat: "ITA", names: "PROVA<<OSPITE" }), TODAY));
+  const card = guestFromMrz(parseMrz(td1({ code: "ID", state: "D<<", number: "ZZ0000000", optional1: "", birth: "600315", sex: "M", expiry: "990110", nat: "D<<", names: "PROBE<<GAST" }), TODAY));
+
+  it("fills the Spanish form: DNI with its support number, other cards as other documents", () => {
+    expect(formValuesFromMrz(dni, SPAIN_DOCUMENT_TYPES, { email: "ospite.prova@example.com" })).toEqual({
+      email: "ospite.prova@example.com",
+      givenName: "Ospite",
+      surname1: "Prueba",
+      surname2: "Ejemplo",
+      birthDate: "2060-03-15",
+      sex: "female",
+      nationality: "ESP",
+      docType: "dni",
+      docNumber: "00000000T",
+      docSupport: "ZZZ000000",
+      docCountry: "ESP",
+    });
+    expect(formValuesFromMrz(cie, SPAIN_DOCUMENT_TYPES, {}).docType).toBe("other");
+    expect(formValuesFromMrz(card, SPAIN_DOCUMENT_TYPES, {}).docType).toBe("other");
+  });
+
+  it("fills the Italian form: the CIE as electronic card, a DNI or a foreign card as identity card", () => {
+    expect(formValuesFromMrz(cie, ITALY_DOCUMENT_TYPES, {}).docType).toBe("electronic_id");
+    expect(formValuesFromMrz(dni, ITALY_DOCUMENT_TYPES, {}).docType).toBe("id_card");
+    expect(formValuesFromMrz(card, ITALY_DOCUMENT_TYPES, {})).toMatchObject({ docType: "id_card", docCountry: "DEU", nationality: "DEU" });
   });
 });

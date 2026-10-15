@@ -52,6 +52,8 @@ export interface Words {
     docPlaceHint: string;
     noDocument: string;
     birthSection: string;
+    residenceSection: string;
+    residenceHint: string;
   };
   /** The link that works from anywhere (fairguest-relay): the photo of the document and the sending. */
   remote: {
@@ -114,6 +116,7 @@ const es: Words = {
     docCountry: "País de expedición",
     docPlace: "Municipio de expedición",
     docProvince: "Provincia de expedición",
+    province: "Provincia",
   },
   hints: {
     surname2: "Obligatorio con DNI español.",
@@ -199,6 +202,7 @@ const es: Words = {
     docPlace: "Escríbalo como en el documento; si hay dos con el mismo nombre, indique la provincia.",
     birthProvince: "Las dos letras de la provincia, como RM o MI.",
     docProvince: "Las dos letras de la provincia, como RM o MI.",
+    province: "Las dos letras de la provincia, como RM o MI.",
   },
   forbiddenText: "Este formulario se abre solo desde la red del alojamiento.",
   tooMany: "Demasiados intentos. Espere unos minutos.",
@@ -214,6 +218,8 @@ const es: Words = {
     docPlaceHint: "Solo para documentos expedidos en Italia: el municipio que lo expidió.",
     noDocument: "Para los familiares y los demás miembros del grupo no hace falta el documento: basta con el del titular.",
     birthSection: "Lugar de nacimiento",
+    residenceSection: "Residencia",
+    residenceHint: "El municipio si vive en Italia, la ciudad si vive en el extranjero.",
   },
   remote: {
     photoTitle: "Fotografíe el documento",
@@ -271,6 +277,7 @@ const en: Words = {
     docCountry: "Country of issue",
     docPlace: "Municipality of issue",
     docProvince: "Province of issue",
+    province: "Province",
   },
   hints: {
     surname2: "Required with a Spanish DNI.",
@@ -356,6 +363,7 @@ const en: Words = {
     docPlace: "Write it as on the document; if two share the name, add the province.",
     birthProvince: "The two letters of the province, like RM or MI.",
     docProvince: "The two letters of the province, like RM or MI.",
+    province: "The two letters of the province, like RM or MI.",
   },
   forbiddenText: "This form opens only from the accommodation's network.",
   tooMany: "Too many attempts. Please wait a few minutes.",
@@ -371,6 +379,8 @@ const en: Words = {
     docPlaceHint: "Only for documents issued in Italy: the municipality that issued it.",
     noDocument: "Family members and other members of the group do not need a document: the one of the guest who booked is enough.",
     birthSection: "Place of birth",
+    residenceSection: "Residence",
+    residenceHint: "The municipality if you live in Italy, the town if you live abroad.",
   },
   remote: {
     photoTitle: "Take a photo of your document",
@@ -428,6 +438,7 @@ const it: Words = {
     docCountry: "Stato di rilascio",
     docPlace: "Comune di rilascio",
     docProvince: "Provincia di rilascio",
+    province: "Provincia",
   },
   hints: {
     surname2: "Obbligatorio con un DNI spagnolo.",
@@ -513,6 +524,7 @@ const it: Words = {
     docPlace: "Scrivilo come sul documento; se ce ne sono due con lo stesso nome, indica la provincia.",
     birthProvince: "Le due lettere della provincia, come RM o MI.",
     docProvince: "Le due lettere della provincia, come RM o MI.",
+    province: "Le due lettere della provincia, come RM o MI.",
   },
   forbiddenText: "Questo modulo si apre solo dalla rete dell'alloggio.",
   tooMany: "Troppi tentativi. Aspetta qualche minuto.",
@@ -528,6 +540,8 @@ const it: Words = {
     docPlaceHint: "Solo per i documenti rilasciati in Italia: il comune che lo ha rilasciato.",
     noDocument: "Per i familiari e gli altri membri del gruppo il documento non serve: basta quello di chi ha prenotato.",
     birthSection: "Luogo di nascita",
+    residenceSection: "Residenza",
+    residenceHint: "Il comune per chi vive in Italia, la città per chi vive all'estero.",
   },
   remote: {
     photoTitle: "Fotografa il documento",

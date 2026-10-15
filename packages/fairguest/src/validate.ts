@@ -187,7 +187,8 @@ function parseAddress(input: unknown, path: string, problems: Problem[]): Addres
   const locality = text(input.locality);
   const postalCode = text(input.postalCode)?.toUpperCase();
   const municipalityCode = text(input.municipalityCode);
-  if ([country, street, locality, postalCode, municipalityCode].every((v) => v === undefined)) return null;
+  const province = text(input.province)?.toUpperCase();
+  if ([country, street, locality, postalCode, municipalityCode, province].every((v) => v === undefined)) return null;
   if (country === undefined || !isCountryCode(country)) add("country", "must be a country code like ESP or ITA (ISO 3166-1 alpha-3)");
   const a: Address = { country: country ?? "" };
   if (street !== undefined) {
@@ -206,6 +207,10 @@ function parseAddress(input: unknown, path: string, problems: Problem[]): Addres
   if (municipalityCode !== undefined) {
     if (/^\d{6}$/.test(municipalityCode)) a.municipalityCode = municipalityCode;
     else add("municipalityCode", "must be the 6-digit INE code of the municipality");
+  }
+  if (province !== undefined) {
+    if (/^[A-Z]{2}$/.test(province)) a.province = province;
+    else add("province", "must be the two letters of the province, like RM or MI");
   }
   return a;
 }

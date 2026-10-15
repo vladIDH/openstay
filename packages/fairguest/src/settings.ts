@@ -20,6 +20,7 @@
  *   }
  */
 import { isTime } from "./dates.js";
+import { ISTAT_REGION_KEYS, ISTAT_REGIONS, type IstatRegionKey } from "./istat/regions.js";
 import { COUNTRIES, type Country } from "./types.js";
 
 export interface AlloggiatiSettings {
@@ -33,6 +34,15 @@ export interface AlloggiatiSettings {
 
 export const DEFAULT_ALLOGGIATI_ACCOUNT = "principale";
 
+/** Italy: where the listing's Istat data goes (see istat/regions.ts). */
+export interface IstatSettings {
+  region: IstatRegionKey;
+  /** The structure's code at the region (ROSS1000 codice, Trento CIPAT); for Umbria and manual regions, the name. */
+  code: string;
+  /** Name of the saved ROSS1000 credentials; "principale" when not given. */
+  account: string;
+}
+
 export interface GuestSettings {
   country: Country;
   establishment: string;
@@ -45,9 +55,13 @@ export interface GuestSettings {
   internet?: boolean;
   /** Italy only. */
   alloggiati?: AlloggiatiSettings;
+  /** Beds available (people the listing can host): needed for ROSS1000. */
+  beds?: number;
+  /** Italy only: the regional Istat data. */
+  istat?: IstatSettings;
 }
 
-export const SETTINGS_FIELDS = ["country", "establishment", "establishmentName", "professional", "checkInTime", "checkOutTime", "rooms", "internet", "alloggiati"] as const;
+export const SETTINGS_FIELDS = ["country", "establishment", "establishmentName", "professional", "checkInTime", "checkOutTime", "rooms", "beds", "internet", "alloggiati", "istat"] as const;
 const ALLOGGIATI_FIELDS = ["account", "apartmentId", "autoSend"];
 
 type Obj = Record<string, unknown>;
@@ -90,6 +104,26 @@ export function validateGuestSettings(input: unknown, path: string): { value: Gu
       if (a.apartmentId !== undefined) alloggiati.apartmentId = a.apartmentId as number;
     }
   }
+  if (input.beds !== undefined && (!Number.isInteger(input.beds) || (input.beds as number) < 1 || (input.beds as number) > 9999)) add("beds", "must be a whole number from 1 to 9999");
+  let istat: IstatSettings | undefined;
+  if (input.istat !== undefined) {
+    const s = input.istat;
+    if (input.country !== "IT") add("istat", 'only for listings in Italy ("country": "IT")');
+    else if (!isObj(s)) add("istat", "must be an object with region and code");
+    else {
+      for (const key of Object.keys(s)) if (!["region", "code", "account"].includes(key)) add(`istat.${key}`, "unknown field (allowed: region, code, account)");
+      if (!ISTAT_REGION_KEYS.includes(s.region as IstatRegionKey)) add("istat.region", `must be one of ${ISTAT_REGION_KEYS.join(", ")}`);
+      if (typeof s.code !== "string" || s.code.trim() === "" || s.code.length > 60) add("istat.code", "must be the structure's code at the region (or its name where there is no code)");
+      if (s.account !== undefined && (typeof s.account !== "string" || !/^[a-z0-9-]{1,30}$/.test(s.account))) add("istat.account", "must be a short name of lower-case letters, digits and dashes");
+      const region = ISTAT_REGIONS[s.region as IstatRegionKey];
+      // Rooms and beds are part of every day sent to ROSS1000.
+      if (region?.mode === "ross1000") {
+        if (input.rooms === undefined) add("rooms", `is required with ROSS1000 (${region.name}): the rooms the listing has`);
+        if (input.beds === undefined) add("beds", `is required with ROSS1000 (${region.name}): the people the listing can host`);
+      }
+      if (region && typeof s.code === "string") istat = { region: s.region as IstatRegionKey, code: s.code.trim(), account: (s.account as string | undefined) ?? DEFAULT_ALLOGGIATI_ACCOUNT };
+    }
+  }
   if (issues.length > 0) return { value: null, issues };
 
   const value: GuestSettings = { country: input.country as Country, establishment: (input.establishment as string).toUpperCase(), professional: input.professional === true };
@@ -99,5 +133,7 @@ export function validateGuestSettings(input: unknown, path: string): { value: Gu
   if (input.rooms !== undefined) value.rooms = input.rooms as number;
   if (input.internet !== undefined) value.internet = input.internet as boolean;
   if (alloggiati) value.alloggiati = alloggiati;
+  if (input.beds !== undefined) value.beds = input.beds as number;
+  if (istat) value.istat = istat;
   return { value, issues };
 }

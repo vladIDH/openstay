@@ -81,6 +81,8 @@ export interface Address {
   postalCode?: string;
   /** Municipality code of the Spanish INE (6 digits with the check digit), for addresses in Spain. */
   municipalityCode?: string;
+  /** Italian province (Roma = RM), for a residence in Italy with a municipality name shared by others. */
+  province?: string;
 }
 
 export interface Guest {

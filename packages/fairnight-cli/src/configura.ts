@@ -14,7 +14,8 @@
  *   only when the host confirms it. Then the computer's daily run is set up,
  *   or removed when no house has it on any more.
  */
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { ConfigError, formatAmount, type ListingConfig, type SeasonPeriod } from "fairnight";
 import { ISTAT_REGIONS } from "fairguest";
 import { slugify } from "./channel.js";
@@ -27,9 +28,10 @@ import { installSchedule, isScheduled, removeSchedule } from "./pianifica.js";
 import { writeListingPilot } from "./pilota-comandi.js";
 import { DEFAULT_MAX_CHANGE, DEFAULT_PILOT_TIME, runPilot } from "./pilota.js";
 import { describeSeason, multiplierOf, parseDayMonth, percentOf, proposedSeasons, REGION_LABEL, regionOf, typedDayMonth } from "./stagioni.js";
-import { isLanguage, proposedLanguage, systemLocale, type Language } from "./lingua.js";
+import { isLanguage, languageProposal, systemLocale, type Language } from "./lingua.js";
 import { download } from "./sync.js";
 import { syncEverything } from "./sync-all.js";
+import { HOST_README, LOCAL_README } from "./template.js";
 import type { FeedReport } from "./sync.js";
 
 type Obj = Record<string, unknown>;
@@ -390,7 +392,9 @@ export function feedLineIt(r: FeedReport, titles: Map<string, string>): string {
   const house = titles.get(r.listing) ?? r.listing;
   const where = PLATFORMS.find((p) => r.feed === p.source || r.feed.startsWith(`${p.source}-`))?.label ?? r.feed;
   if (!r.ok) return `  ✗ ${house} · ${where}: non letto (${r.error ?? "errore"}). I dati di prima restano com'erano.`;
-  return `  ✓ ${house} · ${where}: ${plural(r.seen, "evento", "eventi")}${r.added > 0 ? `, ${r.added} nuovi` : ""}${r.removed > 0 ? `, ${r.removed} tolti` : ""}`;
+  // The same words as the check of each link ("3 prenotazioni, 1 periodo bloccato"): the feed does not tell them apart.
+  const seen = r.seen === 0 ? "nessuna prenotazione né periodo bloccato" : r.seen === 1 ? "1 prenotazione o periodo bloccato" : `${r.seen} tra prenotazioni e periodi bloccati`;
+  return `  ✓ ${house} · ${where}: ${seen}${r.added > 0 ? `, ${r.added} nuovi` : ""}${r.removed > 0 ? `, ${r.removed} tolti` : ""}`;
 }
 
 const LANGUAGE_CHOICES: { key: string; language: Language; label: string }[] = [
@@ -399,19 +403,23 @@ const LANGUAGE_CHOICES: { key: string; language: Language; label: string }[] = [
   { key: "3", language: "en", label: "English" },
 ];
 
+const LANGUAGE_NAMES_IT: Record<Language, string> = { it: "l'italiano", es: "lo spagnolo", en: "l'inglese" };
+
 /**
  * The language of the calendar page, asked once when the config has none.
- * Proposed from the towns, then from this computer; with nothing clear there
- * is no proposal, and Enter leaves it empty (the page is then in English).
+ * Proposed from this computer, then from the towns, saying why; with nothing
+ * clear there is no proposal, and Enter leaves it empty (the page is then in English).
  */
 async function askLanguage(a: Asker, io: Io, cities: (string | undefined)[]): Promise<Language | null> {
-  const proposed = proposedLanguage(cities, io.locale ?? systemLocale(io.env ?? {}));
+  const proposal = languageProposal(cities, io.locale ?? systemLocale(io.env ?? {}));
   io.out("");
   io.out("Lingua del calendario (la pagina con i prezzi):");
   io.out(`  ${LANGUAGE_CHOICES.map((c) => `${c.key} ${c.label}`).join(" · ")}`);
   const keys = LANGUAGE_CHOICES.map((c) => c.key);
-  if (proposed !== null) {
-    const key = await a.choice("Scegli 1, 2 o 3", keys, LANGUAGE_CHOICES.find((c) => c.language === proposed)?.key as string);
+  if (proposal !== null) {
+    const why = proposal.from === "computer" ? "la lingua di questo computer" : "per la città della casa";
+    io.out(`  Ti propongo ${LANGUAGE_NAMES_IT[proposal.language]}, ${why}: premi Invio per tenerlo.`);
+    const key = await a.choice("Scegli 1, 2 o 3", keys, LANGUAGE_CHOICES.find((c) => c.language === proposal.language)?.key as string);
     return LANGUAGE_CHOICES.find((c) => c.key === key)?.language ?? null;
   }
   const key = await a.choice("Scegli 1, 2 o 3 (Invio per saltare: il calendario resta in inglese)", [...keys, ""], "");
@@ -594,7 +602,11 @@ export async function configura(dir: string, io: Io): Promise<number> {
   mkdirSync(dir, { recursive: true });
   if (existsSync(file)) copyFileSync(file, `${file}.bak`);
   writeFileSync(file, JSON.stringify(next, null, 2) + "\n", "utf8");
-  initFolder(dir); // the README and the database; the config just written is kept
+  // The host's guide in Italian, or in Spanish for a Spanish calendar, and the database; the config just written is kept.
+  initFolder(dir, HOST_README[next.language === "es" ? "es" : "it"]);
+  // The English README of earlier versions, left untouched by the host: the guide above takes its place.
+  const oldReadme = path.join(dir, "README.txt");
+  if (existsSync(oldReadme) && readFileSync(oldReadme, "utf8") === LOCAL_README) unlinkSync(oldReadme);
 
   io.out("");
   io.out("Salvato. Ecco le tue case:");

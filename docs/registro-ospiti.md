@@ -355,7 +355,7 @@ Dove: nell'applicazione SES.HOSPEDAJES, dopo l'accesso, alla voce «Descargar do
 
 Gli XSD dei veicoli (Figure 5 e 6) non servono.
 
-**Dove metterli:** `C:\Users\vladd\openstay-ses-docs\`, con dentro le sottocartelle `specifica\`, `xsd\`, `certificato\` e `manuali\`, più un file `LEGGIMI.txt` con la data del download e la versione della specifica.
+**Dove metterli:** una cartella `openstay-ses-docs\` accanto al repo (mai dentro git), con dentro le sottocartelle `specifica\`, `xsd\`, `certificato\` e `manuali\`, più un file `LEGGIMI.txt` con la data del download e la versione della specifica.
 
 **Mai nel repo:**
 - la cartella sta fuori dal repo;
@@ -474,7 +474,7 @@ Fra i tre paesi è quello più facile da aggiungere.
 ## 9. Prossimi passi
 
 1. Vlad manda la mail della sezione 7a.
-2. Vlad scarica i file della sezione 7b in `C:\Users\vladd\openstay-ses-docs\`.
+2. Vlad scarica i file della sezione 7b nella cartella `openstay-ses-docs\`.
 3. Si confrontano XSD e specifica scaricati con quanto scritto qui, si correggono le differenze e si scrive l'XML di SES al posto dello stub.
 4. Primo caricamento vero di un file Mossos fatto da un host, per verificare i punti segnati **[NV]** nella sezione 10.
 5. Controllo dei marchi su EUIPO e OEPM, prima della pubblicazione su npm.

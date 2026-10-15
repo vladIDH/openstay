@@ -81,6 +81,9 @@ const OPTIONS = {
   account: { type: "string" },
   prova: { type: "boolean" },
   verifica: { type: "boolean" },
+  // ospiti istat (Italy)
+  mese: { type: "string" },
+  istat: { type: "boolean" },
   "usa-storico-smoobu": { type: "boolean" },
   "usa-storico-beds24": { type: "boolean" },
   zona: { type: "string" },

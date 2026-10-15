@@ -16,6 +16,7 @@ process.exitCode = await main(process.argv.slice(2), {
   airroiFetch: (url, init) => fetch(url, init),
   alloggiatiFetch: (url, init) => fetch(url, init),
   relayFetch: (url, init) => fetch(url, init),
+  istatFetch: (url, init) => fetch(url, init),
   openUrl: (url) => {
     // The default browser: "start" on Windows, "open" on a Mac, xdg-open elsewhere.
     const [cmd, args]: [string, string[]] =

@@ -227,6 +227,20 @@ describe("fairnight configura, run again", () => {
     expect(JSON.parse(readFileSync(path.join(dir, "fairnight.config.json.bak"), "utf8"))).toEqual(before);
   });
 
+  it("asks rooms and beds only for a house in Italy that sends Istat data to ROSS1000", async () => {
+    const dir = tempDir();
+    await main(["configura"], host(dir, ["Casa Limone", "Adeje", AIRBNB, "", "", "90", "", "", "s", "", ""]).io);
+    const before = rawConfig(dir);
+    before.listings[0].fairguest = { country: "IT", establishment: "ZZ00000000", rooms: 1, beds: 2, istat: { region: "lazio", code: "ZZ0001P" } };
+    writeFileSync(path.join(dir, "fairnight.config.json"), JSON.stringify(before, null, 2));
+    const { io, left } = host(dir, ["1", "", "", "", "", "", "", "", "", "s", "2", "5", "f"]);
+    expect(await main(["configura"], io)).toBe(0);
+    expect(left()).toBe(0);
+    expect(io.questions).toContain("  Camere [1]: ");
+    expect(io.questions).toContain("  Letti (quante persone può ospitare) [2]: ");
+    expect(rawConfig(dir).listings[0].fairguest).toMatchObject({ rooms: 2, beds: 5 });
+  });
+
   it("removes a link when the host writes a dash", async () => {
     const dir = tempDir();
     await main(["configura"], host(dir, ["Casa", "", AIRBNB, BOOKING, "", "90", "", "", "n", "", ""]).io);

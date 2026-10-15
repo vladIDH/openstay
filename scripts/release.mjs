@@ -74,6 +74,10 @@ function check(tag) {
       if (pkg.license !== "AGPL-3.0-only") problems.push(`${dir}: license ${pkg.license}`);
       if (!pkg.repository?.url) problems.push(`${dir}: no repository field (needed for npm provenance)`);
       if (!pkg.files?.includes("LICENSE")) problems.push(`${dir}: LICENSE missing from "files"`);
+      // npm 11 drops a bin written as "./bin/x.js" from the published manifest: the command would not be installed.
+      for (const [cmd, file] of Object.entries(pkg.bin ?? {})) {
+        if (file.startsWith("./")) problems.push(`${dir}: bin "${cmd}" must be written "${file.slice(2)}", without "./"`);
+      }
     }
   }
   const section = notes(version);

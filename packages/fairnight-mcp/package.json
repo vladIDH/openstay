@@ -29,7 +29,7 @@
     "node": ">=20"
   },
   "bin": {
-    "fairnight-mcp": "./bin/fairnight-mcp.js"
+    "fairnight-mcp": "bin/fairnight-mcp.js"
   },
   "main": "./dist/server.js",
   "types": "./dist/server.d.ts",

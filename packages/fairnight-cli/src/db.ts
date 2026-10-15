@@ -188,6 +188,45 @@ CREATE TABLE IF NOT EXISTS guest_submissions (
   file     TEXT,
   detail   TEXT
 );
+
+-- The autopilot (fairnight pilota). New tables only: no version step, they are
+-- created when the database is opened.
+-- One row per real run (previews are not kept); listings is the JSON summary per listing.
+CREATE TABLE IF NOT EXISTS pilot_runs (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  started_at  TEXT NOT NULL,
+  finished_at TEXT NOT NULL,
+  trigger     TEXT NOT NULL,             -- scheduled | page | manual
+  outcome     TEXT NOT NULL,             -- ok | errors
+  written     INTEGER NOT NULL,          -- nights written, every listing
+  listings    TEXT NOT NULL
+);
+
+-- Every night the autopilot wrote: before, after, what the engine wanted and why.
+CREATE TABLE IF NOT EXISTS pilot_changes (
+  run_id        INTEGER NOT NULL,
+  listing       TEXT NOT NULL,
+  feed          TEXT NOT NULL,           -- smoobu | beds24
+  date          TEXT NOT NULL,
+  old_price     REAL,
+  new_price     REAL NOT NULL,
+  target_price  REAL NOT NULL,           -- the engine's price, before the daily cap
+  old_min_stay  INTEGER,
+  new_min_stay  INTEGER NOT NULL,
+  limited       TEXT,                    -- cap | floor | ceiling, when the price was held back
+  steps         TEXT NOT NULL,           -- the engine's steps (JSON), the "why"
+  verified      INTEGER,                 -- read back: 1 matches, 0 does not
+  PRIMARY KEY (run_id, listing, date)
+);
+CREATE INDEX IF NOT EXISTS pilot_changes_listing ON pilot_changes (listing, date);
+
+-- Failed runs in a row, and the pause after too many. Cleared by "riprendi".
+CREATE TABLE IF NOT EXISTS pilot_state (
+  listing       TEXT PRIMARY KEY,
+  failures      INTEGER NOT NULL DEFAULT 0,
+  paused_at     TEXT,
+  paused_reason TEXT
+);
 `;
 
 /**

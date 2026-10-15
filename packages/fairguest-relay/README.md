@@ -30,7 +30,7 @@ The guest opens `https://<relay>/c/<box>#v1.<…>` on a phone. The page fills in
 | `src/mailbox.ts` | the box: create, post, read, delete, expire; limits (24 KB per message, 60 messages, 120 days) |
 | `src/client/` | the guest's page (TypeScript, bundled by esbuild); the form and the rules come from `fairguest/browser`, the same code as the host's own form |
 | `scripts/build.mjs` | `public/`: page, styles, OCR files from npm, licences; writes the hashes for `verifica-pagina` |
-| `scripts/assets.mjs` | downloads the MRZ model (DoubangoTelecom/tesseractMRZ, BSD-3-Clause), fixed commit and checked SHA-256, into `assets/` (not in git) |
+| `scripts/assets.mjs` | downloads the MRZ model (DoubangoTelecom/tesseractMRZ, BSD-3-Clause), fixed commit and checked SHA-256, into `assets/`. The model and its licence (`mrz-LICENSE.txt`) are also kept in git |
 | `scripts/dev.mjs` | the relay on your own computer, boxes in memory, for trying the link before a deploy |
 
 **Third-party code in the page**, all served by the relay itself:

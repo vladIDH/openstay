@@ -11,7 +11,7 @@ labels: bug
 <!-- Fairnight (prices), Fairguest (guest registration), Fairhello (replies), the installer, the MCP server -->
 
 **What I did**
-<!-- The command or the page, e.g. `fairnight sync`, or "double-click on Installa Fairnight.cmd" -->
+<!-- The command or the page, e.g. `fairnight sync`, or "double-click on Installa Fairnight (Windows).cmd" -->
 
 **What I expected**
 

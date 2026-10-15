@@ -249,12 +249,18 @@ Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web, 
 
 ### Installer and release
 
-- `Installa Fairnight.cmd` (Windows) and `Installa Fairnight.command` (Mac): check Node.js and say what to do when it is missing or too old, install into `~/Fairnight/programma` from the project folder or from npm, put an icon on the desktop, and update in place without touching the host's settings.
+- `Installa Fairnight (Windows).cmd` and `Installa Fairnight (Mac).command`: check Node.js and say what to do when it is missing or too old, install into `~/Fairnight/programma` from the project folder or from npm, put an icon on the desktop, and update in place without touching the host's settings.
 - `fairnight configura`: a guided setup in Italian (name, town, calendar links, prices, seasons proposed from the town, language, autopilot for houses on Smoobu or Beds24); `fairnight apri` starts the calendar page and opens the browser, or finds the one already running.
 - A guide for hosts in Italian with screenshots: `docs/installa.md`.
 - CI tries the installer on Windows and macOS with Node.js 22 and 24, from a folder with a space in its name, with fake calendars.
 - Release workflow on `v*` tags: tests on Node.js 20 and 22, the installer on Windows and Mac, a draft GitHub Release with the npm tarballs, `Fairnight-installa.zip` and checksums; npm publishing waits for a manual approval and only then the release becomes public. The steps are in `scripts/release.mjs`.
 - `CONTRIBUTING.md`, `SECURITY.md`, issue and pull request templates.
+- The double-click files are named `Installa Fairnight (Windows).cmd` and `Installa Fairnight (Mac).command`, so the two are told apart with extensions hidden.
+- Opened from inside the zip, the installer says to extract the folder first instead of closing at once. Every failure, expected or not, ends with a message in Italian, the most likely reason (no internet, a file in use, a full disk, a package not on npm yet), the address to write to and the folder of the log; npm's own output stays in the log. An unknown option stops the script.
+- The installer says it needs internet, shows its steps (1 of 3…) and that the window looks still while it downloads, says "updated from A to B" or "reinstalled", and asks to reopen Fairnight if it was open. npm's temporary files go to the system temp folder.
+- The Windows launchers also find Node.js in `%LOCALAPPDATA%\Programs\nodejs`, where the installer finds it.
+- `fairnight configura` leaves a short guide for the host in the folder, `LEGGIMI.txt` in Italian or `LEEME.txt` for a Spanish calendar, instead of the English `README.txt` (removed if the host never changed it). The zip carries the same steps in `LEGGIMI.txt` and `LEEME.txt`.
+- `fairnight configura` proposes the computer's language first (an Italian host with a house in Spain gets Italian), then the town's, and says why; the calendar check and the first reading use the same words (bookings and blocked periods).
 
 
 ## [0.1.0] - 2026-10-12, not published on npm

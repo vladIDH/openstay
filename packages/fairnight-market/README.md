@@ -4,7 +4,7 @@ Zone data for [Fairnight](https://github.com/vladIDH/openstay). Hosts use it thr
 
 The engine never reads the network: these adapters turn a source into zone figures per night (occupancy, average price, number of comparable listings), and the engine's zone demand factor compares each night with the zone's own average.
 
-**No scraping, ever.** Nothing here reads Airbnb, Booking, PriceLabs or any other website.
+**No scraping, ever.** Nothing here scrapes any website.
 
 ## Sources
 

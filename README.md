@@ -28,7 +28,7 @@ All data in the screenshots is invented.
 
 You need [Node.js](https://nodejs.org) 22 or newer (20 works where a C++ compiler is installed, because the SQLite module is precompiled only from Node 22 on).
 
-**Hosts, Windows or Mac.** Download `Fairnight-installa.zip` from the [latest release](https://github.com/vladIDH/openstay/releases/latest), extract it and double-click `Installa Fairnight.cmd` (Windows) or `Installa Fairnight.command` (Mac). The installer checks Node.js, installs Fairnight in `~/Fairnight`, asks a few questions in Italian and opens the calendar page. Running it again updates Fairnight and keeps the settings. Step-by-step guide with screenshots, in Italian: [docs/installa.md](docs/installa.md).
+**Hosts, Windows or Mac.** Download `Fairnight-installa.zip` from the [latest release](https://github.com/vladIDH/openstay/releases/latest), extract it and double-click `Installa Fairnight (Windows).cmd` or `Installa Fairnight (Mac).command`. The installer checks Node.js, installs Fairnight in `~/Fairnight`, asks a few questions in Italian, leaves a short guide in Italian or Spanish in the folder and opens the calendar page. Running it again updates Fairnight and keeps the settings. Step-by-step guide with screenshots, in Italian: [docs/installa.md](docs/installa.md).
 
 **With npm:**
 

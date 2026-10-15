@@ -10,6 +10,7 @@ import { main } from "../src/main.js";
 import { startServer } from "../src/serve.js";
 import { languageOfCity, languageOfLocale, proposedLanguage, systemLocale } from "../src/lingua.js";
 import { describeSeason, parseDayMonth, proposedSeasons, regionOf } from "../src/stagioni.js";
+import { LOCAL_README } from "../src/template.js";
 import type { FetchLike } from "../src/io.js";
 import { fakeFetch, fixture, tempDir, testIo, type TestIo } from "./helpers.js";
 
@@ -72,7 +73,7 @@ describe("fairnight configura, first time", () => {
     const db = openDb(path.join(dir, "data", "fairnight.db"));
     expect((db.prepare("SELECT COUNT(*) AS n FROM calendar_events WHERE listing = 'casa-limone'").get() as { n: number }).n).toBe(3);
     db.close();
-    expect(io.lines).toContain("  ✓ Casa Limone · Airbnb: 3 eventi, 3 nuovi");
+    expect(io.lines).toContain("  ✓ Casa Limone · Airbnb: 3 tra prenotazioni e periodi bloccati, 3 nuovi");
     expect(existsSync(path.join(dir, "fairnight.config.json.bak"))).toBe(false);
   });
 
@@ -350,7 +351,9 @@ describe("language of the calendar page", () => {
     expect(languageOfCity(undefined)).toBeNull();
   });
 
-  it("falls back to the computer's language, from LANG or the system", () => {
+  it("comes first from the computer's language, then from the town", () => {
+    expect(proposedLanguage(["Costa Adeje"], "it-IT")).toBe("it");
+    expect(proposedLanguage(["Firenze"], "es_ES.UTF-8")).toBe("es");
     expect(proposedLanguage(["Lisboa", "Sevilla"], "en-US")).toBe("es");
     expect(proposedLanguage(["Lisboa"], "it_IT.UTF-8")).toBe("it");
     expect(proposedLanguage([undefined], "de-DE")).toBeNull();
@@ -365,6 +368,7 @@ describe("language of the calendar page", () => {
     expect(await main(["configura"], io)).toBe(0);
     expect(io.questions.at(-1)).toBe("Scegli 1, 2 o 3 [2]: ");
     expect(io.lines).toContain("  1 Italiano · 2 Español · 3 English");
+    expect(io.lines).toContain("  Ti propongo lo spagnolo, per la città della casa: premi Invio per tenerlo.");
     expect(rawConfig(dir).language).toBe("es");
   });
 
@@ -374,6 +378,7 @@ describe("language of the calendar page", () => {
     io.locale = "it-IT";
     expect(await main(["configura"], io)).toBe(0);
     expect(io.questions.at(-1)).toBe("Scegli 1, 2 o 3 [1]: ");
+    expect(io.lines).toContain("  Ti propongo l'italiano, la lingua di questo computer: premi Invio per tenerlo.");
     expect(rawConfig(dir).language).toBe("en");
   });
 
@@ -389,6 +394,29 @@ describe("language of the calendar page", () => {
     const third = host(dir, ["f"]);
     expect(await main(["configura"], third.io)).toBe(0);
     expect(third.left()).toBe(0);
+  });
+
+  it("leaves the host's guide in Italian, or in Spanish for a Spanish calendar, instead of the English README", async () => {
+    const italian = tempDir();
+    writeFileSync(path.join(italian, "README.txt"), LOCAL_README);
+    const first = host(italian, ["Casa", "Lisboa", "", "", "", "90", "", "", "n", "", "1"]);
+    expect(await main(["configura"], first.io)).toBe(0);
+    expect(readFileSync(path.join(italian, "LEGGIMI.txt"), "utf8")).toContain("Scrivici a hello@khlumen.com e allega il file installazione.log.");
+    expect(existsSync(path.join(italian, "README.txt"))).toBe(false);
+
+    const es = tempDir();
+    const second = host(es, ["Casa", "Lisboa", "", "", "", "90", "", "", "n", "", "2"]);
+    expect(await main(["configura"], second.io)).toBe(0);
+    expect(readFileSync(path.join(es, "LEEME.txt"), "utf8")).toContain("Escríbenos a hello@khlumen.com");
+    expect(existsSync(path.join(es, "LEGGIMI.txt"))).toBe(false);
+  });
+
+  it("keeps a README.txt the host changed", async () => {
+    const dir = tempDir();
+    writeFileSync(path.join(dir, "README.txt"), "my notes");
+    const { io } = host(dir, ["Casa", "Lisboa", "", "", "", "90", "", "", "n", "", ""]);
+    expect(await main(["configura"], io)).toBe(0);
+    expect(readFileSync(path.join(dir, "README.txt"), "utf8")).toBe("my notes");
   });
 
   it("only it, es or en in the config", () => {

@@ -1,7 +1,7 @@
 ﻿<#
   Installa (o aggiorna) Fairnight su Windows.
 
-  Si lancia con un doppio clic su "Installa Fairnight.cmd". Cosa fa:
+  Si lancia con un doppio clic su "Installa Fairnight (Windows).cmd". Cosa fa:
   1. controlla che ci sia Node.js 22 o più recente; se manca spiega come installarlo
      (non scarica niente da solo);
   2. installa Fairnight nella cartella Fairnight dell'utente (C:\Users\<nome>\Fairnight\programma):
@@ -25,6 +25,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$Email = 'hello@khlumen.com'
 $NodeMinimo = 22
 $PaginaNode = 'https://nodejs.org/it/download'
 $Pacchetti = @('fairnight', 'fairguest', 'fairhello', 'fairnight-smoobu', 'fairnight-beds24', 'fairnight-market', 'fairnight-cli')
@@ -37,19 +38,34 @@ $DalProgetto = Test-Path (Join-Path $Progetto 'packages\fairnight-cli\package.js
 function Scrivi([string]$testo, [string]$colore = 'Gray') { Write-Host $testo -ForegroundColor $colore }
 function Fatto([string]$testo) { Write-Host "  OK  $testo" -ForegroundColor Green }
 
-function Fermati([string[]]$righe, [string]$apri = '') {
+# Esce con 2: "Installa Fairnight (Windows).cmd" sa che il problema è già stato spiegato.
+function Fermati([string[]]$righe, [string]$apri = '', [string]$cosaApre = 'la pagina nel browser') {
   Write-Host ''
   foreach ($r in $righe) { Write-Host $r -ForegroundColor Yellow }
   Write-Host ''
   if (-not $SenzaDomande) {
     if ($apri) {
-      Read-Host 'Premi Invio per aprire la pagina nel browser (oppure chiudi questa finestra)' | Out-Null
+      Read-Host "Premi Invio per aprire $cosaApre (oppure chiudi questa finestra)" | Out-Null
       Start-Process $apri
     } else {
       Read-Host 'Premi Invio per chiudere' | Out-Null
     }
   }
-  exit 1
+  exit 2
+}
+
+# Qualunque errore che lo script non ha previsto: spiegato in italiano, mai una finestra che si chiude da sola.
+trap {
+  $aiuto = @(
+    "L'installazione si è fermata per un problema imprevisto: $($_.Exception.Message)",
+    'I tuoi dati non sono stati toccati.'
+  )
+  if (Test-Path $Log) {
+    $aiuto += "Scrivici a $Email e allega il file installazione.log, che trovi nella cartella ${Cartella}: lo guardiamo noi."
+    Fermati $aiuto $Cartella 'la cartella con il file'
+  }
+  $aiuto += "Scrivici a $Email con una foto di questa finestra: lo guardiamo noi."
+  Fermati $aiuto
 }
 
 function TrovaNode {
@@ -71,8 +87,8 @@ function TrovaNode {
 # Gli argomenti con spazi vanno già tra virgolette.
 function Esegui([string]$dove, [string]$argomenti) {
   Add-Content -Path $Log -Value "`r`n> npm $argomenti  (in $dove)" -Encoding UTF8
-  $uscita = Join-Path $Cartella 'npm-uscita.tmp'
-  $errori = Join-Path $Cartella 'npm-errori.tmp'
+  $uscita = Join-Path $env:TEMP "fairnight-npm-uscita-$PID.tmp"
+  $errori = Join-Path $env:TEMP "fairnight-npm-errori-$PID.tmp"
   $p = Start-Process -FilePath $npm -ArgumentList $argomenti -WorkingDirectory $dove -NoNewWindow -Wait -PassThru `
     -RedirectStandardOutput $uscita -RedirectStandardError $errori
   foreach ($f in @($uscita, $errori)) {
@@ -85,20 +101,38 @@ function Esegui([string]$dove, [string]$argomenti) {
   return $p.ExitCode
 }
 
+# Il motivo più probabile, in parole semplici, dagli errori che npm scrive nel registro.
+function Motivo {
+  if (-not (Test-Path $Log)) { return $null }
+  $testo = Get-Content $Log -Raw
+  if ($testo -match 'ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNRESET|ECONNREFUSED|network') {
+    return 'Sembra che manchi la connessione a internet. Controlla il Wi-Fi o il cavo, poi rilancia.'
+  }
+  if ($testo -match 'E404|404 Not Found') {
+    return 'Fairnight non si trova ancora su internet: forse non è ancora uscito. Riprova tra qualche giorno.'
+  }
+  if ($testo -match 'EPERM|EBUSY|EACCES') {
+    return 'Un file di Fairnight è in uso: chiudi la finestra di Fairnight se è aperta, poi rilancia. A volte lo blocca l''antivirus.'
+  }
+  if ($testo -match 'ENOSPC') { return 'Il disco è pieno: libera un po'' di spazio, poi rilancia.' }
+  return $null
+}
+
 function NonRiuscito([string]$cosa) {
-  $coda = @()
-  if (Test-Path $Log) { $coda = Get-Content $Log -Tail 15 }
-  foreach ($r in $coda) { Write-Host "    $r" -ForegroundColor DarkGray }
-  Fermati @(
-    "Non sono riuscito a $cosa.",
-    "Il resoconto completo è nel file: $Log",
-    'Mandacelo per email o in un messaggio: lo guardiamo noi. I tuoi dati non sono stati toccati.'
+  $righe = @("Non sono riuscito a $cosa. I tuoi dati non sono stati toccati.")
+  $motivo = Motivo
+  if ($motivo) { $righe += $motivo }
+  $righe += @(
+    "Se non si risolve, scrivici a $Email e allega il file installazione.log,",
+    "che trovi nella cartella ${Cartella}: lo guardiamo noi."
   )
+  Fermati $righe $Cartella 'la cartella con il file'
 }
 
 Write-Host ''
 Scrivi 'Fairnight: i prezzi delle tue notti, calcolati sul tuo computer' 'Cyan'
 Scrivi '---------------------------------------------------------------' 'Cyan'
+Scrivi 'Serve la connessione a internet: Fairnight scarica i suoi componenti.'
 
 # 1. Node.js
 $node = TrovaNode
@@ -107,7 +141,7 @@ if (-not $node) {
     'Per far funzionare Fairnight serve Node.js, un programma gratuito (versione 22 o più recente).',
     "  1. Apri la pagina ufficiale: $PaginaNode",
     '  2. Scarica la versione «LTS» per Windows (il file .msi) e installala lasciando le opzioni come sono.',
-    '  3. Poi fai di nuovo doppio clic su «Installa Fairnight».'
+    '  3. Poi fai di nuovo doppio clic su «Installa Fairnight (Windows)».'
   ) $PaginaNode
 }
 $versione = (& $node -p 'process.versions.node').Trim()
@@ -118,7 +152,7 @@ if ($maggiore -lt $NodeMinimo) {
     "Sul computer c'è Node.js $versione, ma Fairnight ha bisogno della versione $NodeMinimo o più recente.",
     "  1. Apri la pagina ufficiale: $PaginaNode",
     '  2. Scarica la versione «LTS» per Windows e installala: prende il posto di quella vecchia.',
-    '  3. Poi fai di nuovo doppio clic su «Installa Fairnight».'
+    '  3. Poi fai di nuovo doppio clic su «Installa Fairnight (Windows)».'
   ) $PaginaNode
 }
 if ($architettura -ne 'x64') {
@@ -126,14 +160,14 @@ if ($architettura -ne 'x64') {
     "Su questo computer c'è Node.js per processori ${architettura}: Fairnight per ora funziona con la versione x64.",
     "  1. Apri la pagina ufficiale: $PaginaNode",
     '  2. Scarica la versione «LTS» per Windows x64 (va bene anche sui computer con processore ARM) e installala.',
-    '  3. Poi fai di nuovo doppio clic su «Installa Fairnight».'
+    '  3. Poi fai di nuovo doppio clic su «Installa Fairnight (Windows)».'
   ) $PaginaNode
 }
 $npm = Join-Path (Split-Path $node) 'npm.cmd'
 if (-not (Test-Path $npm)) {
   Fermati @(
     "Ho trovato Node.js ($node) ma non npm, che di solito arriva insieme.",
-    "Reinstalla Node.js dalla pagina ufficiale ($PaginaNode), poi rilancia «Installa Fairnight»."
+    "Reinstalla Node.js dalla pagina ufficiale ($PaginaNode), poi rilancia «Installa Fairnight (Windows)»."
   ) $PaginaNode
 }
 $env:Path = "$(Split-Path $node);$env:Path"
@@ -143,14 +177,20 @@ Fatto "Node.js $versione"
 New-Item -ItemType Directory -Force -Path $Programma | Out-Null
 Set-Content -Path $Log -Value "Installazione di Fairnight, $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), Node.js $versione $architettura" -Encoding UTF8
 $aggiornamento = Test-Path (Join-Path $Programma 'node_modules\fairnight-cli')
+$versionePrima = $null
+if ($aggiornamento) {
+  try { $versionePrima = (Get-Content (Join-Path $Programma 'node_modules\fairnight-cli\package.json') -Raw | ConvertFrom-Json).version } catch { $versionePrima = $null }
+}
 # Ogni volta un elenco nuovo: niente rimandi a pacchetti di installazioni precedenti.
 Set-Content -Path (Join-Path $Programma 'package.json') -Encoding ASCII -Value '{ "name": "fairnight-installato", "private": true, "description": "Fairnight installato per questo utente: si aggiorna rilanciando Installa Fairnight" }'
 Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $Programma 'package-lock.json')
 
 if ($DalProgetto) {
   Scrivi ''
-  Scrivi 'Preparo Fairnight dalla copia del progetto (la prima volta 2-4 minuti)...'
+  Scrivi 'Passo 1 di 3: scarico i componenti di Fairnight.'
+  Scrivi '  La prima volta ci vogliono 2-4 minuti e la finestra sembra ferma: è normale, lasciala aperta.'
   if ((Esegui $Progetto 'ci --no-audit --no-fund') -ne 0) { NonRiuscito 'scaricare i componenti di Fairnight' }
+  Scrivi 'Passo 2 di 3: preparo Fairnight...'
   if ((Esegui $Progetto 'run build') -ne 0) { NonRiuscito 'preparare Fairnight' }
   $cartellaPacchetti = Join-Path $Programma 'pacchetti'
   if (Test-Path $cartellaPacchetti) { Remove-Item -Recurse -Force $cartellaPacchetti }
@@ -158,10 +198,12 @@ if ($DalProgetto) {
   $spazi = ($Pacchetti | ForEach-Object { "-w $_" }) -join ' '
   if ((Esegui $Progetto "pack $spazi --pack-destination `"$cartellaPacchetti`"") -ne 0) { NonRiuscito 'impacchettare Fairnight' }
   $daInstallare = (Get-ChildItem $cartellaPacchetti -Filter *.tgz | ForEach-Object { "`"$($_.FullName)`"" }) -join ' '
+  Scrivi 'Passo 3 di 3: installo Fairnight nella tua cartella...'
 } else {
   $daInstallare = 'fairnight-cli@latest'
+  Scrivi ''
+  Scrivi 'Scarico e installo Fairnight: 1-2 minuti, e la finestra sembra ferma. È normale, lasciala aperta.'
 }
-Scrivi 'Installo Fairnight...'
 if ((Esegui $Programma "install --omit=dev --no-audit --no-fund $daInstallare") -ne 0) { NonRiuscito 'installare Fairnight' }
 
 $sqlite = Join-Path $Programma 'node_modules\better-sqlite3'
@@ -174,14 +216,20 @@ $fairnight = Join-Path $Programma 'node_modules\fairnight-cli\bin\fairnight.js'
 & $node $fairnight --help *> $null
 if ($LASTEXITCODE -ne 0) { NonRiuscito 'avviare Fairnight dopo averlo installato' }
 $versioneFairnight = (Get-Content (Join-Path $Programma 'node_modules\fairnight-cli\package.json') -Raw | ConvertFrom-Json).version
-if ($aggiornamento) { Fatto "Fairnight $versioneFairnight aggiornato" } else { Fatto "Fairnight $versioneFairnight installato" }
+if (-not $aggiornamento) { Fatto "Fairnight $versioneFairnight installato" }
+elseif ($versionePrima -and $versionePrima -ne $versioneFairnight) { Fatto "Fairnight aggiornato dalla versione $versionePrima alla $versioneFairnight" }
+else { Fatto "Fairnight $versioneFairnight reinstallato (era già l'ultima versione)" }
+if ($aggiornamento) { Scrivi '  Se Fairnight era aperto, chiudi la sua finestra e riaprilo dall''icona: così usa la versione appena installata.' }
 
 # 3. I file da doppio clic e le icone
 $avvio = @'
 @echo off
 title Fairnight
 set "NODE=node"
-where node >nul 2>nul || set "NODE=%ProgramFiles%\nodejs\node.exe"
+where node >nul 2>nul && goto avvia
+set "NODE=%ProgramFiles%\nodejs\node.exe"
+if not exist "%NODE%" set "NODE=%LOCALAPPDATA%\Programs\nodejs\node.exe"
+:avvia
 "%NODE%" "%~dp0programma\node_modules\fairnight-cli\bin\fairnight.js" COMANDO --dir "%~dp0."
 DOPO
 '@
@@ -216,7 +264,11 @@ if (Test-Path $config) {
     Fermati @('La configurazione non è finita. Quando vuoi, riprendila con un doppio clic su «Cambia impostazioni» nella cartella Fairnight.')
   }
 }
-if ($NonAprire -or -not (Test-Path $config)) { exit 0 }
+if (-not (Test-Path $config)) {
+  Scrivi 'Fairnight è installato, ma la configurazione non è stata fatta: riprendila con un doppio clic su «Cambia impostazioni» nella cartella Fairnight.'
+  exit 0
+}
+if ($NonAprire) { exit 0 }
 
 Scrivi ''
 Scrivi 'Fatto! Da adesso apri Fairnight con l''icona Fairnight sul desktop.' 'Green'

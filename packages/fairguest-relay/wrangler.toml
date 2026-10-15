@@ -1,4 +1,4 @@
-# Fairguest relay on Cloudflare Workers. Deploy (only with Vlad, see README.md):
+# Fairguest relay on Cloudflare Workers. Deploy, by the maintainer (see README.md):
 #   npm run assets -w fairguest-relay && npm run build -w fairguest-relay
 #   npx wrangler@4.151.0 deploy --config packages/fairguest-relay/wrangler.toml
 # Self-hosting: change name and routes to your own domain; nothing else.

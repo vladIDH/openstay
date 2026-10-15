@@ -7,7 +7,7 @@
  *
  * The zip is written here (no zip tool needed on Windows) so that the Mac
  * files keep their "executable" mark: without it a double click on
- * "Installa Fairnight.command" is refused.
+ * "Installa Fairnight (Mac).command" is refused.
  *
  *   node installa/pacchetto.mjs
  */
@@ -21,13 +21,14 @@ const TOP = "Installa Fairnight";
 
 /** [path in the repo, path in the zip, unix mode] */
 const FILES = [
-  ["Installa Fairnight.cmd", "Installa Fairnight.cmd", 0o644],
-  ["Installa Fairnight.command", "Installa Fairnight.command", 0o755],
+  ["Installa Fairnight (Windows).cmd", "Installa Fairnight (Windows).cmd", 0o644],
+  ["Installa Fairnight (Mac).command", "Installa Fairnight (Mac).command", 0o755],
   ["installa/windows.ps1", "installa/windows.ps1", 0o644],
   ["installa/mac.sh", "installa/mac.sh", 0o755],
   ["installa/fairnight.ico", "installa/fairnight.ico", 0o644],
   ["installa/fairnight.png", "installa/fairnight.png", 0o644],
   ["installa/LEGGIMI.txt", "LEGGIMI.txt", 0o644],
+  ["installa/LEEME.txt", "LEEME.txt", 0o644],
 ];
 
 /** Line ends as each system expects them, whatever the checkout did. */

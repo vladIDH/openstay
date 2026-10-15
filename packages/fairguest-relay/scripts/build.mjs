@@ -4,7 +4,7 @@
  *   checkin.html, app.css, app.js (+ chunks/), ocr/ (Tesseract and the MRZ model), licenses/
  *
  * No network here. The MRZ model is downloaded once by `npm run assets` (into
- * assets/, outside git); without it the page works and only the photo reading
+ * assets/, also kept in git); without it the page works and only the photo reading
  * is missing.
  *
  * Then it writes the SHA-256 of every file the page loads into

@@ -67,7 +67,7 @@ La CI prova gli script su macOS, ma non il Finder, Gatekeeper e il Dock. Su un M
 
 Non è ancora fatto. Prima di tutto il repo deve essere pubblico: gli host scaricano senza account GitHub.
 
-1. Pubblica su npm, in quest'ordine: `fairnight`, `fairguest`, `fairnight-smoobu`, `fairnight-beds24`, `fairnight-market`, `fairnight-cli`. In modalità npm l'installer scarica `fairnight-cli@latest`. Finché i nomi non sono nostri su npm, **lo zip delle Releases non va pubblicato**: installerebbe il pacchetto di chiunque prendesse il nome. Il 14 ott 2026 i nomi erano ancora liberi.
+1. Pubblica su npm, in quest'ordine: `fairnight`, `fairguest`, `fairhello`, `fairnight-smoobu`, `fairnight-beds24`, `fairnight-market`, `fairnight-cli`. In modalità npm l'installer scarica `fairnight-cli@latest`. Finché i nomi non sono nostri su npm, **lo zip delle Releases non va pubblicato**: installerebbe il pacchetto di chiunque prendesse il nome. Il 14 ott 2026 i nomi erano ancora liberi.
 2. Crea lo zip: `node installa/pacchetto.mjs` → `installa/pacchetto/Fairnight-installa.zip` (contiene i due file da doppio clic, `installa/` e `LEGGIMI.txt`).
 3. Provalo su Windows e su Mac puliti, estraendolo da un download vero.
 4. Pubblicalo: `gh release create vX.Y.Z installa/pacchetto/Fairnight-installa.zip --title "Fairnight X.Y.Z" --notes "…"`. Il nome del file resta sempre `Fairnight-installa.zip`, così il link fisso `https://github.com/vladIDH/openstay/releases/latest/download/Fairnight-installa.zip` porta sempre all'ultima versione.

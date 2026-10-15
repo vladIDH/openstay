@@ -94,7 +94,3 @@ Con circa 24 bozze al mese per casa (4 prenotazioni, 6 messaggi ciascuna), prezz
 | `fairhello-credentials.json` | la chiave Anthropic (leggibile solo dall'utente; mai nel repo, gitleaks la blocca) |
 | `casa/<annuncio>.md` | la scheda della casa scritta dall'host |
 | `data/fairnight.db` | messaggi e bozze (tabelle `hello_*`, schema 7) |
-
-## Cosa è stato riusato
-
-Il controllo di freschezza delle bozze, il collegamento tra il nome di una struttura e la casa (qui serve solo a suggerire, mai a scegliere da solo), la pulizia del markdown e la forma della scheda della casa (sezioni libere, codici a parte) vengono da un nostro progetto precedente. Sono stati riscritti senza nessun dato reale, per girare in locale: niente Next.js, niente Vercel, niente server.

@@ -160,7 +160,7 @@ The factor compares each night of the zone with the zone's own average and moves
 - **AirROI.** With your own key, for your own pricing, zone metrics only (never their price recommendations). It is switched off with `"market": { "airroi": { "enabled": false } }` until AirROI confirms its terms in writing. When on: zones go under `market.airroi.areas` (`country`, `region`, `locality` as AirROI names them, optional `roomType`, `bedrooms`), the key comes from `AIRROI_API_KEY` or `airroi-credentials.json`, every call is billed to your AirROI account, explanations say "powered by AirROI", and the data is deleted after 30 days or with `fairnight mercato cancella --fonte airroi`.
 - **ISTAC (Canary Islands).** Open data of the Instituto Canario de Estadística: the average daily rate of the holiday homes of each municipality, month by month, for whole homes of 1–4, 5–8 or more than 8 guests (`--ospiti` chooses the band). Reuse is allowed, also commercial, citing the source: every explanation says "Fuente: Instituto Canario de Estadística (ISTAC)" with the last month of data. ISTAC's figures are monthly and past: each night uses the most recent same month, the zone's season. Import again once a month, not more: ISTAC asks not to repeat requests for the same data.
 - **INE (Spain), switched off.** The occupancy of the registered tourist apartments of a tourist point, only as the zone's season (no prices). It stays off until INE's licence is clear: its legal notice says CC BY 4.0, the footer of the same site CC BY-SA 4.0. `"market": { "ine": { "enabled": true } }` switches it on, at your own judgement.
-- **Never** scraping of Airbnb, Booking, PriceLabs or any other site.
+- **Never** scraping of any website.
 
 ### Suggested base price
 

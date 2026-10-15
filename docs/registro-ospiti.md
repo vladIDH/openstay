@@ -111,7 +111,7 @@ La **prenotazione (RH)** chiede meno: un titolare con nome e primo cognome, più
 ### Rischi
 
 - **Ambiente di prova senza istruzioni.** L'endpoint di preproduzione esiste, ma non è scritto come si ottengono le credenziali di prova. Prima del codice va mandata la mail della sezione 7.
-- **XSD e specifica solo dentro l'applicazione.** Serve il locatore registrato di Vlad per scaricarli (sezione 7). Va anche controllato che non esista una versione più recente della v3.1.2.
+- **XSD e specifica solo dentro l'applicazione.** Per scaricarli serve l'accesso di un arrendador registrato (sezione 7). Va anche controllato che non esista una versione più recente della v3.1.2.
 - **Norma contestata.** Secondo la stampa (ETOA, giugno 2026) la Commissione UE ha aperto una procedura d'infrazione sul RD 933/2021: contesta la quantità di dati e i 3 anni di conservazione **[NV su ec.europa.eu]**. Il RD non è sospeso, ma i campi richiesti potrebbero cambiare: lo schema va tenuto versionato.
 - **Dati di pagamento.** Il decreto rende obbligatorio solo il *tipo* di pagamento. Numero di carta e IBAN sono facoltativi: **non li raccogliamo mai**.
 - **Sanzioni** (LO 4/2015):
@@ -125,24 +125,9 @@ La **prenotazione (RH)** chiede meno: un titolare con nome e primo cognome, più
 
 ## 2. Il mercato oggi
 
-Solo pagine pubbliche, per capire i prezzi. Niente è stato copiato.
-
-| Prodotto | Paesi | Cosa fa | Prezzo pubblico |
-|---|---|---|---|
-| [Chekin](https://chekin.com/en/pricing/) | ES, IT, PT, GR | check-in online, OCR, invio a SES, Mossos ed Ertzaintza (gli ultimi due in parte con file da caricare), Alloggiati, Istat, SIBA, tassa di soggiorno, pagamenti | 3,95 / 5,95 / 7,95 € per unità al mese |
-| [Vikey](https://www.vikey.it/prezzi) | IT | check-in, contratti con OTP, Alloggiati, Istat, tassa di soggiorno, serrature | 4,90 o 9,90 € per unità al mese; moduli singoli: Alloggiati 2,90 €, Istat 1,50 €, tassa 1,90 € |
-| [Partee](https://www.partee.es/) | ES | check-in, scansione documenti, firma, SES, Mossos, Ertzaintza | da 1,69 €/mese, poi preventivo |
-| [Hostkit](https://hostkit.pt/en/plans) | PT | SIBA, tassa comunale, contratti | 4,50 € la prima unità + 0,25 € per ogni unità in più |
-| [Check-in Scan](https://www.checkinscan.com/precios/) | ES, IT, PT, FR | check-in, firma, SES, Mossos, Ertzaintza, SIBA, Alloggiati | circa 6,90 € per unità al mese **[NV]** |
-| [Civitfun](https://en.civitfun.com/products/check-in/) | ES (hotel) | check-in, OCR, firma, pagamento, SES | non pubblico |
-| [Duve](https://duve.com/pricing/) | UE | app per l'ospite, firma; l'invio alle autorità non è citato | da 120 $/mese |
-| PMS (Lodgify, Hostaway, Smoobu, Avantio) | — | invio integrato o tramite partner (Vikey, Check-in Scan) | dentro il canone del PMS **[NV]** |
-
 **Cosa si vede:**
-- il prezzo è sempre **per unità al mese**, fra 2 e 8 €;
-- tutti sono servizi in cloud che **conservano i documenti degli ospiti sui loro server**;
-- solo Chekin e Check-in Scan coprono tutti e tre i paesi;
-- Mossos ed Ertzaintza sono il punto debole di tutti.
+- i servizi esistenti sono in cloud e **conservano i documenti degli ospiti sui loro server**;
+- Mossos ed Ertzaintza sono il punto debole di quasi tutti.
 
 **Open source:** esistono solo pezzi piccoli, di una persona sola, con 0–5 stelle:
 - per SES, client in TypeScript e in Python (MIT o GPL);
@@ -309,11 +294,11 @@ Note sul nome:
 
 ---
 
-## 7. Cosa serve da Vlad
+## 7. Cosa serve per finire l'invio a SES
 
-### a) Mail per le credenziali dell'ambiente di prova
+### a) Credenziali dell'ambiente di prova
 
-A: **ses.hospedajes@interior.es**. Da copiare così com'è; i campi fra parentesi quadre li completa Vlad.
+Si chiedono per mail a **ses.hospedajes@interior.es**, da un arrendador già registrato in SES.HOSPEDAJES. Un modello, con i campi fra parentesi quadre da completare:
 
 > **Asunto:** Solicitud de credenciales para el entorno de pruebas (pre-ses) del servicio web de comunicación
 >
@@ -473,8 +458,8 @@ Fra i tre paesi è quello più facile da aggiungere.
 
 ## 9. Prossimi passi
 
-1. Vlad manda la mail della sezione 7a.
-2. Vlad scarica i file della sezione 7b nella cartella `openstay-ses-docs\`.
+1. Chiedere le credenziali dell'ambiente di prova (sezione 7a).
+2. Scaricare i file della sezione 7b nella cartella `openstay-ses-docs\`.
 3. Si confrontano XSD e specifica scaricati con quanto scritto qui, si correggono le differenze e si scrive l'XML di SES al posto dello stub.
 4. Primo caricamento vero di un file Mossos fatto da un host, per verificare i punti segnati **[NV]** nella sezione 10.
 5. Controllo dei marchi su EUIPO e OEPM, prima della pubblicazione su npm.
@@ -511,10 +496,6 @@ Fra i tre paesi è quello più facile da aggiungere.
   - il manuale chiama il file `ID.001` e insieme dice che l'estensione è `.txt`: seguiamo gli esempi (`ID.001`). Lo conferma il primo caricamento vero;
   - scriviamo in ISO-8859-1: il manuale dice solo «alfabeto occidentale»;
   - un file per struttura, mai il record 0 dei gruppi.
-- **Fonti di terzi trovate, solo come indizio, il codice non si basa su di loro:**
-  - [Civitfun Academy](https://academy.civitfun.com/hc/en-gb/articles/28644295842077--Guest-Registration-Sending-Data-to-Mossos-or-Ertzaintza): file .txt secondo la Resolución del 14/07/2003, nome `ID.001`;
-  - [Net2Rent](https://net2rent.com/registro-viajeros-mossos-esquadra/): nessuna integrazione automatica, solo file da caricare;
-  - [Chekin](https://chekin.com/en/blog/mossos-desquadra-how-to-make-travelers-registration/): guida al portale.
 
 ### Ancora da fare
 

@@ -1,6 +1,6 @@
 # Fonti di dati di mercato
 
-Abbiamo letto solo le pagine dei due fornitori, il 12 ottobre 2026, e di nuovo il 13 ottobre prima di scrivere gli adattatori. Nessuna pagina di Airbnb, nessuna iscrizione, nessuna chiamata a pagamento. **Non è un parere legale:** i punti segnati «da chiarire» vanno confermati per iscritto dal fornitore.
+Abbiamo letto solo le pagine dei fornitori, il 12 ottobre 2026, di nuovo il 13 ottobre prima di scrivere gli adattatori e una terza volta il 15 ottobre (AirROI, ISTAC, INE). Nessuna pagina di Airbnb, nessuna iscrizione, nessuna chiamata a pagamento. **Non è un parere legale:** i punti segnati «da chiarire» vanno confermati per iscritto dal fornitore.
 
 ## AirROI
 
@@ -22,7 +22,8 @@ Fonti: [airroi.com/tos](https://www.airroi.com/tos) (aggiornati il 10 settembre 
 | Accesso automatico | §6(5) | Vietati bot e script, **tranne** l'accesso all'API previsto e concesso in licenza, nel rispetto dei limiti |
 | Uso commerciale | §2, §5.5 | «Commerciale» è l'uso rivolto a un vantaggio economico: un host che fissa i suoi prezzi lo è. Serve la licenza commerciale (l'API a pagamento), non quella non commerciale |
 | Open source | — | I termini non ne parlano: nessun divieto esplicito, nessun permesso esplicito |
-| Concorrenza | §5.4(ii), §10 | Vietato usare i dati per prodotti che fanno concorrenza al servizio. **AirROI vende prezzi consigliati** (endpoint per il prezzo base e per i prezzi del calendario) |
+| Concorrenza | §5.4(ii), §10 | Vietato usare i dati per prodotti che fanno concorrenza al servizio. La §10 è più larga: vieta prodotti che «competes with AirROI or could reasonably be expected to substitute» la loro offerta. **AirROI vende prezzi consigliati** (endpoint per il prezzo base e per i prezzi del calendario): un prezzo base suggerito con i loro dati è il caso più a rischio |
+| Autorizzazioni | §5.9 | Solo un documento formale vale: «No other communication — including email correspondence, verbal statements — constitutes such authorization.» Una mail di risposta potrebbe non bastare |
 | Opere derivate e metodo | §5.7, §5.4(iv) | Vietate le opere derivate senza permesso scritto. Vietato risalire al loro metodo |
 | Provenienza dei dati | — | Non dichiarata. Nessuna garanzia o manleva per chi usa i dati |
 | Legge applicabile | §20–21 | California, arbitrato a San Mateo |
@@ -31,8 +32,8 @@ Fonti: [airroi.com/tos](https://www.airroi.com/tos) (aggiornati il 10 settembre 
 
 - Dichiarano oltre 20 milioni di annunci in più di 190 paesi.
 - Hanno pagine di mercato per Santa Cruz de Tenerife, ma due pagine danno numeri molto diversi (862 contro 247 annunci attivi). La qualità del dato va verificata.
-- Non c'è un piano gratuito: si paga a chiamata. Prezzo consigliato 0,10 $, calendario dal vivo 0,20 $, metriche di mercato 0,10 $ l'una. La ricarica minima è di 10 $.
-- Una pagina parla di 10 $ di crediti iniziali, l'altra no: **da chiarire**.
+- Non c'è un piano gratuito: si paga a chiamata. Al 15 ottobre: tutte le metriche di zona insieme (`/markets/metrics/all`) **0,50 $**, ogni metrica singola 0,10 $, «future pacing» 0,20 $, ricerca del mercato 0,01 $, prezzo base consigliato 0,10 $, calendario dal vivo 0,20 $. La ricarica minima è di 10 $ («starting from just $10»). Il 13 ottobre le metriche complete risultavano a 0,10 $: i prezzi cambiano («Pricing may be adjusted periodically»).
+- La pagina dell'API dice «Begin with just $10 in Airbnb API credits» e «Credits never expire»; la pagina dei prezzi non parla di crediti iniziali: **da chiarire**.
 - Limite di 1.000 richieste al minuto.
 
 ### Uso nel progetto open source (AGPL)
@@ -90,7 +91,42 @@ Tutto è facoltativo e spento finché l'host non lo accende per un annuncio.
   - stampa a ogni import il numero di chiamate, perché sono a pagamento.
 - **Mai** scraping di Airbnb, Booking, PriceLabs o altri siti. Nel repo e nei test ci sono solo dati inventati e un finto server AirROI.
 
-**Da verificare con AirROI:** il percorso dell'endpoint «future pacing» (occupazione futura per data) non compare nella parte leggibile della documentazione, quindi non lo usiamo. Per ora ogni notte prende il valore dello stesso mese dell'ultimo anno: è la stagione della zona, non una previsione.
+**Future pacing:** il 15 ottobre la pagina dell'API elenca il percorso `/markets/metrics/future/pacing` (0,20 $). Non lo usiamo finché AirROI non risponde: è nella domanda n. 1. Per ora ogni notte prende il valore dello stesso mese dell'ultimo anno: è la stagione della zona, non una previsione.
+
+## ISTAC: vivienda vacacional delle Canarie (15 ottobre 2026)
+
+Fonti: [aviso legal ISTAC](https://www.gobiernodecanarias.org/istac/aviso_legal.html), API `datos.canarias.es/api/estadisticas/statistical-resources/v1.0`, metodologia «Estadística experimental de vivienda vacacional».
+
+| Tema | Sintesi |
+|---|---|
+| Dati | Dataset `C00065A_000062`: tariffa media giornaliera (ADR) delle viviendas vacacionales per comune e mese, per fasce di posti (1–4, 5–8, più di 8, totale). Da 01/2019, ultimo mese 08/2026. Il dataset `C00065A_000061` ha viviendas disponibili e prenotate, posti, permanenza media e ricavi |
+| Licenza | «Las presentes condiciones generales permiten la reutilización de los documentos sometidos a ellas para fines comerciales y no comerciales.» Nessuno ShareAlike |
+| Obblighi | Citare «Fuente: Instituto Canario de Estadística (ISTAC)» e la data dell'ultimo aggiornamento; non far credere che l'ISTAC sostenga il riuso; non «desnaturalizar el sentido de la información» |
+| API | Non modificare i dati e i metadati che l'API dà quando li si presenta; niente richieste ripetute della stessa informazione in poco tempo |
+| Provenienza | La metodologia parla di «ficheros capturados de propiedades ofertadas en las principales plataformas digitales». Chi cattura i file non è dichiarato. Per noi conta che sia una statistica pubblica con licenza di riuso pubblica |
+| Definizioni | Solo alloggi interi. ADR = «ingresos medios diarios obtenidos por vivienda vacacional ocupada». Una casa è «disponible» se prenotata almeno una volta nel mese o nel mese prima: per questo il tasso di case prenotate sta intorno al 95% e non lo usiamo |
+
+**Uso in Fairnight:** `fairnight mercato importa --fonte istac --zona <nome> --comune <codice INE> [--ospiti N]`. Una chiamata CSV per comune, senza chiave. Ogni notte prende l'ADR dello stesso mese più recente; la spiegazione dice «Fuente: Instituto Canario de Estadística (ISTAC), data up to AAAA-MM». Il prezzo base suggerito è una nostra elaborazione e lo dice («median of…»).
+
+Codici dei comuni turistici più frequenti (verificati sull'API ISTAC il 15 ottobre): Tenerife `38001` Adeje, `38006` Arona, `38017` Granadilla de Abona, `38019` Guía de Isora, `38028` Puerto de la Cruz, `38035` San Miguel de Abona, `38040` Santiago del Teide; Gran Canaria `35019` San Bartolomé de Tirajana, `35012` Mogán; Lanzarote `35034` Yaiza, `35028` Tías, `35024` Teguise; Fuerteventura `35015` Pájara, `35014` La Oliva.
+
+## INE: apartamentos turísticos (15 ottobre 2026), spento
+
+Fonti: [aviso legal INE](https://www.ine.es/dyngs/AYU/index.htm?cid=125), tabella 2083 di `servicios.ine.es/wstempus` («Plazas, apartamentos, grados de ocupación y personal empleado por puntos turísticos»).
+
+- Il testo dell'aviso legal: «La licencia de uso general a aplicar a la información estadística de este sitio web, salvo que se indique lo contrario, es la Creative Commons Reconocimiento 4.0 (CC BY 4.0)», riuso «comercial o no comercial», citando «Elaboración propia con datos extraídos del sitio web del INE: www.ine.es».
+- Il piè di pagina dello stesso sito: «Este sitio web y su contenido están bajo licencia CC BY-SA 4.0» (il link però porta a CC BY 4.0).
+- I record di datos.gob.es per la tabella rimandano solo all'aviso legal.
+
+**Decisione:** le due frasi ufficiali si contraddicono, quindi l'adattatore c'è ma è **spento** (`market.ine.enabled` assente o false: `mercato importa --fonte ine` rifiuta senza chiamare). Si accende dopo una conferma scritta dell'INE che vale CC BY 4.0 per i dati statistici. Serve solo come stagione di zona: sono appartamenti turistici registrati, non case vacanza, e non c'è prezzo.
+
+## Prezzo base suggerito (15 ottobre 2026)
+
+- **Calcolo** (`suggestBasePrice` nel motore, fuori dal calcolo delle notti): notti con prezzo medio e almeno 5 comparabili, raggruppate per mese; ultimi 12 mesi con dati; suggerimento = **mediana** delle medie mensili, arrotondata. Con meno di 6 mesi nessun suggerimento, e si dice perché.
+- **Comparabili:** zona dell'annuncio; camere, ospiti, tipo e quartiere come scelti all'import (Inside Airbnb filtra davvero, il CSV lo dichiara, ISTAC usa la fascia di posti). L'annuncio può dire `guests`.
+- **Avvisi:** dati di tutta la zona; ospiti diversi; sotto il minimo o sopra il massimo; differenza oltre il 30%.
+- **Conferma:** non cambia mai da solo. `fairnight mercato prezzo-base --listing <nome> --applica`, oppure «Usa questo prezzo» con conferma nella pagina, solo dal computer dove gira Fairnight e solo per la cifra mostrata. La configurazione precedente resta in `fairnight.config.json.bak`.
+- **Fonti:** CSV dell'host, Inside Airbnb, ISTAC. AirROI solo se la risposta scritta lo permette in modo esplicito.
 
 ## Conclusione
 
@@ -100,7 +136,7 @@ Tutto è facoltativo e spento finché l'host non lo accende per un annuncio.
 
 ## Domanda n. 1 ad AirROI: testo da mandare
 
-Mittente: Vlad, da hello@khlumen.com. Destinatario: l'indirizzo di supporto di AirROI (support@airroi.com secondo una scheda esterna: da confermare sul loro sito prima dell'invio).
+Mittente: Vlad, da hello@khlumen.com. Destinatario: **admin@airroi.com**, l'unico indirizzo sulla loro pagina [contatti](https://www.airroi.com/contact) e nei termini (verificato il 15 ottobre; support@airroi.com veniva da una scheda esterna). Il 15 ottobre il testo è pronto come bozza in Gmail, con due aggiunte: la domanda sul prezzo base suggerito e il future pacing, e la richiesta di una conferma scritta formale (§5.9).
 
 > **Subject:** Terms of use question: open-source pricing tool using each host's own AirROI API key
 >
@@ -111,15 +147,16 @@ Mittente: Vlad, da hello@khlumen.com. Destinatario: l'indirizzo di supporto di A
 > We would like to offer an optional AirROI adapter, and before switching it on we want to be sure it fits your Terms of Use (version of 10 September 2026). This is how it would work:
 >
 > 1. **The host's own key.** Each host buys their own AirROI API access and enters their own key. We have no key, we never see theirs, and nothing goes through a server of ours: requests go straight from the host's computer to api.airroi.com.
-> 2. **Zone metrics only.** The adapter calls only `GET /markets/search` and `POST /markets/metrics/all`, to read the monthly occupancy, average daily rate and active listings of the host's market. It never calls your price recommendation endpoints and never reads listing-level data.
-> 3. **The host's own pricing.** The figures are used only on the host's computer, as one input among others (their own calendars and past prices), to adjust the prices of the host's own listings. Nothing is resold, published or shared with anyone.
+> 2. **Zone metrics only.** The adapter calls only `GET /markets/search`, `POST /markets/metrics/all` and, if you agree, `/markets/metrics/future/pacing`, to read the occupancy, average daily rate and active listings of the host's market, filtered by bedrooms and room type. It never calls your price recommendation endpoints and never reads listing-level data.
+> 3. **The host's own pricing.** The figures are used only on the host's computer, as one input among others (their own calendars and past prices), to adjust the prices of the host's own listings. Fairnight may also show the host a suggested base price derived from the zone's average daily rate for similar homes, which the host must confirm by hand. Nothing is resold, published or shared with anyone.
 > 4. **Retention and attribution.** Data is kept for at most 30 days (your §10) and deleted on request. Wherever a figure is shown, the tool says "powered by AirROI".
 > 5. **Open source, but no data in it.** The public repository contains only the adapter's code and invented test data: no AirROI data and no key.
 >
 > Our questions:
 >
 > - Is this use permitted by your Terms, in particular §5.4(ii) and §10 on competing products, given that the tool sets prices only for the host's own listings and never uses your price recommendations?
-> - If it is permitted, may we say so in our documentation (for example "used with AirROI's agreement")?
+> - Does a suggested base price computed by Fairnight from your zone metrics (point 3) count as a product that "could reasonably be expected to substitute" for your base price recommendation? If so, we will leave that part out.
+> - If it is permitted, may we say so in our documentation (for example "used with AirROI's agreement")? We understand from §5.9 that only a written document counts, so a short written confirmation would be ideal.
 > - Is the 30-day limit of §10 the right retention for this use, or would you prefer a shorter one?
 > - Is there an attribution text or logo you would like us to show instead of "powered by AirROI"?
 >

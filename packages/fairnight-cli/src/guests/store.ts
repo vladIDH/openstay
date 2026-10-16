@@ -27,6 +27,7 @@ import {
   type PaymentType,
   type Stay,
   type SubmissionRecord,
+  type TaxClass,
 } from "fairguest";
 import type { HostConfig, HostListing } from "../config.js";
 import { getMeta, setMeta, type Db } from "../db.js";
@@ -77,6 +78,8 @@ export interface PersonData {
   guest: Guest;
   /** The payment type, asked once in the form (to the first guest). */
   payment?: PaymentType;
+  /** The guest said they live in the town of the tourist tax. */
+  taxResident?: boolean;
 }
 
 export type SubmissionKind = "reservation" | "checkin" | "cancellation";
@@ -270,15 +273,19 @@ export function addManualStay(db: Db, listing: string, checkIn: string, checkOut
   return getStay(db, id) as StayRow;
 }
 
-/** One guest, sealed with the public key: no passphrase needed (the check-in form uses this). */
-export function addPerson(db: Db, stayId: string, data: PersonData, by: "host" | "form", now: Date): string {
+/**
+ * One guest, sealed with the public key: no passphrase needed (the check-in form uses this).
+ * `taxClass`: what the guest is for the tourist tax, kept in clear (no age, no address).
+ */
+export function addPerson(db: Db, stayId: string, data: PersonData, by: "host" | "form", now: Date, taxClass: TaxClass | null = null): string {
   const id = newPersonId();
-  db.prepare("INSERT INTO guest_people (id, stay_id, added_at, added_by, data) VALUES (?, ?, ?, ?, ?)").run(
+  db.prepare("INSERT INTO guest_people (id, stay_id, added_at, added_by, data, tax_class) VALUES (?, ?, ?, ?, ?, ?)").run(
     id,
     stayId,
     localDateTime(now),
     by,
     seal(publicKey(db), data, place.person(id)),
+    taxClass,
   );
   return id;
 }
@@ -310,7 +317,9 @@ const hasColumnOf = (db: Db, table: string, column: string) => (db.prepare(`PRAG
 function fromRelay(raw: PersonData, today: string): PersonData {
   const guest = parseGuest((raw as { guest?: unknown }).guest, today).draft;
   const payment = (raw as { payment?: unknown }).payment;
-  return isPaymentType(payment) ? { guest, payment } : { guest };
+  const out: PersonData = isPaymentType(payment) ? { guest, payment } : { guest };
+  if ((raw as { taxResident?: unknown }).taxResident === true) out.taxResident = true;
+  return out;
 }
 
 export interface OpenedStay {
@@ -395,11 +404,13 @@ function dropFiles(db: Db, stayId: string): void {
 /**
  * Erase every personal datum of a stay: the guests, the sealed columns, the
  * check-in code and the files. What stays: id, listing, dates and the record of
- * the communications (without data), so the deadlines stay explainable.
+ * the communications (without data), so the deadlines stay explainable; and
+ * how many guests paid the tourist tax or not, for the town's declaration.
  */
 export function eraseStay(db: Db, stayId: string, now: Date, options: { keepIstat?: boolean } = {}): void {
   db.pragma("secure_delete = ON");
   db.transaction(() => {
+    keepTaxCounts(db, stayId);
     dropFiles(db, stayId);
     db.prepare("DELETE FROM guest_people WHERE stay_id = ?").run(stayId);
     db.prepare("UPDATE guest_stays SET channel_data = NULL, host_data = NULL, code = NULL, erased_at = ? WHERE id = ?").run(localDateTime(now), stayId);
@@ -407,6 +418,16 @@ export function eraseStay(db: Db, stayId: string, now: Date, options: { keepIsta
     // an erasure on request takes it too.
     if (!options.keepIstat && hasColumnOf(db, "guest_stays", "istat_data")) db.prepare("UPDATE guest_stays SET istat_data = NULL WHERE id = ?").run(stayId);
   })();
+}
+
+/** Counts of the tourist tax classes of a stay, written before its guests go. */
+function keepTaxCounts(db: Db, stayId: string): void {
+  if (!hasColumnOf(db, "guest_stays", "tax_counts") || !hasColumnOf(db, "guest_people", "tax_class")) return;
+  const rows = db.prepare("SELECT tax_class FROM guest_people WHERE stay_id = ?").all(stayId) as { tax_class: string | null }[];
+  if (rows.length === 0) return;
+  const counts: Record<string, number> = {};
+  for (const r of rows) counts[r.tax_class ?? "unknown"] = (counts[r.tax_class ?? "unknown"] ?? 0) + 1;
+  db.prepare("UPDATE guest_stays SET tax_counts = ? WHERE id = ?").run(JSON.stringify(counts), stayId);
 }
 
 export function erasePerson(db: Db, personId: string): void {

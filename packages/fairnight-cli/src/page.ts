@@ -6,6 +6,7 @@
  * In Italian, Spanish or English: the texts are in page-texts.ts, dates and
  * prices are formatted by the browser (Intl) in the chosen language.
  */
+import type { Language } from "./lingua.js";
 import { PAGE_TEXTS } from "./page-texts.js";
 
 const STYLE = `
@@ -117,6 +118,7 @@ select.lang { padding: 8px 10px; font-size: 13px; color: var(--muted); }
 .steps .chg { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .steps .chg.neg { color: var(--down); } .steps .chg.pos { color: var(--up); }
 .steps .note { color: var(--muted); font-size: 13px; text-align: right; }
+a.source { color: inherit; text-decoration: underline; }
 .panel .raw { margin-top: 18px; color: var(--faint); font-size: 12px; }
 .panel details.raw summary { cursor: pointer; }
 .panel details.raw div { margin-top: 6px; }
@@ -172,6 +174,26 @@ const SCRIPT = `
 "use strict";
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+// AirROI's data is always shown with "Powered by AirROI" as a link to its site.
+const AIRROI_NAME = "Powered by AirROI";
+const AIRROI_URL = "https://www.airroi.com";
+const withSourceLinks = (tag, cls, text) => {
+  const e = el(tag, cls);
+  let rest = String(text == null ? "" : text);
+  for (;;) {
+    const at = rest.indexOf(AIRROI_NAME);
+    if (at < 0) { e.append(rest); return e; }
+    e.append(rest.slice(0, at));
+    rest = rest.slice(at + AIRROI_NAME.length);
+    const spelled = " (" + AIRROI_URL + ")";
+    if (rest.startsWith(spelled)) rest = rest.slice(spelled.length);
+    const a = el("a", "source", AIRROI_NAME);
+    a.href = AIRROI_URL;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    e.append(a);
+  }
+};
 const LANGS = ["it", "es", "en"];
 const STORE = "fairnight.language";
 const state = { data: null, listing: 0, month: null, selected: null, lang: "en", pilot: null, preview: null };
@@ -407,7 +429,7 @@ function renderSuggestion(l) {
   for (const w of sg.warnings) { const text = warningText(w, sg, l.currency); if (text) parts.push(el("p", "warn", text)); }
   const source = [sg.attribution + (sg.estimated ? ", " + t("note_estimated") : "")];
   if (sg.readOn) source.push(t("note_read_on", { date: shortDate(sg.readOn) }));
-  parts.push(el("p", "sub", t("suggest_source", { source: source.join(" · ") }) + ". " + t("suggest_nothing_changes")));
+  parts.push(withSourceLinks("p", "sub", t("suggest_source", { source: source.join(" · ") }) + ". " + t("suggest_nothing_changes")));
   if (sg.suggested !== sg.current) {
     const actions = el("div", "actions");
     if (!state.data.local) {
@@ -486,14 +508,14 @@ function openNight(iso) {
       else if (s.before !== s.after) change = (s.after > s.before ? "+" : "−") + num(Math.abs(Math.round((s.after - s.before) * 100) / 100));
       const chg = el("div", "chg", change);
       if (s.after < s.before) chg.classList.add("neg"); else if (s.after > s.before) chg.classList.add("pos");
-      li.append(chg, el("div", "note", text.note || ""));
+      li.append(chg, withSourceLinks("div", "note", text.note || ""));
       list.append(li);
     });
     parts.push(list);
   }
   // The engine's own sentence, in English: handy in a screenshot sent for help.
   const raw = el("details", "raw");
-  raw.append(el("summary", null, t("raw_summary")), el("div", null, n.explanation));
+  raw.append(el("summary", null, t("raw_summary")), withSourceLinks("div", null, n.explanation));
   parts.push(raw);
   body.replaceChildren(...parts);
   p.classList.add("open");
@@ -704,69 +726,78 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "ArrowLeft" && !$("#prev").disabled) $("#prev").click();
   if (e.key === "ArrowRight" && !$("#next").disabled) $("#next").click();
 });
-state.lang = savedLang() || "en";
+state.lang = savedLang() || START_LANG;
 applyLang();
 load().then(loadPilot).catch((e) => say("status_load_failed", { error: e.message }, true));
 `;
 
+const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
+
 /** The texts as a script literal: "<" escaped so no text can close the script tag. */
 const textsJson = () => JSON.stringify(PAGE_TEXTS).replace(/</g, "\\u003c");
 
-export function renderPage(nonce: string): string {
+/**
+ * The page already in the folder's language (the config's `language`), so the tab
+ * title and the first texts are right before the script runs; a language saved in
+ * the browser still wins once the script starts.
+ */
+export function renderPage(nonce: string, lang: Language = "en"): string {
+  const T = PAGE_TEXTS[lang];
   return `<!doctype html>
-<html lang="en">
+<html lang="${lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>${PAGE_TEXTS.en.page_title}</title>
+<title>${esc(T.page_title)}</title>
 <style nonce="${nonce}">${STYLE}</style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="brand">Fairnight <span>· <span data-t="brand_sub">${PAGE_TEXTS.en.brand_sub}</span></span></div>
-    <select id="lang" class="lang" data-t-label="language" aria-label="${PAGE_TEXTS.en.language}">
+    <div class="brand">Fairnight <span>· <span data-t="brand_sub">${esc(T.brand_sub)}</span></span></div>
+    <select id="lang" class="lang" data-t-label="language" aria-label="${esc(T.language)}">
       <option value="it">IT</option>
       <option value="es">ES</option>
       <option value="en">EN</option>
     </select>
-    <select id="listing" data-t-label="listing" aria-label="${PAGE_TEXTS.en.listing}"></select>
-    <button class="btn primary" id="refresh" type="button" data-t="recalculate">${PAGE_TEXTS.en.recalculate}</button>
+    <select id="listing" data-t-label="listing" aria-label="${esc(T.listing)}"></select>
+    <button class="btn primary" id="refresh" type="button" data-t="recalculate">${esc(T.recalculate)}</button>
   </header>
   <div class="status" id="status" role="status"></div>
   <div class="reminder" id="guests" role="status" hidden></div>
   <section class="pilot" id="pilot" hidden aria-live="polite">
-    <div class="pilot-head"><b data-t="pilot_title">${PAGE_TEXTS.en.pilot_title}</b><span class="chip" id="pilot-state"></span><span class="spacer"></span></div>
+    <div class="pilot-head"><b data-t="pilot_title">${esc(T.pilot_title)}</b><span class="chip" id="pilot-state"></span><span class="spacer"></span></div>
     <div id="pilot-body"></div>
   </section>
   <section class="summary" aria-live="polite">
-    <div><b id="sum-for-sale">—</b><span data-t="summary_for_sale">${PAGE_TEXTS.en.summary_for_sale}</span></div>
-    <div><b id="sum-reserved">—</b><span data-t="summary_reserved">${PAGE_TEXTS.en.summary_reserved}</span></div>
-    <div><b id="sum-average">—</b><span data-t="summary_average">${PAGE_TEXTS.en.summary_average}</span></div>
-    <div><b id="sum-occupancy">—</b><span data-t="summary_occupancy">${PAGE_TEXTS.en.summary_occupancy}</span></div>
+    <div><b id="sum-for-sale">—</b><span data-t="summary_for_sale">${esc(T.summary_for_sale)}</span></div>
+    <div><b id="sum-reserved">—</b><span data-t="summary_reserved">${esc(T.summary_reserved)}</span></div>
+    <div><b id="sum-average">—</b><span data-t="summary_average">${esc(T.summary_average)}</span></div>
+    <div><b id="sum-occupancy">—</b><span data-t="summary_occupancy">${esc(T.summary_occupancy)}</span></div>
   </section>
   <section class="suggest" id="suggest" hidden aria-live="polite"></section>
   <div class="monthbar">
-    <button class="btn" id="prev" type="button" data-t-label="previous_month" aria-label="${PAGE_TEXTS.en.previous_month}">‹</button>
+    <button class="btn" id="prev" type="button" data-t-label="previous_month" aria-label="${esc(T.previous_month)}">‹</button>
     <h2 id="month"></h2>
-    <button class="btn" id="next" type="button" data-t-label="next_month" aria-label="${PAGE_TEXTS.en.next_month}">›</button>
+    <button class="btn" id="next" type="button" data-t-label="next_month" aria-label="${esc(T.next_month)}">›</button>
   </div>
   <div class="grid" id="grid"></div>
   <div class="legend">
-    <span><i class="l-res"></i><span data-t="legend_reserved">${PAGE_TEXTS.en.legend_reserved}</span></span>
-    <span><i class="l-blk"></i><span data-t="legend_blocked">${PAGE_TEXTS.en.legend_blocked}</span></span>
-    <span><i class="l-up"></i><span data-t="legend_above">${PAGE_TEXTS.en.legend_above}</span></span>
-    <span><i class="l-down"></i><span data-t="legend_below">${PAGE_TEXTS.en.legend_below}</span></span>
-    <span><i class="l-today"></i><span data-t="legend_today">${PAGE_TEXTS.en.legend_today}</span></span>
-    <span data-t="legend_hint">${PAGE_TEXTS.en.legend_hint}</span>
+    <span><i class="l-res"></i><span data-t="legend_reserved">${esc(T.legend_reserved)}</span></span>
+    <span><i class="l-blk"></i><span data-t="legend_blocked">${esc(T.legend_blocked)}</span></span>
+    <span><i class="l-up"></i><span data-t="legend_above">${esc(T.legend_above)}</span></span>
+    <span><i class="l-down"></i><span data-t="legend_below">${esc(T.legend_below)}</span></span>
+    <span><i class="l-today"></i><span data-t="legend_today">${esc(T.legend_today)}</span></span>
+    <span data-t="legend_hint">${esc(T.legend_hint)}</span>
   </div>
 </div>
-<aside class="panel" id="panel" aria-hidden="true" data-t-label="night_details" aria-label="${PAGE_TEXTS.en.night_details}">
-  <button class="btn close" id="close" type="button" data-t-label="close" aria-label="${PAGE_TEXTS.en.close}">✕</button>
+<aside class="panel" id="panel" aria-hidden="true" data-t-label="night_details" aria-label="${esc(T.night_details)}">
+  <button class="btn close" id="close" type="button" data-t-label="close" aria-label="${esc(T.close)}">✕</button>
   <div id="panel-body"></div>
 </aside>
 <script nonce="${nonce}">const TEXTS = ${textsJson()};
+const START_LANG = ${JSON.stringify(lang)};
 ${SCRIPT}</script>
 </body>
 </html>

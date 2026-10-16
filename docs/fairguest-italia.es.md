@@ -95,12 +95,12 @@ Arriba, el huésped lee una línea sobre qué pasa con sus datos: quedan cifrado
 fairnight ospiti link <estancia>
 ```
 
-Imprime una dirección como `https://fairguest.khlumen.com/c/…#v1.…`. Mándela al huésped: funciona desde cualquier teléfono hasta dos días después de la salida. Su ordenador **no abre ningún puerto**: solo hace peticiones de salida.
+Imprime una dirección como `https://fairguest-relay.openstay.workers.dev/c/…#v1.…`. Mándela al huésped: funciona desde cualquier teléfono hasta dos días después de la salida. Su ordenador **no abre ningún puerto**: solo hace peticiones de salida.
 
 **Cómo viajan los datos**
 1. El huésped rellena el formulario en su teléfono. Tiene el mismo aspecto y las mismas preguntas que el de casa.
 2. **El teléfono cifra los datos** con la clave pública de su carpeta Fairguest antes de enviarlos.
-3. El servicio de reenvío (`fairguest.khlumen.com`) solo recibe texto cifrado y lo guarda en un buzón de la estancia.
+3. El servicio de reenvío (`fairguest-relay.openstay.workers.dev`) solo recibe texto cifrado y lo guarda en un buzón de la estancia.
 4. Su ordenador lo descarga y lo borra del servicio:
    - con `fairnight ospiti scarica`;
    - solo, cada 5 minutos, mientras `fairnight serve` está en marcha;
@@ -130,6 +130,8 @@ Compara cada fichero que el servicio manda al teléfono con la huella (SHA-256) 
 Hace falta porque quien gestiona el servicio podría cambiar la página para leer los datos antes de cifrarlos: es el límite de cualquier formulario en la web. Para tener el control completo:
 - aloje el servicio usted mismo: instrucciones en [packages/fairguest-relay/README.md](../packages/fairguest-relay/README.md);
 - después ponga su dirección en `fairnight.config.json` con `"fairguestRelay": "https://…"`.
+
+**La dirección del servicio:** por ahora es la gratuita de Cloudflare, `fairguest-relay.openstay.workers.dev`: una dirección `workers.dev` es normal en los servicios alojados en Cloudflare. Cuando pasemos a un dominio propio, lo dirá una nueva versión de Fairnight; los enlaces ya enviados siguen valiendo hasta que caduquen.
 
 ## La foto del documento
 

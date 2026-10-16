@@ -24,7 +24,7 @@ describe("Mossos file", () => {
     const g = {
       ...holder(),
       document: { type: "dni" as const, number: "00000000T", support: "ZZZ000000" },
-      address: { country: "ESP", street: "Calle de Prueba 1", postalCode: "08000", municipalityCode: "080000" },
+      address: { country: "ESP", street: "Calle de Prueba 1", postalCode: "08000", municipalityCode: "080193" },
       email: undefined,
       phone: "+34 000 000 000",
     };
@@ -35,7 +35,7 @@ describe("Mossos file", () => {
     expect(f[3]).toBe("D");
     expect(f[22]).toBe("+34 000 000 000");
     expect(f[25]).toBe("ZZZ000000");
-    expect(f.slice(26, 32)).toEqual(["CALLE DE PRUEBA 1", "08", "080000", "", "ESP", "08000"]);
+    expect(f.slice(26, 32)).toEqual(["CALLE DE PRUEBA 1", "08", "080193", "", "ESP", "08000"]);
   });
 
   it("writes only the holder for a reservation, with the R type", () => {

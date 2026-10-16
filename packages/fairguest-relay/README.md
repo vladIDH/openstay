@@ -1,6 +1,6 @@
 # fairguest-relay
 
-The mailbox behind the Fairguest check-in link: a Cloudflare Worker, one Durable Object per stay. *0.1.0, in development, not deployed yet.*
+The mailbox behind the Fairguest check-in link: a Cloudflare Worker, one Durable Object per stay. *0.1.0, in development. The official instance runs at https://fairguest-relay.openstay.workers.dev.*
 
 The guest opens `https://<relay>/c/<box>#v1.<…>` on a phone. The page fills in the form and reads the passport or identity card photo (MRZ) **in the browser**. It seals each guest **in the browser** with the host's public key and only then posts it. The host's computer downloads the sealed guests (`fairnight ospiti scarica`, or by itself while `fairnight serve` runs) and deletes them from the relay.
 
@@ -30,7 +30,7 @@ The guest opens `https://<relay>/c/<box>#v1.<…>` on a phone. The page fills in
 | `src/mailbox.ts` | the box: create, post, read, delete, expire; limits (24 KB per message, 60 messages, 120 days) |
 | `src/client/` | the guest's page (TypeScript, bundled by esbuild); the form and the rules come from `fairguest/browser`, the same code as the host's own form |
 | `scripts/build.mjs` | `public/`: page, styles, OCR files from npm, licences; writes the hashes for `verifica-pagina` |
-| `scripts/assets.mjs` | downloads the MRZ model (DoubangoTelecom/tesseractMRZ, BSD-3-Clause), fixed commit and checked SHA-256, into `assets/` (not in git) |
+| `scripts/assets.mjs` | downloads the MRZ model (DoubangoTelecom/tesseractMRZ, BSD-3-Clause), fixed commit and checked SHA-256, into `assets/`. The model and its licence (`mrz-LICENSE.txt`) are also kept in git |
 | `scripts/dev.mjs` | the relay on your own computer, boxes in memory, for trying the link before a deploy |
 
 **Third-party code in the page**, all served by the relay itself:
@@ -52,12 +52,19 @@ Then put `"fairguestRelay": "http://localhost:8788"` in `fairnight.config.json` 
 
 ## Deploy on Cloudflare
 
-Needs a Cloudflare account and a domain on it. The free plan is enough for a few hosts: 100,000 Worker requests a day, plus SQLite-backed Durable Objects.
+Needs only a Cloudflare account: the relay goes on the account's free `workers.dev` address, so no domain and no DNS to move. The free plan is enough for a few hosts: 100,000 Worker requests a day, plus SQLite-backed Durable Objects.
 
 1. Run `npm run assets -w fairguest-relay`, then `npm run build -w fairguest-relay`.
-2. In `wrangler.toml`, set `routes` to your domain (the official instance uses `fairguest.khlumen.com`).
-3. Run `npx wrangler@4.151.0 login`, then `npx wrangler@4.151.0 deploy --config packages/fairguest-relay/wrangler.toml`.
-4. Run `fairnight ospiti verifica-pagina` with `"fairguestRelay"` pointing at your domain. Every line must say `same`.
+2. Self-hosting: in `wrangler.toml`, change `name` if you like.
+3. Run `npx wrangler@4.151.0 login`, then `npx wrangler@4.151.0 deploy --config packages/fairguest-relay/wrangler.toml`. It prints the address, `https://<name>.<account>.workers.dev`. On a new account the certificate of that address can take a few minutes.
+4. Put that address in `fairnight.config.json` as `"fairguestRelay"`, then run `fairnight ospiti verifica-pagina`. Every line must say `same`.
+
+**The official instance:** `https://fairguest-relay.openstay.workers.dev`, the default of `fairnight` (`DEFAULT_RELAY` in `fairnight-cli/src/guests/relay.ts`).
+
+**Later, on a domain of ours** (the zone must be active on Cloudflare):
+1. In `wrangler.toml`, uncomment `routes`. Keep `workers_dev = true` until the links already sent have expired: two days after their check-out.
+2. Deploy, then change `DEFAULT_RELAY` and the guides to the domain in a new version of `fairnight`.
+3. Once the old links have expired, set `workers_dev = false` and deploy again.
 
 **To check on the first deploy [NV]:**
 - the EU jurisdiction of Durable Objects on the free plan;

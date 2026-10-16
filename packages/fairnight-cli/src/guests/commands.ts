@@ -787,7 +787,7 @@ async function credentials(db: Db, args: string[], values: GuestOptions, io: Io)
   return 0;
 }
 
-async function unlockedKey(db: Db, io: Io) {
+export async function unlockedKey(db: Db, io: Io) {
   const pass = await askPassphrase(io);
   try {
     return unlockKeys(db, pass);
@@ -1073,7 +1073,12 @@ async function link(db: Db, config: HostConfig, args: string[], io: Io): Promise
   if (row.check_in > addDays(today, 110)) throw new SetupError(`Stay ${row.id} starts on ${row.check_in}: a link can be made from 110 days before.`);
   const listing = config.listings.find((l) => l.name === row.listing);
   const settings = settingsOf(config, row);
-  const url = await stayLink(db, io, config, row, { title: listing?.pricing.name ?? row.listing, country: settings.country, residence: settings.country === "IT" && !!settings.istat });
+  const url = await stayLink(db, io, config, row, {
+    title: listing?.pricing.name ?? row.listing,
+    country: settings.country,
+    residence: settings.country === "IT" && !!settings.istat,
+    ...(settings.touristTax?.residentsExempt ? { taxTown: settings.touristTax.name } : {}),
+  });
   io.out(url);
   io.out("");
   io.out("Send it to the guest the way you usually write to them. It works from any phone, until two days after check-out.");
@@ -1096,7 +1101,7 @@ async function verifyPage(config: HostConfig, args: string[], io: Io): Promise<n
   noExtra(args);
   const relay = relayOf(config);
   const results = await checkPage(io, config, { ...PAGE_HASHES, "/ocr/mrz.traineddata": MRZ_MODEL_SHA256 });
-  for (const r of results) io.out(`${r.ok ? "same     " : "DIFFERENT"}  ${r.path}${r.ok ? "" : r.got ? `  (sha256 ${r.got})` : "  (not served)"}`);
+  for (const r of results) io.out(`${r.ok ? "same     " : "DIFFERENT"}  ${r.path}${r.ok ? "" : r.got ? `  (sha256 ${r.got})` : r.redirect ? `  (redirect, ${r.redirect}: the link would lose its box)` : "  (not served)"}`);
   const bad = results.filter((r) => !r.ok).length;
   if (bad === 0) io.out(`${relay} serves exactly the page of this version of Fairguest.`);
   else io.out(`${relay} serves ${bad} file${bad === 1 ? "" : "s"} different from this version: do not send its links until you know why (an update of the relay, or someone changed it).`);

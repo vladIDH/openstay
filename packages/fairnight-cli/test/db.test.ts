@@ -32,8 +32,8 @@ function oldDatabase(version: 3 | 4 | 5 | 6): string {
 }
 
 describe("schema migrations", () => {
-  it("the latest version is 10: zone data (4), Fairguest (5), rooms of small hotels (6), Fairhello (7), Fairguest in Italy (8), check-in link (9), Istat (10)", () => {
-    expect(SCHEMA_VERSION).toBe(10);
+  it("the latest version is 11: zone data (4), Fairguest (5), rooms of small hotels (6), Fairhello (7), Fairguest in Italy (8), check-in link (9), Istat (10), tourist tax and payments (11)", () => {
+    expect(SCHEMA_VERSION).toBe(11);
   });
 
   it("takes a database from schema 3 to the latest, keeping its data", () => {
@@ -77,6 +77,9 @@ describe("schema migrations", () => {
     // Istat: the sealed record of a stay and the days sent.
     expect(hasColumn(db, "guest_stays", "istat_data")).toBe(true);
     expect(tables(db)).toContain("guest_istat_days");
+    // The tourist tax and the payments: the class of a guest, and the payments table.
+    expect(hasColumn(db, "guest_people", "tax_class")).toBe(true);
+    expect(tables(db)).toContain("guest_payments");
     db.close();
   });
 

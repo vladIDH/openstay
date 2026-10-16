@@ -27,3 +27,12 @@ describe("the guest's page", () => {
     }
   }, 60_000);
 });
+
+describe("wrangler.toml", () => {
+  it("serves the page files at their own name, without redirects", () => {
+    // Cloudflare's default html_handling redirects /checkin.html to /checkin: the phone would leave /c/<box>.
+    const toml = readFileSync(path.join(import.meta.dirname, "..", "wrangler.toml"), "utf8");
+    expect(toml).toMatch(/^\[assets\][^[]*^html_handling = "none"$/m);
+    expect(toml).toMatch(/^workers_dev = true$/m);
+  });
+});

@@ -1,7 +1,8 @@
 /**
  * `fairnight init [folder]`: create the host's folder with an example config,
  * an empty database and a three-line README. Writes only inside that folder
- * and never overwrites a file that already exists.
+ * and never overwrites a file that already exists. `fairnight configura` asks
+ * for the host's guide (LEGGIMI.txt or LEEME.txt) instead of the README.
  */
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -15,7 +16,7 @@ export interface InitReport {
   kept: string[];
 }
 
-export function initFolder(folder: string): InitReport {
+export function initFolder(folder: string, readmeFile = { file: "README.txt", text: LOCAL_README }): InitReport {
   const dir = path.resolve(folder);
   mkdirSync(dir, { recursive: true });
   const report: InitReport = { folder: dir, created: [], kept: [] };
@@ -27,11 +28,11 @@ export function initFolder(folder: string): InitReport {
     report.created.push(CONFIG_FILE);
   }
 
-  const readme = path.join(dir, "README.txt");
-  if (existsSync(readme)) report.kept.push("README.txt");
+  const readme = path.join(dir, readmeFile.file);
+  if (existsSync(readme)) report.kept.push(readmeFile.file);
   else {
-    writeFileSync(readme, LOCAL_README, "utf8");
-    report.created.push("README.txt");
+    writeFileSync(readme, readmeFile.text, "utf8");
+    report.created.push(readmeFile.file);
   }
 
   const db = dbPath(dir);

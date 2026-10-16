@@ -1,10 +1,11 @@
 /**
  * The language of the calendar page: Italian, Spanish or English.
  *
- * `fairnight configura` proposes one from the town of the houses (Italy → it,
- * Spain and the Canary Islands → es) or, when the town says nothing clear,
- * from the language of the computer. The host confirms; with no answer the
- * field stays empty and the page starts in English.
+ * `fairnight configura` proposes the language of the computer when it is
+ * Italian or Spanish: the page is for the host, and an Italian host with a
+ * house in Tenerife reads Italian. Otherwise it proposes one from the town of
+ * the houses (Italy → it, Spain and the Canary Islands → es). The host
+ * confirms; with no answer the field stays empty and the page starts in English.
  */
 import { isCanaryPlace, plainPlace } from "./stagioni.js";
 
@@ -67,11 +68,27 @@ export function languageOfLocale(locale: string): Language | null {
   return code === "it" || code === "es" ? code : null;
 }
 
-/** First the towns (the first one that is clear), then the computer. */
-export function proposedLanguage(cities: (string | undefined)[], locale: string): Language | null {
+/** The proposal and where it comes from: first the computer, then the towns (the first one that is clear). */
+export function languageProposal(cities: (string | undefined)[], locale: string): { language: Language; from: "computer" | "town" } | null {
+  const fromComputer = languageOfLocale(locale);
+  if (fromComputer !== null) return { language: fromComputer, from: "computer" };
   for (const c of cities) {
     const l = languageOfCity(c);
-    if (l !== null) return l;
+    if (l !== null) return { language: l, from: "town" };
   }
-  return languageOfLocale(locale);
+  return null;
+}
+
+export function proposedLanguage(cities: (string | undefined)[], locale: string): Language | null {
+  return languageProposal(cities, locale)?.language ?? null;
+}
+
+/** The language of `fairnight configura` and `fairnight apri`: Italian or Spanish. */
+export type SetupLang = "it" | "es";
+
+/** Spanish for a Spanish calendar, or the first time on a Spanish computer; Italian otherwise. */
+export function setupLanguage(configLanguage: unknown, locale: string): SetupLang {
+  if (configLanguage === "es" || configLanguage === "it") return configLanguage;
+  if (configLanguage === undefined && languageOfLocale(locale) === "es") return "es";
+  return "it";
 }

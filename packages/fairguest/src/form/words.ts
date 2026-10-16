@@ -39,6 +39,8 @@ export interface Words {
   stepLabel: (n: number) => string;
   /** One line on what happens to the data, shown at the top. Only what the form really does. */
   privacyShort: string;
+  /** On the confirmation screen, in the privacy box: who receives the data and when it is erased. */
+  privacyWhere: string;
   /** A message for each kind of field, saying the rule it did not meet. */
   invalidFor: Record<string, string>;
   /** What changes for a listing in Italy (Alloggiati Web): the law, the privacy line, the hints. */
@@ -46,6 +48,7 @@ export interface Words {
     intro: string;
     privacy: string;
     privacyShort: string;
+    privacyWhere: string;
     surname: string;
     kinshipHint: string;
     birthPlaceHint: string;
@@ -106,6 +109,7 @@ const es: Words = {
     street: "Dirección",
     postalCode: "Código postal",
     locality: "Localidad",
+    town: "Municipio o ciudad",
     phone: "Teléfono",
     email: "Correo electrónico",
     kinship: "Parentesco con el titular",
@@ -124,6 +128,7 @@ const es: Words = {
     docSupport: "Solo DNI o NIE españoles: 9 caracteres.",
     contact: "Basta con uno de los dos.",
     kinship: "Solo para menores de edad.",
+    town: "Si vive en España, escriba y elija su municipio de la lista.",
   },
   choose: "Elija…",
   sex: { female: "Mujer", male: "Hombre", other: "Otro" },
@@ -177,6 +182,7 @@ const es: Words = {
   steps: { data: "Sus datos", document: "Documento", confirm: "Confirmación" },
   stepLabel: (n) => `Paso ${n} de 3`,
   privacyShort: "Sus datos se guardan cifrados en el ordenador del anfitrión, solo se envían a la policía y se borran solos cuando la ley lo permite.",
+  privacyWhere: "Van a SES.HOSPEDAJES o a los Mossos d'Esquadra y se borran después del envío, o a los 3 años si el anfitrión es profesional.",
   invalidFor: {
     givenName: "Solo letras, espacios, apóstrofos, puntos y guiones; hasta 50 caracteres.",
     surname1: "Solo letras, espacios, apóstrofos, puntos y guiones; hasta 50 caracteres.",
@@ -188,6 +194,7 @@ const es: Words = {
     postalCode: "Revise el código postal: en España son 5 cifras.",
     street: "Hasta 100 caracteres.",
     locality: "Hasta 100 caracteres.",
+    municipality: "Elija su municipio de la lista: en España la policía pide el municipio, no el barrio ni la urbanización.",
     phone: "Solo cifras, espacios, + y guiones, de 6 a 20 caracteres.",
     email: "Escriba una dirección completa, como nombre@ejemplo.es.",
     sex: "Elija una opción de la lista.",
@@ -212,6 +219,7 @@ const es: Words = {
     privacy:
       "Sus datos se guardan cifrados solo en el ordenador del anfitrión y se envían únicamente a la Polizia di Stato (Alloggiati Web). Se borran en cuanto existe el recibo del envío: solo se conserva el recibo, 5 años, como pide la ley.",
     privacyShort: "Sus datos se guardan cifrados en el ordenador del anfitrión, solo se envían a la Polizia di Stato y se borran solos después del envío.",
+    privacyWhere: "Van a Alloggiati Web (Polizia di Stato) y se borran en cuanto existe el recibo del envío, que se conserva 5 años.",
     surname: "Apellidos",
     kinshipHint: "Solo para familiares del titular; déjelo vacío para amigos o compañeros de viaje.",
     birthPlaceHint: "Solo si nació en Italia.",
@@ -267,6 +275,7 @@ const en: Words = {
     street: "Address",
     postalCode: "Postcode",
     locality: "Town or city",
+    town: "Town or city",
     phone: "Phone",
     email: "Email",
     kinship: "Relationship to the guest who booked",
@@ -285,6 +294,7 @@ const en: Words = {
     docSupport: "Only for Spanish DNI or NIE cards: 9 characters.",
     contact: "One of the two is enough.",
     kinship: "Only for children under 18.",
+    town: "If you live in Spain, type and pick your municipality from the list.",
   },
   choose: "Choose…",
   sex: { female: "Female", male: "Male", other: "Other" },
@@ -338,6 +348,7 @@ const en: Words = {
   steps: { data: "Your details", document: "Document", confirm: "Confirmation" },
   stepLabel: (n) => `Step ${n} of 3`,
   privacyShort: "Your data is kept encrypted on the host's computer, sent only to the police and erased by itself as soon as the law allows.",
+  privacyWhere: "It goes to SES.HOSPEDAJES or the Mossos d'Esquadra and is erased after it is sent, or after 3 years if the host is a professional.",
   invalidFor: {
     givenName: "Only letters, spaces, apostrophes, dots and dashes; up to 50 characters.",
     surname1: "Only letters, spaces, apostrophes, dots and dashes; up to 50 characters.",
@@ -349,6 +360,7 @@ const en: Words = {
     postalCode: "Check the postal code: in Spain it has 5 digits.",
     street: "Up to 100 characters.",
     locality: "Up to 100 characters.",
+    municipality: "Pick your municipality from the list: in Spain the police ask for the municipality, not the neighbourhood or the resort.",
     phone: "Only digits, spaces, + and dashes, 6 to 20 characters.",
     email: "Write a full address, like name@example.com.",
     sex: "Choose one from the list.",
@@ -373,6 +385,7 @@ const en: Words = {
     privacy:
       "Your data is stored encrypted only on the host's computer and sent only to the Polizia di Stato (Alloggiati Web). It is erased as soon as the receipt of the communication exists: only the receipt is kept, for 5 years, as the law asks.",
     privacyShort: "Your data is kept encrypted on the host's computer, sent only to the Polizia di Stato and erased by itself after it is sent.",
+    privacyWhere: "It goes to Alloggiati Web (Polizia di Stato) and is erased as soon as the receipt of the communication exists, which is kept for 5 years.",
     surname: "Surname(s)",
     kinshipHint: "Only for family members of the guest who booked; leave it empty for friends or travel companions.",
     birthPlaceHint: "Only if born in Italy.",
@@ -428,6 +441,7 @@ const it: Words = {
     street: "Indirizzo",
     postalCode: "CAP",
     locality: "Città",
+    town: "Comune o città",
     phone: "Telefono",
     email: "Email",
     kinship: "Parentela con chi ha prenotato",
@@ -446,6 +460,7 @@ const it: Words = {
     docSupport: "Solo per DNI o NIE spagnoli: 9 caratteri.",
     contact: "Basta uno dei due.",
     kinship: "Solo per i minorenni.",
+    town: "Se vivi in Spagna, scrivi e scegli il tuo comune dall'elenco.",
   },
   choose: "Scegli…",
   sex: { female: "Donna", male: "Uomo", other: "Altro" },
@@ -499,6 +514,7 @@ const it: Words = {
   steps: { data: "I tuoi dati", document: "Documento", confirm: "Conferma" },
   stepLabel: (n) => `Passo ${n} di 3`,
   privacyShort: "I tuoi dati restano cifrati sul computer dell'host, vanno solo alla polizia e si cancellano da soli appena la legge lo permette.",
+  privacyWhere: "Vanno a SES.HOSPEDAJES o ai Mossos d'Esquadra e si cancellano dopo l'invio, o dopo 3 anni se l'host è un professionista.",
   invalidFor: {
     givenName: "Solo lettere, spazi, apostrofi, punti e trattini; fino a 50 caratteri.",
     surname1: "Solo lettere, spazi, apostrofi, punti e trattini; fino a 50 caratteri.",
@@ -510,6 +526,7 @@ const it: Words = {
     postalCode: "Controlla il CAP: in Spagna sono 5 cifre.",
     street: "Al massimo 100 caratteri.",
     locality: "Al massimo 100 caratteri.",
+    municipality: "Scegli il tuo comune dall'elenco: in Spagna la polizia chiede il comune, non il quartiere o la località turistica.",
     phone: "Solo cifre, spazi, + e trattini, da 6 a 20 caratteri.",
     email: "Scrivi un indirizzo completo, come nome@esempio.it.",
     sex: "Scegli una voce dall'elenco.",
@@ -534,6 +551,7 @@ const it: Words = {
     privacy:
       "I tuoi dati sono conservati cifrati solo sul computer dell'host e inviati solo alla Polizia di Stato (Alloggiati Web). Vengono cancellati appena esiste la ricevuta dell'invio: resta solo la ricevuta, per 5 anni, come chiede la legge.",
     privacyShort: "I tuoi dati restano cifrati sul computer dell'host, vanno solo alla Polizia di Stato e si cancellano da soli dopo l'invio.",
+    privacyWhere: "Vanno ad Alloggiati Web (Polizia di Stato) e si cancellano appena esiste la ricevuta dell'invio, che resta 5 anni.",
     surname: "Cognome",
     kinshipHint: "Solo per i familiari di chi ha prenotato; lascialo vuoto per amici o compagni di viaggio.",
     birthPlaceHint: "Solo per chi è nato in Italia.",

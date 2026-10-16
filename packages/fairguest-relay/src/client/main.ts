@@ -21,6 +21,7 @@ import {
   LOCK,
   padded,
   parseGuest,
+  payCard,
   pickLang,
   readLinkFragment,
   registryFor,
@@ -34,6 +35,7 @@ import {
   WORDS,
   type Lang,
   type LinkPayload,
+  type PayView,
   type Problem,
   type Words,
   type X25519Fallback,
@@ -72,6 +74,22 @@ const fallback: X25519Fallback = {
 };
 
 const today = () => localDateTime(new Date()).slice(0, 10);
+
+/** The links to pay on Stripe the host's computer left in the box (tourist tax, deposit), if any. */
+let pay: PayView | null = null;
+async function loadPay(): Promise<boolean> {
+  if (!link) return false;
+  try {
+    const res = await fetch(`/api/box/${box}/pay`, { headers: { "x-fairguest-write": link.w } });
+    if (!res.ok) return false;
+    const body = (await res.json()) as { pay?: PayView | null };
+    pay = body.pay && Array.isArray(body.pay.items) ? body.pay : null;
+    return pay !== null;
+  } catch {
+    return false;
+  }
+}
+const payHtml = () => (pay ? payCard(pay, lang, (d) => stayDay(d, lang)) : "");
 const law = (w: Words) => (link?.c === "IT" ? w.italy : w);
 
 function header(w: Words, step: 1 | 2 | 3): string {
@@ -81,7 +99,8 @@ function header(w: Words, step: 1 | 2 | 3): string {
     `<header class="top"><h1>${esc(w.title)}</h1>${nav}</header>` +
     `<div class="stay"><b>${esc(link.n)}</b><span>${esc(w.stay)}: ${esc(stayDay(link.i, lang))} → ${esc(stayDay(link.o, lang))}</span></div>` +
     stepsBar(w, step) +
-    `<p class="privacy-line">${LOCK}<span>${esc(law(w).privacyShort)} ${esc(w.remote.encrypted)}</span></p>`
+    // On the confirmation the box is the only privacy text: it also says who receives the data and when it is erased.
+    `<p class="privacy-line">${LOCK}<span>${esc(law(w).privacyShort)} ${esc(w.remote.encrypted)}${step === 3 ? `<span class="where">${esc(law(w).privacyWhere)}</span>` : ""}</span></p>`
   );
 }
 
@@ -103,9 +122,10 @@ function showForm(view: FormView = { values: {}, errors: new Map() }): void {
   const w = WORDS[lang];
   document.documentElement.lang = lang;
   document.title = w.title;
-  const form = renderForm(w, lang, link.c, "#", "", saved, { values: view.values, errors: view.errors }, { residence: link.r === 1 });
+  const form = renderForm(w, lang, link.c, "#", "", saved, { values: view.values, errors: view.errors }, { residence: link.r === 1, ...(link.t ? { taxTown: link.t } : {}) });
   app.innerHTML =
     header(w, 1) +
+    payHtml() +
     (view.banner ? `<div class="banner bad" role="alert">${esc(view.banner)}</div>` : `<p class="intro">${esc(law(w).intro)}</p>`) +
     photoBlock(w, view.photoNote ?? null) +
     form +
@@ -119,8 +139,8 @@ function showDone(): void {
   app.innerHTML =
     header(w, 3) +
     `<div class="done-card" role="status"><div class="tick">${TICK}</div><h2>${esc(w.saved(saved))}</h2><p>${esc(w.finished)}</p></div>` +
-    `<button type="button" class="button secondary" id="another">${esc(w.addAnother)}</button>` +
-    `<p class="privacy">${esc(law(w).privacy)}</p>`;
+    payHtml() +
+    `<button type="button" class="button secondary" id="another">${esc(w.addAnother)}</button>`;
   document.getElementById("another")?.addEventListener("click", () => showForm());
 }
 
@@ -183,7 +203,7 @@ async function submit(form: HTMLFormElement): Promise<void> {
     button.textContent = w.remote.sending;
   }
   try {
-    const message = { guest: parsed.guest, ...(saved === 0 && isPaymentType(payment) ? { payment } : {}) };
+    const message = { guest: parsed.guest, ...(saved === 0 && isPaymentType(payment) ? { payment } : {}), ...(link.t && values.taxResident === "1" ? { taxResident: true } : {}) };
     const sealed = await webSeal(link.k, padded(message), relayPlace(box), { fallback });
     const res = await fetch(`/api/box/${box}/messages`, { method: "POST", headers: { "content-type": "text/plain", "x-fairguest-write": link.w }, body: sealed });
     if (res.status === 404) return showMessage("expired");
@@ -191,6 +211,8 @@ async function submit(form: HTMLFormElement): Promise<void> {
     saved++;
     setSavedCount(saved);
     showDone();
+    // The tax changes with each guest: the host's computer prepares it, the page shows it when it is there.
+    if (await loadPay()) showDone();
   } catch (e) {
     if (e instanceof Error && /X25519|not supported/i.test(e.message)) return showMessage("oldBrowser");
     showForm({ values, errors: new Map(), banner: w.remote.sendFail });
@@ -199,7 +221,14 @@ async function submit(form: HTMLFormElement): Promise<void> {
 
 if (!globalThis.crypto?.subtle) showMessage("oldBrowser");
 else if (!link) showMessage("notFound");
-else showForm();
+else {
+  showForm();
+  // A guest coming back to pay finds the links at the top.
+  // Added in place, so nothing typed meanwhile is lost.
+  void loadPay().then((found) => {
+    if (found && !app.querySelector(".pay")) app.querySelector(".privacy-line")?.insertAdjacentHTML("afterend", payHtml());
+  });
+}
 // Changing language keeps everything after "#": the links carry it.
 window.addEventListener("popstate", () => {
   lang = pickLang(new URLSearchParams(location.search).get("lang"), navigator.languages.join(","));

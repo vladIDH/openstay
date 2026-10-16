@@ -1,11 +1,23 @@
 Fairnight: i prezzi delle tue notti, calcolati sul tuo computer.
 
-Per installarlo o aggiornarlo:
-- Windows: doppio clic su «Installa Fairnight.cmd».
-  Se Windows dice «Windows ha protetto il PC», clicca «Ulteriori informazioni» e poi «Esegui comunque».
-- Mac: tasto destro (o Ctrl+clic) su «Installa Fairnight.command», poi «Apri», poi di nuovo «Apri».
+Per installarlo o aggiornarlo serve la connessione a internet e Node.js 22 o più recente:
+se manca, l'installazione lo dice e spiega come metterlo.
 
-Serve Node.js 22 o più recente: se manca, l'installazione spiega come metterlo.
+WINDOWS
+1. Se hai fatto doppio clic sullo zip, prima estrai la cartella: tasto destro sullo zip, «Estrai tutto...», «Estrai».
+2. Nella cartella estratta, doppio clic su «Installa Fairnight (Windows)».
+3. Se compare «Apri file - Avviso di sicurezza», clicca «Esegui».
+   Se compare la finestra blu «Windows ha protetto il PC», clicca «Ulteriori informazioni» e poi «Esegui comunque».
+   Succede con i programmi gratuiti che non pagano un certificato di firma.
+4. Si apre una finestra nera: la prima volta ci vogliono 2-4 minuti e sembra ferma. È normale, lasciala aperta.
+
+MAC
+1. Doppio clic sullo zip: il Mac estrae la cartella da solo.
+2. Tasto destro (o Ctrl+clic) su «Installa Fairnight (Mac)», poi «Apri», poi di nuovo «Apri».
+   Se il Mac non mostra «Apri»: Impostazioni di Sistema › Privacy e sicurezza › «Apri comunque».
+
 I tuoi dati restano solo sul tuo computer, nella cartella Fairnight del tuo utente.
+Lì trovi anche una guida breve (LEGGIMI.txt) e il resoconto dell'installazione (installazione.log).
 
+Se qualcosa non va: scrivici a hello@khlumen.com e allega il file installazione.log.
 Guida completa con le schermate: https://github.com/vladIDH/openstay/blob/main/docs/installa.md

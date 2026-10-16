@@ -189,7 +189,7 @@ export interface MarketDay {
 export interface MarketData {
   /** Short name of the source, e.g. "csv", "insideairbnb", "airroi". */
   source: string;
-  /** Shown in every explanation that uses the data, e.g. "powered by AirROI". */
+  /** Shown in every explanation that uses the data, e.g. "Powered by AirROI (https://www.airroi.com)". */
   attribution: string;
   /** Name of the zone, e.g. "adeje". */
   area?: string;

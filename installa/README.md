@@ -6,21 +6,22 @@ La guida per gli host è [docs/installa.md](../docs/installa.md). Qui c'è come 
 
 | File | Cosa fa |
 |---|---|
-| `Installa Fairnight.cmd` (radice del repo) | doppio clic su Windows: lancia `installa/windows.ps1` con `-ExecutionPolicy Bypass` solo per quel processo |
-| `Installa Fairnight.command` (radice del repo) | doppio clic su Mac (la prima volta tasto destro › Apri): lancia `installa/mac.sh` |
+| `Installa Fairnight (Windows).cmd` (radice del repo) | doppio clic su Windows: lancia `installa/windows.ps1` con `-ExecutionPolicy Bypass` solo per quel processo |
+| `Installa Fairnight (Mac).command` (radice del repo) | doppio clic su Mac (la prima volta tasto destro › Apri): lancia `installa/mac.sh` |
 | `windows.ps1`, `mac.sh` | lo stesso percorso sui due sistemi: Node.js ≥ 22, installazione, file da doppio clic, icona, `fairnight configura`, `fairnight apri` |
 | `fairnight.ico`, `fairnight.png` | l'icona (la `.png` è 1024 px: su Mac diventa `.icns` con `sips` e `iconutil`) |
 | `pacchetto.mjs` | crea `installa/pacchetto/Fairnight-installa.zip` per GitHub Releases |
+| `LEGGIMI.txt`, `LEEME.txt` | i passi in breve, in italiano e spagnolo, nello zip delle Releases |
 | `prova/calendari-finti.mjs` | calendari iCal inventati su `127.0.0.1:8765`, per la CI e le schermate |
 
 Da dove installa:
 
-- **copia del progetto** (beta tester collaboratori del repo privato): se accanto a `installa/` c'è `packages/fairnight-cli`, fa `npm ci`, `npm run build`, `npm pack` dei 6 pacchetti e `npm install` dei `.tgz` in `~/Fairnight/programma`;
+- **copia del progetto** (zip di GitHub o clone): se accanto a `installa/` c'è `packages/fairnight-cli`, fa `npm ci`, `npm run build`, `npm pack` dei 6 pacchetti e `npm install` dei `.tgz` in `~/Fairnight/programma`;
 - **npm** (dopo il lancio, dallo zip delle Releases): `npm install fairnight-cli@latest` nella stessa cartella.
 
-L'host vede e fa le stesse cose nei due casi. `~/Fairnight` contiene `programma/` (si rifà a ogni installazione), `fairnight.config.json`, `data/`, `Fairnight.cmd|.command`, `Cambia impostazioni.cmd|.command` e `installazione.log`. Non si usano Documenti né la Scrivania (OneDrive, iCloud), non si usa `npm -g` (su Mac vorrebbe sudo) e il PATH non si tocca.
+L'host vede e fa le stesse cose nei due casi. `~/Fairnight` contiene `programma/` (si rifà a ogni installazione), `fairnight.config.json`, `data/`, `Fairnight.cmd|.command`, `Cambia impostazioni.cmd|.command`, `installazione.log` e la guida breve dell'host (`LEGGIMI.txt`, o `LEEME.txt` con il calendario in spagnolo, scritta da `fairnight configura`). Non si usano Documenti né la Scrivania (OneDrive, iCloud), non si usa `npm -g` (su Mac vorrebbe sudo) e il PATH non si tocca.
 
-**Perché Node 22 e non 20:** better-sqlite3 12.11.1 ha binari precompilati solo per Node 22, 24, 25 e 26 (ABI 127, 137, 141, 147), su win32-x64, darwin-x64 e darwin-arm64. Con Node 20, o con Node per Windows ARM, npm proverebbe a compilarlo e fallirebbe senza strumenti di compilazione. Il motore e `engines` del repo restano `>=20`. Se un giorno esce un Node senza binario (Node 27 prima di un nuovo better-sqlite3), l'installazione fallisce con il messaggio «Non sono riuscito a installare Fairnight» e il log: va aggiornato better-sqlite3. Se l'host aggiorna Node a una nuova versione maggiore dopo l'installazione, `fairnight` dice in italiano di rilanciare l'installer (vedi `newDatabase` in `packages/fairnight-cli/src/db.ts`).
+**Perché Node 22 e non 20:** better-sqlite3 12.11.1 ha binari precompilati solo per Node 22, 24, 25 e 26 (ABI 127, 137, 141, 147), su win32-x64, darwin-x64 e darwin-arm64. Con Node 20, o con Node per Windows ARM, npm proverebbe a compilarlo e fallirebbe senza strumenti di compilazione. Il motore e `engines` del repo restano `>=20`. Se un giorno esce un Node senza binario (Node 27 prima di un nuovo better-sqlite3), l'installazione fallisce con il messaggio «Non sono riuscito a installare Fairnight», l'indirizzo a cui scrivere e la cartella del log: va aggiornato better-sqlite3. Se l'host aggiorna Node a una nuova versione maggiore dopo l'installazione, `fairnight` dice in italiano di rilanciare l'installer (vedi `newDatabase` in `packages/fairnight-cli/src/db.ts`).
 
 ## Opzioni per le prove
 
@@ -32,11 +33,13 @@ L'host vede e fa le stesse cose nei due casi. `~/Fairnight` contiene `programma/
 | `-SenzaCollegamenti` | `--senza-collegamenti` | niente icona né app |
 | `FAIRNIGHT_NODE=<node>` | `FAIRNIGHT_NODE=<node>` | usa quel Node; un percorso che non esiste = Node mancante |
 
+Su Windows `Installa Fairnight (Windows).cmd` esce con 0 se è andato tutto bene, 2 se lo script ha già spiegato il problema all'host, 1 se lo zip non è estratto o se PowerShell si è fermato da solo (in quel caso il `.cmd` scrive cosa fare e a chi scrivere). Un parametro sconosciuto ferma lo script.
+
 Le domande di `fairnight configura` accettano risposte da una pipe, una per riga (la CI fa così).
 
 ## CI
 
-`.github/workflows/installer.yml` gira solo sulle PR che toccano `installa/**`, i due file da doppio clic o `packages/fairnight-cli/**`, perché sul repo privato i minuti macOS costano 10 volte tanto. Su `windows-latest` e `macos-latest`, con Node 22 e 24, controlla:
+`.github/workflows/installer.yml` gira solo sulle PR che toccano `installa/**`, i due file da doppio clic o `packages/fairnight-cli/**`, per non far girare macOS a ogni PR, ed è richiamato da `release.yml` prima di ogni rilascio. Su `windows-latest` e `macos-latest`, con Node 22 e 24, controlla:
 
 - l'installazione dal file da doppio clic in una cartella con uno spazio nel nome;
 - che better-sqlite3 venga dal binario precompilato (niente `build/config.gypi`);
@@ -51,9 +54,9 @@ C'è anche shellcheck sugli script Mac, con il controllo del bit eseguibile in g
 
 La CI prova gli script su macOS, ma non il Finder, Gatekeeper e il Dock. Su un Mac pulito (Apple Silicon, e se possibile anche Intel), senza Node.js:
 
-1. Scarica lo zip da GitHub (Code › Download ZIP) con Safari e aprilo dal Finder. Verifica che `Installa Fairnight.command` sia ancora eseguibile: un doppio clic deve portare all'avviso di Gatekeeper, non a «non hai i permessi».
+1. Scarica lo zip da GitHub (Code › Download ZIP) con Safari e aprilo dal Finder. Verifica che `Installa Fairnight (Mac).command` sia ancora eseguibile: un doppio clic deve portare all'avviso di Gatekeeper, non a «non hai i permessi».
 2. Doppio clic: Gatekeeper lo blocca. Poi tasto destro › Apri › Apri: deve partire. **Fai le due schermate per la guida** (menu con «Apri» e finestra di conferma). Su macOS 15 e successivi il tasto destro › Apri potrebbe non bastare più: in quel caso serve Impostazioni di Sistema › Privacy e sicurezza › «Apri comunque». Annota quale dei due e correggi la guida.
-3. Senza Node: deve comparire il messaggio in italiano e Invio deve aprire nodejs.org/it/download. Installa il `.pkg` LTS e rilancia. Se puoi, prova prima anche con un Node vecchio (per esempio 20): deve comparire il messaggio «Node vecchio» della guida, e la LTS installata sopra deve prenderne il posto.
+3. Senza Node: deve comparire il messaggio in italiano e Invio deve aprire nodejs.org/en/download. Installa «macOS Installer (.pkg)» e rilancia. Se puoi, prova prima anche con un Node vecchio (per esempio 20): deve comparire il messaggio «Node vecchio» della guida, e la LTS installata sopra deve prenderne il posto.
 4. Installazione: le domande nel Terminale, gli accenti, i simboli ✓ e «», l'incolla con Cmd+V, il calendario che si apre nel browser predefinito (anche Safari).
 5. `~/Applications/Fairnight.app`: ha l'icona di Fairnight? Si apre con doppio clic senza avvisi? Apre il Terminale con «Fairnight è acceso»? Verifica anche la prima apertura, quando macOS potrebbe chiedere il permesso di aprire il Terminale.
 6. L'alias `Fairnight.app` sulla Scrivania: icona giusta, doppio clic funziona. Se la Scrivania è su iCloud Drive, l'alias si sincronizza senza danni?

@@ -5,8 +5,10 @@
  * No Node.js and no browser API in here: plain strings in, plain strings out.
  */
 import { countryNames } from "../countries-iso.js";
+import { esMunicipalities, findEsMunicipality } from "../countries/es-municipalities.js";
 import { registryFor } from "../registry.js";
 import { KINSHIPS, PAYMENT_TYPES, SEXES, type Country, type Problem } from "../types.js";
+import { PAY_WORDS } from "./pay.js";
 import { LANGS, WORDS, type Lang, type Words } from "./words.js";
 
 export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
@@ -28,6 +30,7 @@ nav a:focus-visible,a.button:focus-visible,button:focus-visible,summary:focus-vi
 .steps li.done{border-color:var(--accent)}.steps li[aria-current]{border-color:var(--accent);color:var(--ink);font-weight:700}
 .privacy-line{display:flex;gap:9px;align-items:flex-start;background:var(--soft);border-radius:12px;padding:10px 12px;margin:12px 0 4px;font-size:.92rem}
 .privacy-line svg{flex:none;margin-top:3px;color:var(--accent)}
+.privacy-line .where{display:block;margin-top:4px}
 .intro{color:var(--muted);font-size:.95rem}
 h2{font-size:1.15rem;margin:22px 0 6px}
 .step{margin:14px 0}
@@ -53,6 +56,13 @@ details.another>summary::-webkit-details-marker{display:none}
 details.another[open]>summary{display:none}
 .privacy{font-size:.85rem;color:var(--muted);margin-top:22px}
 .message{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:12px}
+.pay{margin:18px 0}.pay h2{margin:0 0 8px}
+.pay-item{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin:10px 0}
+.pay-item>span{color:var(--muted);font-size:.92rem}
+.pay-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}.pay-head strong{font-size:1.15rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pay-item .button{margin-top:12px}
+.pay-done{display:flex;gap:8px;align-items:center;margin:10px 0 0;color:var(--ok);font-weight:700}.pay-done svg{width:22px;height:22px;flex:none}
+.pay-safe{margin-top:4px}
 @media (max-width:480px){.top{flex-direction:column-reverse;gap:2px}nav{align-self:flex-end;padding-top:0}}
 `;
 
@@ -103,7 +113,7 @@ function fieldOf(path: string): string {
     "address.street": "street",
     "address.postalCode": "postalCode",
     "address.locality": "locality",
-    "address.municipalityCode": "postalCode",
+    "address.municipalityCode": "locality",
     "address.province": "province",
     phone2: "phone",
   };
@@ -120,7 +130,8 @@ export function errorsByField(problems: Problem[], w: Words): Map<string, string
     // (a missing name is already shown on the name fields).
     if (field === "phone" && !contact && !p.path.endsWith("phone")) continue;
     const required = /required|missing/.test(p.message);
-    out.set(field, contact ? w.contactMissing : required ? w.required : (w.invalidFor[field] ?? w.invalid));
+    const municipality = p.path.endsWith("address.municipalityCode");
+    out.set(field, contact ? w.contactMissing : municipality ? (w.invalidFor.municipality as string) : required ? w.required : (w.invalidFor[field] ?? w.invalid));
   }
   return out;
 }
@@ -130,8 +141,11 @@ export interface FormState {
   errors: Map<string, string>;
 }
 
-/** `residence`: in Italy, asked only when the listing sends Istat data. */
-export function renderForm(w: Words, lang: Lang, country: Country, action: string, tok: string, registered: number, state: FormState, options: { residence?: boolean } = {}): string {
+/**
+ * `residence`: in Italy, asked only when the listing sends Istat data.
+ * `taxTown`: the town of a tourist tax that residents do not pay; the form asks each guest.
+ */
+export function renderForm(w: Words, lang: Lang, country: Country, action: string, tok: string, registered: number, state: FormState, options: { residence?: boolean; taxTown?: string } = {}): string {
   const v = (k: string) => esc(state.values[k] ?? "");
   const err = (k: string) => (state.errors.has(k) ? `<div class="err" id="${k}-err">${esc(state.errors.get(k) as string)}</div>` : "");
   const cls = (k: string) => (state.errors.has(k) ? ' class="has-err"' : "");
@@ -144,7 +158,10 @@ export function renderForm(w: Words, lang: Lang, country: Country, action: strin
   const countries = countryNames(lang).map((c): [string, string] => [c.code, c.name]);
   const first = registered === 0;
   const documentTypes = registryFor(country).documentTypes.map((d): [string, string] => [d, w.documentTypes[d]]);
-  if (country === "IT") return renderItalianForm(w, lang, action, tok, first, registered, state, { input, select, countries, documentTypes }, options.residence === true);
+  const tax = options.taxTown
+    ? `<fieldset><legend>${esc(PAY_WORDS[lang].residentSection)}</legend><label class="check"><input type="checkbox" name="taxResident" value="1"${state.values.taxResident ? " checked" : ""}>${esc(PAY_WORDS[lang].resident(options.taxTown))}</label></fieldset>`
+    : "";
+  if (country === "IT") return renderItalianForm(w, lang, action, tok, first, registered, state, { input, select, countries, documentTypes }, options.residence === true, tax);
   // Step 1: the person, where they live, how to reach them. Step 2: the document (and, for the holder, the payment).
   return `<form method="post" action="${esc(action)}" autocomplete="off" id="form">
 <input type="hidden" name="t" value="${esc(tok)}"><input type="hidden" name="lang" value="${lang}">
@@ -158,7 +175,7 @@ ${select("nationality", countries)}
 ${first ? "" : select("kinship", KINSHIPS.map((k) => [k, w.kinship[k]]), w.hints.kinship)}
 </fieldset>
 <fieldset><legend>${esc(w.sections.address)}</legend>
-${select("country", countries)}${input("street", "text", 'maxlength="100"')}${input("postalCode", "text", 'maxlength="20"')}${input("locality", "text", 'maxlength="100"')}
+${select("country", countries)}${input("street", "text", 'maxlength="100"')}${input("postalCode", "text", 'maxlength="20" inputmode="numeric"')}${townField(w, state)}
 </fieldset>
 <fieldset><legend>${esc(w.sections.contact)}</legend><p class="hint">${esc(w.hints.contact as string)}</p>
 ${input("phone", "tel", 'maxlength="20" inputmode="tel"')}${input("email", "email", 'maxlength="100" inputmode="email"')}
@@ -171,9 +188,27 @@ ${input("docNumber", "text", 'maxlength="20" autocapitalize="characters"')}${inp
 <label class="check"><input type="checkbox" name="docSpanish" value="1"${state.values.docSpanish ? " checked" : ""}>${esc(w.fields.docSpanish as string)}</label>
 </fieldset>
 ${first ? `<fieldset><legend>${esc(w.sections.payment)}</legend>${select("payment", PAYMENT_TYPES.map((p) => [p, w.payment[p]]))}<p class="hint">${esc(w.paymentNote)}</p></fieldset>` : ""}
+${tax}
 </section>
 <button type="submit">${esc(w.save)}</button>
 </form>`;
+}
+
+let townList: string | null = null;
+
+/** Every Spanish municipality as a suggestion of the town field: plain HTML, it works without JavaScript too. */
+function townOptions(): string {
+  townList ??= `<datalist id="es-towns">${esMunicipalities()
+    .map((m) => `<option value="${esc(m.label)}">`)
+    .join("")}</datalist>`;
+  return townList;
+}
+
+/** The town of residence: in Spain the municipality, picked from the INE's list by its name; abroad, free text. */
+function townField(w: Words, state: FormState): string {
+  const k = "locality";
+  const bad = state.errors.has(k);
+  return `<div${bad ? ' class="has-err"' : ""}><label for="${k}">${esc(w.fields.town as string)} <span class="hint">${esc(w.hints.town as string)}</span></label><input id="${k}" name="${k}" type="text" value="${esc(state.values[k] ?? "")}" maxlength="100" list="es-towns" autocomplete="off"${bad ? ` aria-invalid="true" aria-describedby="${k}-err"` : ""}>${bad ? `<div class="err" id="${k}-err">${esc(state.errors.get(k) as string)}</div>` : ""}${townOptions()}</div>`;
 }
 
 interface Controls {
@@ -188,7 +223,7 @@ interface Controls {
  * document only for the holder. No address, contact or payment: the law does
  * not ask for them, so the form does not either.
  */
-function renderItalianForm(w: Words, lang: Lang, action: string, tok: string, first: boolean, registered: number, state: FormState, c: Controls, residence: boolean): string {
+function renderItalianForm(w: Words, lang: Lang, action: string, tok: string, first: boolean, registered: number, state: FormState, c: Controls, residence: boolean, tax: string): string {
   const hint = (k: string, text: string) => c.input(k, "text", 'maxlength="60"').replace(`${esc(w.fields[k] as string)}</label>`, `${esc(w.fields[k] as string)} <span class="hint">${esc(text)}</span></label>`);
   const province = (k: string) => c.input(k, "text", 'maxlength="2" autocapitalize="characters" size="2"');
   const sexes = SEXES.filter((x) => x !== "other").map((x): [string, string] => [x, w.sex[x]]);
@@ -225,9 +260,24 @@ ${c.select("docCountry", c.countries)}${hint("docPlace", w.italy.docPlaceHint)}$
 </fieldset>`
     : `<p class="message">${esc(w.italy.noDocument)}</p>`
 }
+${tax}
 </section>
 <button type="submit">${esc(w.save)}</button>
 </form>`;
+}
+
+/**
+ * The address as posted. In Spain the town is looked up in the INE's list: when
+ * it is a municipality (the postal code tells apart towns of the same name),
+ * its INE code goes with it and the name becomes the INE's. Otherwise no code,
+ * and the rules ask the guest to pick the municipality from the list.
+ */
+function addressInput(country: string, street: string, postalCode: string, locality: string, province: string): Record<string, string> {
+  const address = { country, street, postalCode, locality, province };
+  if (country.trim().toUpperCase() !== "ESP" || !locality.trim()) return address;
+  const found = findEsMunicipality(locality, postalCode.trim());
+  if (!("municipality" in found)) return address;
+  return { ...address, locality: found.municipality.name, municipalityCode: found.municipality.code };
 }
 
 /** The guest object from the posted form; unknown fields are never read. */
@@ -250,7 +300,7 @@ export function guestInput(f: URLSearchParams): Record<string, unknown> {
       spanish: f.get("docSpanish") === "1" && g("docType") === "passport",
       issuedIn: { country: g("docCountry"), locality: g("docPlace"), province: g("docProvince") },
     },
-    address: { country: g("country"), street: g("street"), postalCode: g("postalCode"), locality: g("locality"), province: g("province") },
+    address: addressInput(g("country"), g("street"), g("postalCode"), g("locality"), g("province")),
     phone: g("phone"),
     email: g("email"),
   };
@@ -283,4 +333,5 @@ export const FORM_KEYS = [
   "phone",
   "email",
   "payment",
+  "taxResident",
 ];

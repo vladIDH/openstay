@@ -303,7 +303,7 @@ export function syncStatus(folder: Folder) {
 /**
  * The zone data a listing's prices use: source and attribution, how old it is,
  * the zone's average, and the zone's figures night by night in a range. Read
- * only; expired data (AirROI after 30 days) is never shown.
+ * only; expired data is never shown.
  */
 export function marketArea(folder: Folder, args: { listing: string; from?: string; to?: string }) {
   const today = localToday(folder.now());

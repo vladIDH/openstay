@@ -51,7 +51,7 @@ npx fairnight serve     # legge i calendari, calcola 365 notti, apre http://loca
 ## Fasi
 
 ### Fase 0: mappa e impianto (fatta, 12 ottobre 2026)
-Documenti in `docs/`, repo locale, licenza.
+Documenti in `docs/` (la mappa delle funzioni è in [mappa-funzioni.md](mappa-funzioni.md)), repo locale, licenza.
 
 ### Fase 1: motore base e versione 0.1 pubblica (circa 13 giorni di lavoro)
 
@@ -100,7 +100,7 @@ Documenti in `docs/`, repo locale, licenza.
 **Anticipato sul ramo `mercato` (13 ottobre 2026):**
 - il fattore «domanda di zona» nel motore, spento di default;
 - l'import del CSV dell'host e dei file Inside Airbnb scaricati dall'utente (al posto dello «scaricatore»: nel codice non ce n'è);
-- l'adattatore AirROI, pronto ma spento finché AirROI non conferma per iscritto i termini (vedi `fonti-mercato.md`);
+- l'adattatore AirROI, acceso il 15 ottobre 2026 con l'accordo di AirROI (ramo `airroi-acceso`, vedi `fonti-mercato.md`);
 - i comandi `fairnight mercato importa | collega | stato | cancella` e il tool MCP `get_market_area`.
 
 **Totale fino alla fase 3: circa 49 giorni di lavoro.** La 0.1 pubblica esce dopo circa 13.
@@ -117,7 +117,7 @@ Guida: `risposte-ospiti.md`.
 - tool MCP in sola lettura `get_guest_replies`.
 
 **Versioni successive:**
-- **Lettura delle mail di Airbnb e Booking.com** (IMAP in sola lettura, come il co-host da cui viene il controllo di freschezza). I modelli di mail vanno riconosciuti in più lingue. La risposta via mail non è documentata dalle piattaforme: senza una fonte ufficiale resta solo la lettura.
+- **Lettura delle mail di Airbnb e Booking.com** (IMAP in sola lettura). I modelli di mail vanno riconosciuti in più lingue. La risposta via mail non è documentata dalle piattaforme: senza una fonte ufficiale resta solo la lettura.
 - **Invio automatico**, spento di default, solo per categorie sicure (wifi, orari, indicazioni), mai per soldi, sconti, rimborsi, reclami o codici d'accesso. Va deciso con l'host.
 - Altri gestionali con un'API messaggi ufficiale.
 - Un modello OpenAI con la chiave dell'host, se richiesto. Il piano gratuito di Gemini resta escluso, perché usa i dati per migliorare i prodotti di Google.
@@ -137,11 +137,11 @@ Guida: `risposte-ospiti.md`.
 
 ## Regole fisse del progetto
 
-- Nessuno scraping di Airbnb, Booking o PriceLabs, mai.
+- Nessuno scraping di nessun sito, mai.
 - Nessun dato reale di host o ospiti nel repo.
-- Nessun nome di funzioni di PriceLabs nel codice o nei testi del prodotto.
+- Nessun nome di prodotti o funzioni di altri software di prezzi nel codice o nei testi del prodotto.
 - Le fonti di mercato sono solo adattatori opzionali, con la chiave o il file dell'utente.
-- AirROI resta spento (`market.airroi.enabled: false`) finché non arriva la risposta scritta alla domanda n. 1 di `fonti-mercato.md`.
+- AirROI è usato con l'accordo di AirROI (15 ottobre 2026): sempre con la chiave dell'host, sempre con «Powered by AirROI» e il link a https://www.airroi.com dove compare un dato (vedi `fonti-mercato.md`).
 
 ## Versioni dello schema del database
 
@@ -151,8 +151,11 @@ Ogni ramo che cambia `packages/fairnight-cli/src/db.ts` alza `SCHEMA_VERSION` di
 |---|---|---|
 | 1–6 | calendari, Smoobu, Beds24, zone, Fairguest, piccoli hotel | in main |
 | 7 | Fairhello: tabelle `hello_*` | in main (merge della PR #12, 15 ottobre 2026) |
-| 8 | `fairguest-it` | da fare: oggi usa 7 e va rinumerato |
+| 8 | Fairguest Italia: riconoscimento degli ospiti, ricevute | in main (PR #9) |
+| 9 | link di check-in: la casella del relay | in main (PR #13) |
+| 10 | Istat: record statistico sigillato | in main (PR #14) |
+| 11 | tassa di soggiorno e pagamenti: classe dell'ospite per la tassa, conteggi, pagamenti | in main (PR #18) |
 
-Il pilota automatico (`pilota`) aggiunge solo tabelle nuove (`pilot_runs`, `pilot_changes`, `pilot_state`) con `CREATE TABLE IF NOT EXISTS`, create all'apertura del database: per scelta di Vlad (15 ottobre 2026) non prende un numero di schema.
+Il pilota automatico (`pilota`) aggiunge solo tabelle nuove (`pilot_runs`, `pilot_changes`, `pilot_state`) con `CREATE TABLE IF NOT EXISTS`, create all'apertura del database: per scelta non prende un numero di schema.
 
 Chi rinumera aggiorna anche `test/db.test.ts`: la versione attesa e un fixture `schema-<n-1>.sql` con lo schema esatto della versione precedente.

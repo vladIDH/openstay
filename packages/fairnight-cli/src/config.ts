@@ -117,7 +117,7 @@ export interface AirRoiArea {
 
 export interface MarketSettings {
   airroi?: {
-    /** Off until AirROI confirms its terms of use in writing. */
+    /** On unless the host sets it to false. Used with AirROI's agreement, with the host's own key. */
     enabled: boolean;
     /** Zone name → AirROI market. */
     areas?: Record<string, AirRoiArea>;
@@ -131,7 +131,7 @@ export interface HostConfig {
   market?: MarketSettings;
   /** Language of the calendar page: "it", "es" or "en". Missing: English. */
   language?: Language;
-  /** The relay of the guests' check-in link. Missing: https://fairguest.khlumen.com. */
+  /** The relay of the guests' check-in link. Missing: https://fairguest-relay.openstay.workers.dev. */
   fairguestRelay?: string;
   /** When the daily run of the autopilot starts ("06:00"), as `fairnight pilota pianifica` sets it. */
   pilot?: { time: string };
@@ -191,7 +191,7 @@ function checkMarket(v: unknown, issues: ConfigIssue[]): MarketSettings | null {
     return null;
   }
   unknownFields(a, ap, ["enabled", "areas"], issues);
-  if (typeof a.enabled !== "boolean") issues.push({ path: `${ap}.enabled`, message: `must be true or false, got ${JSON.stringify(a.enabled)}` });
+  if (a.enabled !== undefined && typeof a.enabled !== "boolean") issues.push({ path: `${ap}.enabled`, message: `must be true or false, got ${JSON.stringify(a.enabled)}` });
   const areas: Record<string, AirRoiArea> = {};
   if (a.areas !== undefined) {
     if (!isObj(a.areas)) issues.push({ path: `${ap}.areas`, message: "must be an object: zone name → country, region, locality" });
@@ -217,7 +217,7 @@ function checkMarket(v: unknown, issues: ConfigIssue[]): MarketSettings | null {
       }
     }
   }
-  return { airroi: { enabled: a.enabled === true, ...(a.areas !== undefined ? { areas } : {}) }, ...(ine ? { ine } : {}) };
+  return { airroi: { enabled: a.enabled !== false, ...(a.areas !== undefined ? { areas } : {}) }, ...(ine ? { ine } : {}) };
 }
 
 type Obj = Record<string, unknown>;
@@ -314,7 +314,7 @@ export function validateHostConfig(input: unknown): ValidationResult<HostConfig>
     return { ok: false, issues: [{ path: "config", message: "must be an object with a listings list" }] };
   }
   if (input.fairguestRelay !== undefined && (typeof input.fairguestRelay !== "string" || !/^(https:\/\/[a-z0-9.-]+|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)\/?$/i.test(input.fairguestRelay))) {
-    issues.push({ path: "config.fairguestRelay", message: `must be the https address of a Fairguest relay, like "https://fairguest.khlumen.com", got ${JSON.stringify(input.fairguestRelay)}` });
+    issues.push({ path: "config.fairguestRelay", message: `must be the https address of a Fairguest relay, like "https://fairguest-relay.openstay.workers.dev", got ${JSON.stringify(input.fairguestRelay)}` });
   }
   unknownFields(input, "config", ["listings", "market", "language", "pilot", "fairguestRelay"], issues);
   let pilotTime: string | undefined;

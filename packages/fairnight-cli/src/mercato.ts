@@ -4,10 +4,10 @@
  * Sources, all optional and all chosen by the host:
  * - a CSV file of the host's own zone figures;
  * - the Inside Airbnb files the host downloaded (never downloaded here);
- * - AirROI zone metrics with the host's own key, switched off until AirROI
- *   confirms its terms in writing (market.airroi.enabled).
+ * - AirROI zone metrics with the host's own key, used with AirROI's agreement
+ *   (the host can switch it off with market.airroi.enabled: false).
  * Nothing is scraped. Zone data stays in the local database; AirROI data is
- * kept at most 30 days and deleted on request.
+ * read again by the first sync after AIRROI_REFRESH_DAYS days, and deleted on request.
  */
 import { createReadStream, existsSync, statSync } from "node:fs";
 import path from "node:path";
@@ -15,8 +15,9 @@ import { createGunzip } from "node:zlib";
 import { DEFAULT_MARKET, describeComparables, formatAmount } from "fairnight";
 import {
   AIRROI_ATTRIBUTION,
-  AIRROI_MAX_DAYS,
+  AIRROI_REFRESH_DAYS,
   AirRoiClient,
+  AirRoiError,
   describeIstacBand,
   INE_ATTRIBUTION,
   IneClient,
@@ -38,8 +39,8 @@ import {
 } from "fairnight-market";
 import { addDays } from "./channel.js";
 import { AIRROI_CREDENTIALS_FILE, airroiKeySource, loadAirRoiKey, saveAirRoiKey } from "./airroi-credentials.js";
-import { isAreaName, loadHostConfig, SetupError, type HostConfig } from "./config.js";
-import { openDb } from "./db.js";
+import { isAreaName, loadHostConfig, SetupError, type AirRoiArea, type HostConfig, type MarketSettings } from "./config.js";
+import { openDb, type Db } from "./db.js";
 import { CONFIG_FILE, configPath, dbPath, localToday, type Io } from "./io.js";
 import { deleteMarket, listMarketAreas, loadComparables, purgeExpiredMarket, saveMarket } from "./market-store.js";
 
@@ -50,13 +51,14 @@ export const INE_OFF =
   "INE is switched off (market.ine.enabled is false or missing in fairnight.config.json): INE's site gives two different licences (CC BY 4.0 in the legal notice, CC BY-SA 4.0 in the footer). Nothing was asked or saved.";
 
 export const AIRROI_OFF =
-  "AirROI is switched off (market.airroi.enabled is false in fairnight.config.json): in attesa di conferma scritta da AirROI sui termini d'uso. Nothing was asked, sent or saved.";
+  "AirROI is switched off in fairnight.config.json (market.airroi.enabled is false): set it to true, or remove it, to use AirROI. Nothing was asked, sent or saved.";
 
 /** How many nights ahead AirROI's monthly figures are spread over. */
 const AIRROI_DAYS = 365;
 
-function airroiEnabled(config: HostConfig): boolean {
-  return config.market?.airroi?.enabled === true;
+/** On unless the host switched it off: it still needs the host's key and a zone under market.airroi.areas. */
+function airroiEnabled(market: MarketSettings | undefined): boolean {
+  return market?.airroi?.enabled !== false;
 }
 
 function checkArea(area: string | undefined): string {
@@ -236,6 +238,9 @@ export async function importFile(dir: string, io: Io, options: FileImportOptions
 
 // ---------------------------------------------------------------- AirROI
 
+/** The day from which the next sync reads again AirROI data read on readOn. */
+export const airroiRefreshOn = (readOn: string): string => addDays(readOn, AIRROI_REFRESH_DAYS);
+
 function airroiClient(dir: string, io: Io): AirRoiClient {
   const { apiKey } = loadAirRoiKey(dir, io.env ?? {});
   return new AirRoiClient({
@@ -249,7 +254,7 @@ function airroiClient(dir: string, io: Io): AirRoiClient {
 export async function connectAirRoi(dir: string, io: Io): Promise<number> {
   if (!existsSync(configPath(dir))) throw new SetupError(`No ${CONFIG_FILE} in ${dir}. Run "fairnight init" in this folder first.`);
   const config = loadHostConfig(dir);
-  if (!airroiEnabled(config)) {
+  if (!airroiEnabled(config.market)) {
     io.err(AIRROI_OFF);
     return 1;
   }
@@ -271,9 +276,31 @@ export async function connectAirRoi(dir: string, io: Io): Promise<number> {
   return 0;
 }
 
+/** Read one zone from AirROI and replace its data. Returns the months read, or 0 when AirROI has none. */
+async function readAirRoiZone(db: Db, client: AirRoiClient, io: Io, name: string, a: AirRoiArea, today: string): Promise<number> {
+  const filter = { ...(a.roomType !== undefined ? { roomType: a.roomType } : {}), ...(a.bedrooms !== undefined ? { bedrooms: a.bedrooms } : {}) };
+  const months = await client.marketMetrics(
+    { country: a.country, region: a.region, locality: a.locality, ...(a.district !== undefined ? { district: a.district } : {}) },
+    { filter },
+  );
+  const days = monthlyToDays(months, today, AIRROI_DAYS);
+  if (days.length === 0) return 0;
+  saveMarket(db, {
+    area: name,
+    source: "airroi",
+    attribution: AIRROI_ATTRIBUTION,
+    estimated: false,
+    readOn: today,
+    importedAt: io.now().toISOString(),
+    note: `monthly figures of ${months.length} months, each night uses the same month`,
+    days,
+  });
+  return months.length;
+}
+
 export async function importAirRoi(dir: string, io: Io, options: { area?: string }): Promise<number> {
   const config = loadHostConfig(dir);
-  if (!airroiEnabled(config)) {
+  if (!airroiEnabled(config.market)) {
     io.err(AIRROI_OFF);
     return 1;
   }
@@ -289,31 +316,14 @@ export async function importAirRoi(dir: string, io: Io, options: { area?: string
   try {
     purgeExpiredMarket(db, today);
     for (const name of names) {
-      const a = areas[name] as NonNullable<typeof areas[string]>;
-      const filter = { ...(a.roomType !== undefined ? { roomType: a.roomType } : {}), ...(a.bedrooms !== undefined ? { bedrooms: a.bedrooms } : {}) };
-      const months = await client.marketMetrics(
-        { country: a.country, region: a.region, locality: a.locality, ...(a.district !== undefined ? { district: a.district } : {}) },
-        { filter },
-      );
-      const days = monthlyToDays(months, today, AIRROI_DAYS);
-      if (days.length === 0) {
+      const a = areas[name] as AirRoiArea;
+      const months = await readAirRoiZone(db, client, io, name, a, today);
+      if (months === 0) {
         io.err(`AirROI has no figures for zone "${name}" (${a.locality}, ${a.region}, ${a.country}): nothing was saved.`);
         continue;
       }
-      const expiresOn = addDays(today, AIRROI_MAX_DAYS);
-      saveMarket(db, {
-        area: name,
-        source: "airroi",
-        attribution: AIRROI_ATTRIBUTION,
-        estimated: false,
-        readOn: today,
-        importedAt: io.now().toISOString(),
-        expiresOn,
-        note: `monthly figures of ${months.length} months, each night uses the same month`,
-        days,
-      });
-      io.out(`Zone "${name}": ${months.length} months from AirROI, spread over the next ${days.length} nights (${AIRROI_ATTRIBUTION}).`);
-      io.out(`  Kept until ${expiresOn}, then deleted (AirROI's terms: at most ${AIRROI_MAX_DAYS} days). "fairnight mercato cancella --fonte airroi" deletes it now.`);
+      io.out(`Zone "${name}": ${months} months from AirROI, spread over the next ${AIRROI_DAYS} nights. ${AIRROI_ATTRIBUTION}.`);
+      io.out(`  The first "fairnight sync" from ${airroiRefreshOn(today)} reads it again (AirROI suggests at least once a month). "fairnight mercato cancella --fonte airroi" deletes it.`);
       afterImport(io, config, name);
     }
   } finally {
@@ -321,6 +331,47 @@ export async function importAirRoi(dir: string, io: Io, options: { area?: string
     io.out(`AirROI calls: ${client.calls}, billed to your AirROI account.`);
   }
   return 0;
+}
+
+/**
+ * Called by every sync: AirROI zones read AIRROI_REFRESH_DAYS or more days ago
+ * are read again, with the host's key. Zones the host never imported from
+ * AirROI, or deleted, are left alone. A failure keeps the old data and becomes a note.
+ */
+export async function refreshAirRoi(db: Db, dir: string, io: Io, market: MarketSettings | undefined): Promise<string[]> {
+  if (!airroiEnabled(market)) return [];
+  const today = localToday(io.now());
+  const stale = listMarketAreas(db, today).filter((a) => a.source === "airroi" && airroiRefreshOn(a.readOn) <= today);
+  if (stale.length === 0) return [];
+  const notes: string[] = [];
+  const areas = market?.airroi?.areas ?? {};
+  let client: AirRoiClient;
+  try {
+    client = airroiClient(dir, io);
+  } catch (e) {
+    if (!(e instanceof SetupError)) throw e;
+    return [`AirROI: zone data from ${stale.map((a) => `"${a.area}" (${a.readOn})`).join(", ")} not read again. ${e.message}`];
+  }
+  for (const zone of stale) {
+    const a = areas[zone.area];
+    if (!a) {
+      notes.push(`AirROI: zone "${zone.area}" is from ${zone.readOn}, but it is no longer under market.airroi.areas: not read again.`);
+      continue;
+    }
+    try {
+      const months = await readAirRoiZone(db, client, io, zone.area, a, today);
+      notes.push(
+        months === 0
+          ? `AirROI: no figures for zone "${zone.area}" this time: the data from ${zone.readOn} stays.`
+          : `AirROI: zone "${zone.area}" read again (${months} months; the old data was from ${zone.readOn}). ${AIRROI_ATTRIBUTION}.`,
+      );
+    } catch (e) {
+      if (!(e instanceof AirRoiError)) throw e;
+      notes.push(`AirROI: zone "${zone.area}" not read again, the data from ${zone.readOn} stays. ${e.message}`);
+    }
+  }
+  if (client.calls > 0) notes.push(`AirROI calls: ${client.calls}, billed to your AirROI account.`);
+  return notes;
 }
 
 // ---------------------------------------------------------------- ISTAC and INE (open data)
@@ -431,7 +482,7 @@ export function marketStatus(dir: string, io: Io): number {
   const today = localToday(io.now());
   const db = openDb(dbPath(dir));
   try {
-    for (const area of purgeExpiredMarket(db, today)) io.out(`Zone "${area}": AirROI data older than ${AIRROI_MAX_DAYS} days, deleted.`);
+    for (const area of purgeExpiredMarket(db, today)) io.out(`Zone "${area}": data past its keeping date, deleted.`);
     const areas = listMarketAreas(db, today);
     io.out(areas.length === 0 ? 'No zone data yet: "fairnight mercato importa <file> --zona <name>".' : "Zones:");
     for (const a of areas) {
@@ -444,6 +495,7 @@ export function marketStatus(dir: string, io: Io): number {
       const homes = describeComparables(loadComparables(db, a.area) ?? undefined);
       io.out(`  Homes: ${homes !== "" ? homes : "the whole zone"}.`);
       if (a.expiresOn) io.out(`  Kept until ${a.expiresOn}, then deleted.`);
+      if (a.source === "airroi") io.out(`  Read again by the first "fairnight sync" from ${airroiRefreshOn(a.readOn)}.`);
       if (a.estimated) io.out(`  ${INSIDE_AIRBNB_ESTIMATE_NOTE}`);
       const users = usersOf(config, a.area);
       io.out(`  Used by: ${users.join(", ") || "no listing"}.`);
@@ -459,10 +511,10 @@ export function marketStatus(dir: string, io: Io): number {
       io.out(`- ${l.name}: ${zone}, ${factor}.`);
     }
     const keySource = airroiKeySource(dir, io.env ?? {});
-    if (airroiEnabled(config)) {
+    if (airroiEnabled(config.market)) {
       io.out(`AirROI: on; key ${keySource === null ? 'not saved yet ("fairnight mercato collega")' : `from the ${keySource}`}.`);
     } else {
-      io.out(`AirROI: off, in attesa di conferma scritta da AirROI sui termini d'uso.${keySource !== null ? " A key is saved but not used." : ""}`);
+      io.out(`AirROI: off (market.airroi.enabled is false).${keySource !== null ? " A key is saved but not used." : ""}`);
     }
     return 0;
   } finally {

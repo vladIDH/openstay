@@ -99,36 +99,16 @@ Example files:
 - `examples/prenotazioni-esempio.json`: the stays (`checkIn` = first night, `checkOut` = departure day, optional `kind: "blocked"`);
 - `examples/eventi-esempio.csv`: an events file.
 
-## Fairnight and PriceLabs: an honest comparison
+## What is there and what is not (yet)
 
-Based only on PriceLabs' public pages (see [`docs/mappa-pricelabs.md`](https://github.com/vladIDH/openstay/blob/main/docs/mappa-pricelabs.md), in Italian). PriceLabs is a mature commercial product, while Fairnight is at its first step.
-
-**Already in Fairnight:**
-- base price, floor and ceiling;
-- seasons;
-- day of week;
-- last-minute discounts and far-out premiums in steps;
-- gap (orphan night) pricing and minimum stay;
-- monthly occupancy adjustment;
-- a historical floor from last year's sold prices;
-- a discount when no new bookings arrive;
-- date overrides;
-- rounding;
-- minimum stay by lead time with a clear precedence;
-- a per-night explanation.
-
-**Things Fairnight does differently today:**
-- events come from the host's own file (in PriceLabs users can only suggest events to a curated list);
-- every rule is visible and versioned in code;
-- no per-listing fee;
-- data stays with the host.
+The engine is at its first step. The full list of the functions of a pricing engine, with the state of each one in Fairnight, is in [`docs/mappa-funzioni.md`](https://github.com/vladIDH/openstay/blob/main/docs/mappa-funzioni.md) (in Italian).
 
 **Around the engine (other OpenStay packages):** iCal calendar sync, CSV import of past prices, a local calendar page, CSV export and a read-only MCP server.
 
 **Phase 2:**
 - rules per group and portfolio, reusable rule sets, preview before applying;
 - length-of-stay discounts, extra-guest fees, check-in/out days;
-- PMS connectors (Smoobu first, then Beds24) with scheduled sync;
+- more channel manager connectors (Smoobu and Beds24 are done, with the daily autopilot);
 - alerts;
 - portfolio analytics and pacing against last year;
 - backtesting on a past year;
@@ -136,7 +116,7 @@ Based only on PriceLabs' public pages (see [`docs/mappa-pricelabs.md`](https://g
 
 **Phase 3:**
 - market data (comparable listings, neighbourhood percentiles) through optional adapters that use the user's own key;
-- base-price suggestions;
+- base-price suggestions (a first version from zone data is done);
 - computed minimum stay;
 - demand forecasting.
 

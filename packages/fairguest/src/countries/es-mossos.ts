@@ -120,8 +120,8 @@ export const mossosRegistry: Registry & { file: typeof mossosFile } = {
   authority: "Mossos d'Esquadra (registreviatgers.mossos.gencat.cat)",
   documentTypes: SPAIN_DOCUMENT_TYPES,
   validate: mossosRules,
-  // The form cannot ask for the INE code (a guest does not know it): the host adds it.
-  checkGuest: (g, i, checkIn) => guestRules(g, i, checkIn, 14, { skipMunicipalityCode: true }),
+  // The form finds the INE code from the town the guest picks (es-municipalities.ts).
+  checkGuest: (g, i, checkIn) => guestRules(g, i, checkIn, 14),
   deadlines: spainDeadlines,
   /** Use `file` to get the bytes with a sequence number; `prepare` uses sequence 1. */
   prepare(stays: Stay[], kind: Kind, at: string): Submission {

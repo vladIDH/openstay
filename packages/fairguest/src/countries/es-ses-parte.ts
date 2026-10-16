@@ -18,6 +18,7 @@
  * application. They come in through ONE hook, `SES_SCHEMA` below: until it is
  * filled in from the XSD, `sesXml` refuses and nothing can leave the computer.
  */
+import { sesMunicipalityCode } from "./es-municipalities.js";
 import { KINSHIP_CODES, PAYMENT_CODES, SES_DOCUMENT_CODES, SES_SEX_CODES } from "../spain.js";
 import { NotAvailableError, type Address, type Guest, type Kind, type Stay } from "../types.js";
 
@@ -39,9 +40,8 @@ export const sesDateTime = (date: string, time?: string): string => `${date}T${t
  * the last digit is dropped here; a 5-digit code passes as it is.
  */
 export function sesMunicipality(code: string | undefined): string | undefined {
-  if (code === undefined) return undefined;
-  if (/^\d{6}$/.test(code)) return code.slice(0, 5);
-  return /^\d{5}$/.test(code) ? code : undefined;
+  // The INE code (6 digits, from the town the guest picked in the INE list) or its first 5.
+  return code !== undefined && /^\d{5,6}$/.test(code) ? sesMunicipalityCode(code) : undefined;
 }
 
 /** Cut to the length of the field, as the instructions give it (String(n)). */

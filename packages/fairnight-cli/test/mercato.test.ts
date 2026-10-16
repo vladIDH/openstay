@@ -153,7 +153,9 @@ describe("fairnight mercato importa (Inside Airbnb)", () => {
 describe("fairnight mercato with AirROI", () => {
   const AREAS = { costa: { country: "Spain", region: "Isla Ficticia", locality: "Costa Inventada", roomType: "entire_home" } };
 
-  it("is off by default: collega and importa refuse without asking or calling anything", async () => {
+  it("is on by default; when the host switches it off, collega and importa refuse without asking or calling anything", async () => {
+    expect((await run(await folder(), ["mercato", "stato"])).io.lines.at(-1)).toBe('AirROI: on; key not saved yet ("fairnight mercato collega").');
+
     fake = await startFakeAirRoi({ apiKey: KEY });
     const dir = await folder({ market: { airroi: { enabled: false, areas: AREAS } }, marketArea: "costa" });
     let asked = false;
@@ -164,17 +166,17 @@ describe("fairnight mercato with AirROI", () => {
     const c = await run(dir, ["mercato", "collega"], { prompt });
     expect(c.code).toBe(1);
     expect(c.io.errors).toEqual([AIRROI_OFF]);
-    expect(AIRROI_OFF).toContain("in attesa di conferma scritta da AirROI sui termini d'uso");
+    expect(AIRROI_OFF).toContain("market.airroi.enabled is false");
     expect(asked).toBe(false);
     expect(existsSync(path.join(dir, "airroi-credentials.json"))).toBe(false);
 
     const i = await run(dir, ["mercato", "importa", "--fonte", "airroi"], { env: { AIRROI_API_KEY: KEY }, airroiBaseUrl: fake.url });
     expect(i.code).toBe(1);
     expect(fake.requests).toEqual([]);
-    expect((await run(dir, ["mercato", "stato"])).io.lines.at(-1)).toBe("AirROI: off, in attesa di conferma scritta da AirROI sui termini d'uso.");
+    expect((await run(dir, ["mercato", "stato"])).io.lines.at(-1)).toBe("AirROI: off (market.airroi.enabled is false).");
   });
 
-  it("when switched on: saves the key, reads zone metrics, attributes them and keeps them 30 days", async () => {
+  it("saves the key, reads zone metrics, attributes them with the link and keeps them past 30 days", async () => {
     fake = await startFakeAirRoi({ apiKey: KEY });
     const dir = await folder({ market: { airroi: { enabled: true, areas: AREAS } }, marketArea: "costa" });
     const c = await run(dir, ["mercato", "collega"], { prompt: async () => KEY });
@@ -187,22 +189,87 @@ describe("fairnight mercato with AirROI", () => {
     expect(i.code).toBe(0);
     expect(fake.requests.map((r) => `${r.method} ${r.path}`)).toEqual(["POST /markets/metrics/all"]);
     expect(fake.requests[0]?.key).toBe(KEY);
-    expect(i.io.lines).toContain('Zone "costa": 12 months from AirROI, spread over the next 365 nights (powered by AirROI).');
-    expect(all(i.io)).toContain("Kept until 2026-12-01, then deleted");
+    expect(i.io.lines).toContain('Zone "costa": 12 months from AirROI, spread over the next 365 nights. Powered by AirROI (https://www.airroi.com).');
+    expect(all(i.io)).toContain('The first "fairnight sync" from 2026-12-01 reads it again');
+    expect(all(i.io)).not.toContain("deleted after");
     expect(i.io.lines.at(-1)).toBe("AirROI calls: 1, billed to your AirROI account.");
 
     // August is the busiest invented month: 90% vs the 12-month average.
     const price = await run(dir, ["price", "--today", "2026-11-01", "--days", "300", "--explain"]);
-    expect(price.io.lines.find((l) => l.startsWith("Sat 2027-08-14"))).toContain("· powered by AirROI · read 2026-11-01");
+    expect(price.io.lines.find((l) => l.startsWith("Sat 2027-08-14"))).toContain("· Powered by AirROI (https://www.airroi.com) · read 2026-11-01");
     for (const out of [c.io, i.io, price.io]) expect(all(out)).not.toContain(KEY);
 
-    // After 30 days the data is no longer used, and it is deleted.
-    const later = testIo(dir, undefined, "2026-12-01T09:00:00Z");
+    // No 30-day limit: two months later the data is still there and still used.
+    const later = testIo(dir, undefined, "2027-01-05T09:00:00Z");
     expect(await main(["mercato", "stato"], later)).toBe(0);
-    expect(later.lines[0]).toBe('Zone "costa": AirROI data older than 30 days, deleted.');
+    expect(later.lines).toContain('  Read again by the first "fairnight sync" from 2026-12-01.');
+    expect(later.lines).not.toContain(expect.stringContaining("deleted"));
     const db = openDb(dbPath(dir));
-    expect((db.prepare("SELECT COUNT(*) AS n FROM market_days").get() as { n: number }).n).toBe(0);
+    expect(loadMarket(db, "costa", "2027-01-05")?.days).toHaveLength(365);
     db.close();
+  });
+
+  it("sync reads again the AirROI zones older than 30 days, and only those", async () => {
+    fake = await startFakeAirRoi({ apiKey: KEY });
+    const dir = await folder({ market: { airroi: { enabled: true, areas: AREAS } }, marketArea: "costa" });
+    writeFileSync(path.join(dir, "zona.csv"), zoneCsv());
+    await run(dir, ["mercato", "importa", "zona.csv", "--zona", "mia"]);
+    const net = { env: { AIRROI_API_KEY: KEY }, airroiBaseUrl: fake.url } as Partial<TestIo>;
+    await run(dir, ["mercato", "importa", "--fonte", "airroi"], net);
+    expect(fake.requests).toHaveLength(1);
+
+    // 29 days later: nothing to do, no billed call.
+    const early = Object.assign(testIo(dir, undefined, "2026-11-30T09:00:00Z"), net);
+    expect(await main(["sync"], early)).toBe(0);
+    expect(fake.requests).toHaveLength(1);
+    expect(early.lines.join("\n")).not.toContain("AirROI");
+
+    // 30 days later: the zone is read again, the host's own CSV zone is not touched.
+    const due = Object.assign(testIo(dir, undefined, "2026-12-01T09:00:00Z"), net);
+    expect(await main(["sync"], due)).toBe(0);
+    expect(fake.requests.map((r) => `${r.method} ${r.path}`)).toEqual(["POST /markets/metrics/all", "POST /markets/metrics/all"]);
+    expect(due.lines).toContain('AirROI: zone "costa" read again (12 months; the old data was from 2026-11-01). Powered by AirROI (https://www.airroi.com).');
+    expect(due.lines).toContain("AirROI calls: 1, billed to your AirROI account.");
+    const db = openDb(dbPath(dir));
+    expect(loadMarket(db, "costa", "2026-12-01")?.readOn).toBe("2026-12-01");
+    expect(loadMarket(db, "mia", "2026-12-01")?.source).toBe("csv");
+    db.close();
+
+    // The next sync has nothing to do again.
+    const again = Object.assign(testIo(dir, undefined, "2026-12-02T09:00:00Z"), net);
+    expect(await main(["sync"], again)).toBe(0);
+    expect(fake.requests).toHaveLength(2);
+  });
+
+  it("a refresh that fails keeps the old data and says why, without the key", async () => {
+    fake = await startFakeAirRoi({ apiKey: KEY });
+    const dir = await folder({ market: { airroi: { enabled: true, areas: AREAS } }, marketArea: "costa" });
+    await run(dir, ["mercato", "importa", "--fonte", "airroi"], { env: { AIRROI_API_KEY: KEY }, airroiBaseUrl: fake.url });
+
+    // No key any more: no call, a note, the data stays.
+    const noKey = testIo(dir, undefined, "2026-12-10T09:00:00Z");
+    expect(await main(["sync"], noKey)).toBe(0);
+    expect(noKey.lines.find((l) => l.startsWith("AirROI:"))).toContain('"costa" (2026-11-01) not read again. No AirROI key yet');
+
+    // A refused key: the data stays, the key is never printed.
+    const wrong = "airroi-key-1111-not-real";
+    const refused = Object.assign(testIo(dir, undefined, "2026-12-10T09:00:00Z"), { env: { AIRROI_API_KEY: wrong }, airroiBaseUrl: fake.url });
+    expect(await main(["sync"], refused)).toBe(0);
+    expect(refused.lines.find((l) => l.startsWith("AirROI: zone"))).toContain("not read again, the data from 2026-11-01 stays. AirROI refused the API key (HTTP 401)");
+    expect(all(refused)).not.toContain(wrong);
+    const db = openDb(dbPath(dir));
+    expect(loadMarket(db, "costa", "2026-12-10")?.readOn).toBe("2026-11-01");
+    db.close();
+
+    // Switched off by the host: sync leaves AirROI alone.
+    const cfgPath = path.join(dir, "fairnight.config.json");
+    const cfg = JSON.parse(readFileSync(cfgPath, "utf8"));
+    cfg.market.airroi.enabled = false;
+    writeFileSync(cfgPath, JSON.stringify(cfg));
+    const before = fake.requests.length;
+    const off = Object.assign(testIo(dir, undefined, "2026-12-10T09:00:00Z"), { env: { AIRROI_API_KEY: KEY }, airroiBaseUrl: fake.url });
+    expect(await main(["sync"], off)).toBe(0);
+    expect(fake.requests).toHaveLength(before);
   });
 
   it("deletes AirROI data on request", async () => {

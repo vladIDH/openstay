@@ -18,7 +18,7 @@ export interface Io {
   err(line: string): void;
   fetch: FetchLike;
   now(): Date;
-  /** Environment variables (SMOOBU_API_KEY, SMOOBU_API_SECRET, BEDS24_REFRESH_TOKEN, AIRROI_API_KEY, ANTHROPIC_API_KEY). Default: none. */
+  /** Environment variables (SMOOBU_API_KEY, SMOOBU_API_SECRET, BEDS24_REFRESH_TOKEN, AIRROI_API_KEY, ANTHROPIC_API_KEY, STRIPE_SECRET_KEY). Default: none. */
   env?: Record<string, string | undefined>;
   /** The language of this computer, like "it-IT" (only for tests). Default: from LANG or the system. */
   locale?: string;
@@ -63,6 +63,10 @@ export interface Io {
   modelFetch?: SmoobuFetchLike;
   /** Only for tests: a fake Anthropic server instead of https://api.anthropic.com. */
   anthropicBaseUrl?: string;
+  /** Network access for the host's own Stripe account (check-in payments). Default: global fetch. */
+  stripeFetch?: SmoobuFetchLike;
+  /** Only for tests: a fake Stripe instead of https://api.stripe.com. */
+  stripeBaseUrl?: string;
   /** Open a link in the default browser (`fairnight apri`). Default: nothing is opened. */
   openUrl?(url: string): void;
   /** Waiting (rate limits, retries). Default: real time. */
@@ -90,8 +94,8 @@ export interface SystemInfo {
 
 export type RelayFetchLike = (
   url: string,
-  init: { method: string; headers: Record<string, string>; body?: string; signal?: AbortSignal },
-) => Promise<{ status: number; text(): Promise<string>; arrayBuffer(): Promise<ArrayBuffer> }>;
+  init: { method: string; headers: Record<string, string>; body?: string; signal?: AbortSignal; redirect?: "manual" },
+) => Promise<{ status: number; text(): Promise<string>; arrayBuffer(): Promise<ArrayBuffer>; headers?: { get(name: string): string | null } }>;
 
 export type SmoobuFetchLike = (
   url: string,

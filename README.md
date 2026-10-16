@@ -9,6 +9,7 @@ With Smoobu or Beds24 connected it writes the prices back, after the host confir
 **Fairguest** registers guests with the authorities.
 Spain (SES.HOSPEDAJES rules, the Mossos d'Esquadra file) and Italy (Alloggiati Web, regional Istat data): a check-in form for the guests, deadlines, and erasure when the law allows.
 Guest data is encrypted on the host's computer with a passphrase only the host knows.
+It also computes the tourist tax of each stay, with the month or quarter summary for the town, and, with the host's own Stripe account, lets the guest pay it and leave a deposit as a hold on the card; off by default ([guide](docs/tassa-pagamenti.md), Italian).
 
 **Fairhello** drafts replies to guests.
 It reads guest messages from Smoobu or Beds24 and writes a draft from the host's own house file, with the host's model key or a model running locally.
@@ -28,7 +29,7 @@ All data in the screenshots is invented.
 
 You need [Node.js](https://nodejs.org) 22 or newer (20 works where a C++ compiler is installed, because the SQLite module is precompiled only from Node 22 on).
 
-**Hosts, Windows or Mac.** Download `Fairnight-installa.zip` from the [latest release](https://github.com/vladIDH/openstay/releases/latest), extract it and double-click `Installa Fairnight.cmd` (Windows) or `Installa Fairnight.command` (Mac). The installer checks Node.js, installs Fairnight in `~/Fairnight`, asks a few questions in Italian and opens the calendar page. Running it again updates Fairnight and keeps the settings. Step-by-step guide with screenshots, in Italian: [docs/installa.md](docs/installa.md).
+**Hosts, Windows or Mac.** Download `Fairnight-installa.zip` from the [latest release](https://github.com/vladIDH/openstay/releases/latest), extract it and double-click `Installa Fairnight (Windows).cmd` or `Installa Fairnight (Mac).command`. The installer checks Node.js, installs Fairnight in `~/Fairnight`, asks a few questions in Italian, leaves a short guide in Italian or Spanish in the folder and opens the calendar page. Running it again updates Fairnight and keeps the settings. Step-by-step guide with screenshots, in Italian: [docs/installa.md](docs/installa.md).
 
 **With npm:**
 
@@ -69,7 +70,7 @@ packages/
 ```
 
 - **Local SQLite.** The host's folder holds `fairnight.config.json` and `data/fairnight.db` ([better-sqlite3](https://github.com/WiseLibs/better-sqlite3)). The schema is versioned and migrated in place on first use. Guest details are sealed per value (X25519 + AES-256-GCM, key locked with scrypt) before they reach the database.
-- **Local web pages.** `fairnight serve` serves the calendar page, the check-in form and the replies page from the host's computer, with a strict Content-Security-Policy and nothing loaded from other sites. It listens on `127.0.0.1` unless `--lan` is given (so guests and the host's phone can reach it on the home network). Changing settings, switching the autopilot and sending replies work only from the computer itself; the check-in form needs a random per-stay code.
+- **Local web pages.** `fairnight serve` serves the calendar page, the check-in form, the replies page and the payments page from the host's computer, with a strict Content-Security-Policy and nothing loaded from other sites. It listens on `127.0.0.1` unless `--lan` is given (so guests and the host's phone can reach it on the home network). Changing settings, switching the autopilot, sending replies and keeping or releasing a deposit work only from the computer itself; the check-in form needs a random per-stay code.
 - **MCP.** `fairnight-mcp` opens the database read-only and exposes nine tools to Claude Desktop or any MCP client: `list_listings`, `get_prices`, `explain_night`, `occupancy`, `next_gaps`, `get_sync_status`, `get_market_area`, `get_guest_deadlines`, `get_guest_replies`. Fairguest's guest details are never returned; message texts only when a tool is asked for them. Setup: [packages/fairnight-mcp](packages/fairnight-mcp).
 - **Deterministic engine.** Same input, same output. A regression test prices 365 nights and compares them with a fixture.
 
@@ -86,7 +87,7 @@ Credentials are asked without echo, saved readable by the current user only, and
 ## What it does not do
 
 - **Nothing is sent by itself.** Every write to a channel manager, every reply to a guest and every communication to the authorities is shown first and needs the host's confirmation. The only exceptions are ones the host switches on per listing: the price autopilot (within daily limits, read back after writing) and unattended sending to Alloggiati Web (`autoSend`).
-- **No cloud of ours.** No account, no telemetry, no analytics. The only requests go to the calendar links, channel managers, model providers and authority services the host configured. The one exception is optional: the remote check-in link passes through a relay that stores only data sealed in the guest's browser, deletes it once downloaded, and anyone can run their own; it is not deployed yet.
+- **No cloud of ours.** No account, no telemetry, no analytics. The only requests go to the calendar links, channel managers, model providers, authority services and the Stripe account the host configured; no payment passes through us. The one exception is optional: the remote check-in link passes through a relay that stores only data sealed in the guest's browser, deletes it once downloaded, and anyone can run their own; it is not deployed yet.
 - **No market data by default.** Remote zone data sources are off unless the host switches them on with their own key or downloaded files.
 - **No direct connection to Airbnb or Booking.com**, which require partner agreements.
 

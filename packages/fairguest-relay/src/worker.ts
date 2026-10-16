@@ -7,6 +7,8 @@
  *   GET  /api/box/<box>/messages          the host's computer reads them
  *   DELETE /api/box/<box>/messages/<id>   … and deletes each one
  *   DELETE /api/box/<box>                 … or the whole box
+ *   PUT  /api/box/<box>/pay               the host's computer leaves the links to pay on Stripe
+ *   GET  /api/box/<box>/pay               the page reads them (write secret)
  *
  * The boxes live in the EU jurisdiction of Durable Objects. No request is
  * logged by this code; Workers logs are off in wrangler.toml.

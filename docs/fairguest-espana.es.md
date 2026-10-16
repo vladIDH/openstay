@@ -16,7 +16,7 @@ El modelo de datos y los plazos están en [registro-ospiti.md](registro-ospiti.m
 fairnight ospiti link <estancia>
 ```
 
-Imprime una dirección como `https://fairguest.khlumen.com/c/…#v1.…`. Mándela al huésped: funciona desde cualquier teléfono hasta dos días después de la salida.
+Imprime una dirección como `https://fairguest-relay.openstay.workers.dev/c/…#v1.…`. Mándela al huésped: funciona desde cualquier teléfono hasta dos días después de la salida.
 
 **Qué hace el huésped**
 - Rellena el formulario de siempre, con las preguntas del Real Decreto 933/2021: dirección, teléfono o correo y tipo de pago (solo el tipo, nunca números de tarjeta).
@@ -56,6 +56,22 @@ El huésped toca «Hacer o elegir una foto» y encuadra las líneas de letras y 
 - **Las cifras de control** dicen si la lectura es correcta. Si alguna no cuadra, el huésped ve «algunos caracteres no son seguros» y revisa los datos.
 
 Captura desde un teléfono, con datos inventados: [DNI leído en un alojamiento de Cataluña](images/link/link-es-dni-leido.png).
+
+## El municipio de residencia
+
+Para quien vive en España, SES y los Mossos piden el **código INE del municipio**. El huésped no lo sabe, así que el formulario pregunta el municipio por su nombre:
+- el campo «Municipio o ciudad» sugiere los 8.132 municipios de la relación oficial del INE (1 de enero de 2026), también sin JavaScript;
+- no importan mayúsculas ni tildes, el artículo puede ir delante o detrás («Las Palmas de Gran Canaria») y los nombres bilingües responden a cada mitad («San Sebastián», «Donostia»);
+- si dos municipios se llaman igual, decide el código postal (sus dos primeras cifras son la provincia);
+- un lugar que no es un municipio (un barrio, «Costa Adeje») se rechaza con un mensaje que pide elegirlo de la lista.
+
+Fairguest guarda el código completo de 6 cifras (provincia, municipio, dígito de control; Adeje 380012), como lo pide el fichero de los Mossos (manual v8, campo 29). A SES van las 5 primeras (38001), como dicen las instrucciones de SES («códigos de municipios del INE (5 dígitos)»). El anfitrión ya no tiene que corregir nada. Con `fairnight ospiti correggi … address.municipalityCode` se pueden escribir 5 o 6 cifras: un código que no existe se rechaza.
+
+| El campo | No es un municipio | Elegido | Guardado |
+|---|---|---|---|
+| ![Campo](images/ine/ine-1-campo.png) | ![Error](images/ine/ine-2-non-e-un-comune.png) | ![Elegido](images/ine/ine-3-scelto.png) | ![Guardado](images/ine/ine-4-salvato.png) |
+
+La relación se actualiza una vez al año: se descarga a mano `NNcodmun.xlsx` del INE y se lanza `node packages/fairguest/scripts/es-municipalities.mjs <fichero> <año>`.
 
 ## Después
 

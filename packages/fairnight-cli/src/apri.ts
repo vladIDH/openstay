@@ -1,7 +1,7 @@
 /**
  * `fairnight apri`: what the Fairnight icon on the desktop runs. Reads the
  * calendars, starts the calendar page and opens it in the browser, with
- * messages in Italian for hosts who never use a terminal.
+ * messages in Italian or Spanish (the setup's language) for hosts who never use a terminal.
  *
  * - No config yet: runs the guided setup first.
  * - Fairnight already running for this folder: only opens the browser again.
@@ -10,11 +10,13 @@
  */
 import { existsSync } from "node:fs";
 import type { Server } from "node:http";
+import { SETUP_TEXTS } from "./configura-testi.js";
 import { configura, feedLineIt } from "./configura.js";
 import { loadHostConfig, SetupError } from "./config.js";
 import { openDb } from "./db.js";
 import { configPath, dbPath, type Io } from "./io.js";
 import { folderId, startServer } from "./serve.js";
+import { setupLanguage, systemLocale } from "./lingua.js";
 import { syncEverything } from "./sync-all.js";
 
 export interface ApriOptions {
@@ -45,14 +47,16 @@ export interface ApriResult {
 }
 
 export async function apri(dir: string, io: Io, opts: ApriOptions): Promise<ApriResult> {
+  const locale = io.locale ?? systemLocale(io.env ?? {});
   if (!existsSync(configPath(dir))) {
-    io.out("Fairnight non è ancora configurato: bastano poche domande.");
+    io.out(SETUP_TEXTS[setupLanguage(undefined, locale)].notConfigured);
     io.out("");
     const code = await configura(dir, io);
     if (code !== 0) return { code };
     io.out("");
   }
   const config = loadHostConfig(dir);
+  const w = SETUP_TEXTS[setupLanguage(config.language, locale)];
   const folder = folderId(dir);
 
   for (let port = opts.port; port < opts.port + 10; port++) {
@@ -60,21 +64,21 @@ export async function apri(dir: string, io: Io, opts: ApriOptions): Promise<Apri
     if (state === "something-else") continue;
     const url = `http://localhost:${port}`;
     if (state === "this-folder") {
-      io.out(`Fairnight è già acceso: ${url}`);
+      io.out(w.alreadyOn(url));
       if (opts.browser) {
         io.openUrl?.(url);
-        io.out("Ho aperto di nuovo il calendario nel browser. Questa finestra si può chiudere.");
+        io.out(w.reopened);
       }
       return { code: 0 };
     }
 
-    io.out("Leggo i calendari…");
+    io.out(w.readingCalendars);
     const titles = new Map(config.listings.map((l) => [l.name, l.pricing.name ?? l.name]));
     const db = openDb(dbPath(dir));
     try {
-      const { reports } = await syncEverything(db, dir, config.listings, io);
-      for (const r of reports) io.out(feedLineIt(r, titles));
-      if (reports.length === 0) io.out("  Nessun calendario collegato: aggiungi i link con «Cambia impostazioni».");
+      const { reports } = await syncEverything(db, dir, config.listings, io, config.market);
+      for (const r of reports) io.out(feedLineIt(r, titles, w));
+      if (reports.length === 0) io.out(w.noLinks);
     } finally {
       db.close();
     }
@@ -87,13 +91,13 @@ export async function apri(dir: string, io: Io, opts: ApriOptions): Promise<Apri
       throw e;
     }
     io.out("");
-    io.out(`Fairnight è acceso: ${url}`);
+    io.out(w.on(url));
     if (opts.browser) {
       io.openUrl?.(url);
-      io.out("Il calendario si apre nel browser. Se non lo vedi, copia l'indirizzo qui sopra nella barra del browser.");
+      io.out(w.opensInBrowser);
     }
-    io.out("Lascia aperta questa finestra mentre usi il calendario: quando la chiudi, Fairnight si spegne.");
+    io.out(w.keepOpen);
     return { code: 0, server }; // the open server keeps the process running
   }
-  throw new SetupError(`Le porte da ${opts.port} a ${opts.port + 9} sono tutte occupate: chiudi qualche programma e riprova.`);
+  throw new SetupError(w.portsTaken(opts.port, opts.port + 9));
 }

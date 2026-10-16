@@ -52,6 +52,22 @@ L'ospite fotografa le righe con lettere e `<<<`: sul retro del **DNI**, in fondo
 
 Schermata con dati inventati: [DNI letto per un alloggio in Catalogna](images/link/link-es-dni-leido.png).
 
+## Il comune di residenza
+
+Per chi vive in Spagna, SES e i Mossos vogliono il **codice INE del comune**. L'ospite non lo conosce, quindi il modulo chiede il comune per nome:
+- il campo «Municipio o ciudad» suggerisce gli 8.132 comuni della tabella ufficiale dell'INE (1° gennaio 2026), anche senza JavaScript;
+- maiuscole e accenti non contano, l'articolo può stare davanti o dietro («Las Palmas de Gran Canaria»), e i nomi bilingui rispondono a ciascuna metà («San Sebastián», «Donostia»);
+- se due comuni hanno lo stesso nome, decide il codice postale (le prime due cifre sono la provincia);
+- una località che non è un comune (un quartiere, «Costa Adeje») viene rifiutata con un messaggio che chiede di sceglierlo dall'elenco.
+
+Fairguest salva il codice completo di 6 cifre (provincia, comune, cifra di controllo; Adeje 380012), come lo chiede il file dei Mossos (manuale v8, campo 29). Per SES si usano le prime 5 (38001), come dicono le istruzioni SES («códigos de municipios del INE (5 dígitos)»). L'host non deve più correggere niente. Con `fairnight ospiti correggi … address.municipalityCode` si possono scrivere 5 o 6 cifre: un codice che non esiste viene rifiutato.
+
+| Il campo | Non è un comune | Scelto | Salvato |
+|---|---|---|---|
+| ![Campo](images/ine/ine-1-campo.png) | ![Errore](images/ine/ine-2-non-e-un-comune.png) | ![Scelto](images/ine/ine-3-scelto.png) | ![Salvato](images/ine/ine-4-salvato.png) |
+
+La tabella si aggiorna una volta l'anno: si scarica a mano `NNcodmun.xlsx` dall'INE e si lancia `node packages/fairguest/scripts/es-municipalities.mjs <file> <anno>`.
+
 ## Dopo
 
 **Mossos d'Esquadra**

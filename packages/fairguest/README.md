@@ -11,7 +11,7 @@ In Spain (Real Decreto 933/2021) and in Italy (art. 109 TULPS, Alloggiati Web) e
   - name, first surname, date of birth, address and a contact for each guest;
   - the identity document, needed from 18 years old for SES and from 14 for the Mossos;
   - the support number of a DNI or NIE card, and the second surname with a DNI;
-  - the INE code of the municipality when the address is in Spain;
+  - the INE code of the municipality when the address is in Spain: the form finds it from the town's name in the INE's official list (`findEsMunicipality`); 6 digits are kept, as the Mossos file wants, and SES takes the first 5 (`sesMunicipalityCode`);
   - the relationship to the holder for minors;
   - the **type** of payment, and nothing more about it.
 - **Deadlines** (art. 6.3): within 24 hours of the booking (RH) and within 24 hours of check-in (PV). When the hour is not known, the count starts at midnight, so the deadline shown is never later than the real one.

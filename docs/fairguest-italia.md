@@ -93,12 +93,12 @@ In alto l'ospite legge una riga su cosa succede ai suoi dati: restano cifrati su
 fairnight ospiti link <soggiorno>
 ```
 
-Stampa un indirizzo come `https://fairguest.khlumen.com/c/…#v1.…`. Mandalo all'ospite: funziona da qualsiasi telefono fino a due giorni dopo il check-out. Il tuo computer **non apre nessuna porta**: fa solo richieste in uscita.
+Stampa un indirizzo come `https://fairguest-relay.openstay.workers.dev/c/…#v1.…`. Mandalo all'ospite: funziona da qualsiasi telefono fino a due giorni dopo il check-out. Il tuo computer **non apre nessuna porta**: fa solo richieste in uscita.
 
 **Come viaggiano i dati**
 1. L'ospite compila il modulo sul suo telefono: stessa grafica e stesse domande del modulo di casa.
 2. **Il telefono cifra i dati** con la chiave pubblica della tua cartella Fairguest, prima di spedirli.
-3. Il servizio di inoltro (`fairguest.khlumen.com`) riceve solo testo cifrato e lo tiene in una casella del soggiorno.
+3. Il servizio di inoltro (`fairguest-relay.openstay.workers.dev`) riceve solo testo cifrato e lo tiene in una casella del soggiorno.
 4. Il tuo computer scarica e poi cancella dal servizio:
    - con `fairnight ospiti scarica`;
    - da solo ogni 5 minuti mentre `fairnight serve` è acceso;
@@ -124,6 +124,8 @@ fairnight ospiti verifica-pagina
 - Confronta ogni file che il servizio manda al telefono con l'impronta (SHA-256) della pagina di questa versione di Fairguest. Ogni riga deve dire `same`.
 - Serve perché chi gestisce il servizio potrebbe cambiare la pagina per leggere i dati prima che vengano cifrati: questo è il limite di ogni modulo sul web.
 - Chi vuole il controllo completo può ospitare il servizio da sé: istruzioni in [packages/fairguest-relay/README.md](../packages/fairguest-relay/README.md). Poi si mette il proprio indirizzo in `fairnight.config.json` con `"fairguestRelay": "https://…"`.
+
+**L'indirizzo del servizio:** per ora è quello gratuito di Cloudflare, `fairguest-relay.openstay.workers.dev`: un indirizzo `workers.dev` è normale per i servizi su Cloudflare. Quando passeremo a un dominio nostro, lo dirà una nuova versione di Fairnight; i link già mandati restano validi fino alla loro scadenza.
 
 ## La foto del documento
 

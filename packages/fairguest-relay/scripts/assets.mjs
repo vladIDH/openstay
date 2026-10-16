@@ -1,5 +1,5 @@
 /**
- * Downloads the MRZ model for Tesseract into assets/ (outside git), once,
+ * Downloads the MRZ model for Tesseract into assets/ (also kept in git), once,
  * before a deploy. Fixed commit and fixed SHA-256: any other file is refused.
  *
  * Model: DoubangoTelecom/tesseractMRZ, tessdata_fast/mrz.traineddata,

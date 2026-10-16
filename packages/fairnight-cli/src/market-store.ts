@@ -2,9 +2,9 @@
  * Zone data in the local database (tables market_areas and market_days).
  *
  * One source per zone: importing a zone again replaces it. Data whose terms
- * limit how long it may be kept (AirROI: 30 days) carries expires_on; from
- * that day it is never used again, and it is deleted by the first command that
- * can write to the database.
+ * limit how long it may be kept carries expires_on; from that day it is never
+ * used again, and it is deleted by the first command that can write to the
+ * database. No source sets it today (AirROI data is refreshed, not expired).
  *
  * Which homes a zone's figures describe (bedrooms, guests, room type…) is kept
  * in the meta table, under "market_comparables:<zone>": the market tables keep

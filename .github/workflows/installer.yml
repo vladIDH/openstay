@@ -9,8 +9,8 @@ on:
   pull_request:
     paths:
       - "installa/**"
-      - "Installa Fairnight.cmd"
-      - "Installa Fairnight.command"
+      - "Installa Fairnight (Windows).cmd"
+      - "Installa Fairnight (Mac).command"
       - "packages/fairnight-cli/**"
       - ".github/workflows/installer.yml"
 
@@ -23,11 +23,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Shell scripts pass shellcheck
-        run: shellcheck installa/mac.sh "Installa Fairnight.command"
+        run: shellcheck installa/mac.sh "Installa Fairnight (Mac).command"
       - name: Executable mark kept in git for the Mac files
         run: |
           test "$(git ls-files -s installa/mac.sh | cut -c1-6)" = 100755
-          test "$(git ls-files -s 'Installa Fairnight.command' | cut -c1-6)" = 100755
+          test "$(git ls-files -s 'Installa Fairnight (Mac).command' | cut -c1-6)" = 100755
 
   install:
     strategy:
@@ -57,11 +57,11 @@ jobs:
       - name: Install (Windows, through the double-click file)
         if: runner.os == 'Windows'
         shell: cmd
-        run: call "Installa Fairnight.cmd" -Cartella "%FOLDER%" -SenzaDomande -NonAprire
+        run: call "Installa Fairnight (Windows).cmd" -Cartella "%FOLDER%" -SenzaDomande -NonAprire
 
       - name: Install (Mac, through the double-click file)
         if: runner.os == 'macOS'
-        run: ./"Installa Fairnight.command" --cartella="$FOLDER" --senza-domande --non-aprire
+        run: ./"Installa Fairnight (Mac).command" --cartella="$FOLDER" --senza-domande --non-aprire
 
       - name: Installed from the precompiled better-sqlite3, no compiler used
         run: |
@@ -103,7 +103,7 @@ jobs:
           curl -sf http://127.0.0.1:4321/api/data -o data.json
           grep -q '"name":"casa-prova"' data.json
           curl -sf http://127.0.0.1:4321/ -o page.html
-          grep -q "<title>Fairnight" page.html
+          grep -Eq "<title>[^<]*Fairnight" page.html
           # A second "apri" finds the first one instead of starting another
           node "$FN" apri --dir "$FOLDER" --senza-browser | tee second.txt
           grep -q "Fairnight è già acceso: http://localhost:4321" second.txt
@@ -113,17 +113,17 @@ jobs:
         shell: pwsh
         run: |
           Copy-Item (Join-Path $env:FOLDER 'fairnight.config.json') before.json
-          & ".\Installa Fairnight.cmd" -Cartella "$env:FOLDER" -SenzaDomande -NonAprire -SenzaCollegamenti > again.txt
+          & ".\Installa Fairnight (Windows).cmd" -Cartella "$env:FOLDER" -SenzaDomande -NonAprire -SenzaCollegamenti > again.txt
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - name: Running the installer again (Mac)
         if: runner.os == 'macOS'
         run: |
           cp "$FOLDER/fairnight.config.json" before.json
-          ./"Installa Fairnight.command" --cartella="$FOLDER" --senza-domande --non-aprire --senza-collegamenti > again.txt
+          ./"Installa Fairnight (Mac).command" --cartella="$FOLDER" --senza-domande --non-aprire --senza-collegamenti > again.txt
 
       - name: The second run updated the program and kept the settings
         run: |
           cat again.txt
-          grep -q "aggiornato" again.txt
+          grep -Eq "aggiornato|reinstallato" again.txt
           cmp before.json "$FOLDER/fairnight.config.json"

@@ -14,14 +14,15 @@ Questa guida è per chi affitta da 1 a 10 case su Airbnb, Booking o Vrbo e non h
 
 - **non cambia i prezzi su Airbnb, Booking o Vrbo.** Con i link iCal Fairnight può solo leggere le date occupate, non scrivere i prezzi. I prezzi li copi tu sulle piattaforme. Oppure, se usi Smoobu o Beds24, glieli manda Fairnight e loro li passano alle piattaforme: vedi [connettori.md](connettori.md);
 - non guarda i prezzi delle case vicine e non entra nei tuoi account: non gli dai nessuna password;
-- non lavora da solo in sottofondo: calcola quando apri il calendario o premi «Aggiorna i prezzi».
+- non lavora da solo in sottofondo: calcola quando apri il calendario o premi «Aggiorna i prezzi». L'unica eccezione è il pilota automatico, che si accende solo con Smoobu o Beds24 e solo se lo scegli tu.
 
-**Dove stanno i tuoi dati:** solo sul tuo computer, nella cartella `Fairnight` del tuo utente: `C:\Users\<tuo nome>\Fairnight` su Windows, `/Users/<tuo nome>/Fairnight` su Mac. Fairnight si collega a internet solo per leggere i link iCal che gli dai. Non abbiamo un server e non riceviamo niente.
+**Dove stanno i tuoi dati:** solo sul tuo computer, nella cartella `Fairnight` del tuo utente: `C:\Users\<tuo nome>\Fairnight` su Windows, `/Users/<tuo nome>/Fairnight` su Mac. Fairnight si collega a internet solo per leggere i link iCal che gli dai (e Smoobu o Beds24, se li colleghi). Non abbiamo un server e non riceviamo niente.
 
 ## Cosa ti serve
 
 - Un computer con **Windows 10 o 11**, oppure un **Mac** con macOS recente.
 - **Node.js**, un programma gratuito che fa funzionare Fairnight, nella versione 22 o più recente. Se non ce l'hai, l'installazione te lo dice e ti spiega come metterlo: vedi il passo 2.
+- La **connessione a internet**, durante l'installazione: Fairnight scarica i suoi componenti.
 - I **link iCal** delle tue case: al passo 4 trovi dove prenderli.
 
 ## 1. Scarica Fairnight
@@ -29,7 +30,11 @@ Questa guida è per chi affitta da 1 a 10 case su Airbnb, Booking o Vrbo e non h
 - **Se sei tra i primi a provarlo** ti abbiamo invitato al progetto su GitHub. Apri la pagina del progetto, clicca il pulsante verde **Code** e poi **Download ZIP**.
 - **Dopo il lancio** basterà scaricare `Fairnight-installa.zip` dalla pagina [Releases](https://github.com/vladIDH/openstay/releases/latest).
 
-Apri lo zip scaricato ed estrai la cartella: su Windows tasto destro › **Estrai tutto**. Su Mac basta un doppio clic.
+Prima di tutto **estrai la cartella dallo zip**: su Windows tasto destro sullo zip › **Estrai tutto** › **Estrai**; su Mac basta un doppio clic. Se fai doppio clic sul file di installazione mentre è ancora dentro lo zip, Fairnight ti dice di estrarlo prima.
+
+- Estrai lo zip nella cartella **Download**. Se il Desktop o i Documenti sono dentro OneDrive, meglio non usarli: l'installazione ci scrive per qualche minuto e OneDrive proverebbe a sincronizzare tutto.
+- Nello zip di GitHub (Code › Download ZIP) c'è una cartella `openstay-main` con dentro un'altra `openstay-main` e tanti file per sviluppatori: apri le cartelle finché vedi **Installa Fairnight (Windows)** e **Installa Fairnight (Mac)**. Gli altri file non ti servono.
+- Nella cartella ci sono due file di installazione, uno per Windows e uno per Mac: il nome dice quale. Accanto trovi `LEGGIMI.txt` (e `LEEME.txt` in spagnolo) con i passi in breve.
 
 ## 2. Node.js, se non ce l'hai
 
@@ -37,9 +42,11 @@ Se non sai se ce l'hai, vai pure al passo 3: se manca, l'installazione si ferma 
 
 ![Messaggio quando manca Node.js](images/installa/01-senza-node.png)
 
-1. Apri la pagina ufficiale [nodejs.org/it/download](https://nodejs.org/it/download).
-2. Scarica la versione **LTS**: su Windows il file `.msi`, su Mac il file `.pkg`. Installala lasciando tutte le opzioni come sono.
+1. Apri la pagina ufficiale [nodejs.org/en/download](https://nodejs.org/en/download). È in inglese, e propone già la versione **LTS**, quella giusta.
+2. In alto c'è un riquadro con dei comandi: non serve. Scorri fino alla frase «Or get a prebuilt Node.js® for Windows running a x64 architecture» (su Mac «for macOS») e clicca il pulsante verde **Windows Installer (.msi)**, su Mac **macOS Installer (.pkg)**. Apri il file scaricato e installalo lasciando tutte le opzioni come sono.
 3. Rifai il passo 3.
+
+Su un computer Windows con processore ARM, nel menu dopo «running a» scegli **x64** al posto di **ARM64**: la versione x64 funziona anche lì, e il messaggio dell'installazione te lo ricorda. (Pulsanti verificati il 15 ottobre 2026: i nomi sulla pagina possono cambiare.)
 
 Se hai già Node.js ma è vecchio (prima della 22), il messaggio te lo dice: installa la LTS sopra quella vecchia.
 
@@ -49,7 +56,7 @@ Se hai già Node.js ma è vecchio (prima della 22), il messaggio te lo dice: ins
 
 ### Su Windows
 
-Nella cartella estratta fai doppio clic su **Installa Fairnight** (il file `Installa Fairnight.cmd`).
+Nella cartella estratta fai doppio clic su **Installa Fairnight (Windows)**.
 
 Windows può avvisarti che non riesce a verificare l'autore. È normale per i programmi gratuiti che non pagano un certificato di firma. Clicca **Esegui**.
 
@@ -59,23 +66,23 @@ Se invece compare la finestra blu **«Windows ha protetto il PC»**, clicca **Ul
 
 <!-- SCHERMATA DA AGGIUNGERE: la finestra blu «Windows ha protetto il PC» con «Ulteriori informazioni» e «Esegui comunque». Sul computer di prova Windows ha mostrato solo l'avviso qui sopra. -->
 
-Si apre una finestra nera: Fairnight si installa da solo, in 1-4 minuti.
+Si apre una finestra nera: Fairnight si installa da solo, in 1-4 minuti, in tre passi. Durante il primo la finestra sembra ferma per qualche minuto: è normale, lasciala aperta.
 
 ![Installazione finita, comincia la configurazione](images/installa/04-installato.png)
 
 ### Su Mac
 
-Nella cartella estratta **non** fare doppio clic: fai **tasto destro** (o Ctrl+clic) su **Installa Fairnight** (il file `Installa Fairnight.command`), scegli **Apri** e poi di nuovo **Apri** nella finestra che compare. Il Mac lo chiede ogni volta che apri per la prima volta un programma gratuito non firmato da uno sviluppatore registrato da Apple. È normale e serve solo la prima volta.
+Nella cartella estratta **non** fare doppio clic: fai **tasto destro** (o Ctrl+clic) su **Installa Fairnight (Mac)**, scegli **Apri** e poi di nuovo **Apri** nella finestra che compare. Il Mac lo chiede ogni volta che apri per la prima volta un programma gratuito non firmato da uno sviluppatore registrato da Apple. È normale e serve solo la prima volta.
 
-Se il Mac non ti dà il pulsante **Apri** e dice solo che non può verificare il file: chiudi l'avviso, apri **Impostazioni di Sistema › Privacy e sicurezza**, scorri in basso fino al messaggio su «Installa Fairnight.command» e clicca **Apri comunque**. Succede sulle versioni più recenti di macOS.
+Se il Mac non ti dà il pulsante **Apri** e dice solo che non può verificare il file: chiudi l'avviso, apri **Impostazioni di Sistema › Privacy e sicurezza**, scorri in basso fino al messaggio su «Installa Fairnight (Mac).command» e clicca **Apri comunque**. Succede sulle versioni più recenti di macOS.
 
-<!-- SCHERMATA DA AGGIUNGERE (Mac): il menu del tasto destro su «Installa Fairnight.command» con «Apri», e la finestra di conferma con il pulsante «Apri». -->
+<!-- SCHERMATA DA AGGIUNGERE (Mac): il menu del tasto destro su «Installa Fairnight (Mac).command» con «Apri», e la finestra di conferma con il pulsante «Apri». -->
 
 Si apre il Terminale: Fairnight si installa da solo, in 1-4 minuti. Le domande e i messaggi sono gli stessi che vedi nelle schermate di Windows.
 
 ## 4. Rispondi alle domande
 
-Alla fine dell'installazione Fairnight ti fa qualche domanda. Tra parentesi quadre c'è una risposta già pronta: premi **Invio** per tenerla, oppure scrivi la tua e premi Invio.
+Alla fine dell'installazione Fairnight ti fa qualche domanda, in italiano; in spagnolo se il computer è in spagnolo, e da lì in poi se scegli il calendario in spagnolo. Tra parentesi quadre c'è una risposta già pronta: premi **Invio** per tenerla, oppure scrivi la tua e premi Invio.
 
 1. **Nome della casa**: come la chiami tu, per esempio «Casa Limone».
 2. **Città o paese**: serve per proporti le stagioni.
@@ -104,7 +111,7 @@ Il link iCal è privato: chi lo ha vede quando la casa è occupata. Non pubblica
 ![Prezzi e stagioni proposte](images/installa/06-prezzi-stagioni.png)
 
 7. **Un'altra casa?** Scrivi **s** per aggiungerla e rispondi alle stesse domande, oppure premi Invio per finire.
-8. **Lingua del calendario**: 1 Italiano, 2 Español, 3 English. Fairnight la propone in base alla città (Italia → italiano, Spagna e Canarie → spagnolo) o, se la città non basta, in base alla lingua del computer: premi Invio per tenerla. Se non c'è niente da proporre e premi Invio, il calendario resta in inglese. La domanda arriva una volta sola: dopo si cambia dal calendario stesso.
+8. **Lingua del calendario**: 1 Italiano, 2 Español, 3 English. Fairnight propone la lingua del computer, se è italiano o spagnolo; altrimenti la propone in base alla città (Italia → italiano, Spagna e Canarie → spagnolo), e dice perché. Premi Invio per tenerla. Se non c'è niente da proporre e premi Invio, il calendario resta in inglese. La domanda arriva una volta sola: dopo si cambia dal calendario stesso.
 
 Il resto delle regole ha valori di partenza prudenti, che puoi cambiare dopo:
 - fine settimana: venerdì +10%, sabato +15%, domenica -5%;
@@ -150,7 +157,7 @@ Se Fairnight è già acceso e fai di nuovo doppio clic sull'icona, si riapre sol
 
 Con i soli link iCal i prezzi li porti tu sulle piattaforme. Un modo semplice: una volta alla settimana guarda le prossime 4-8 settimane nel calendario e copia i prezzi che cambiano. Su Airbnb si fa da Calendario › scegli le date › Prezzo; sull'Extranet di Booking da Tariffe e disponibilità › Calendario.
 
-Se usi **Smoobu** o **Beds24**, Fairnight può mandare i prezzi a loro e loro li passano a tutte le piattaforme: vedi [connettori.md](connettori.md). Per ora questa parte si attiva da terminale. Se ti interessa, scrivici e la configuriamo insieme.
+Se usi **Smoobu** o **Beds24**, Fairnight può mandare i prezzi a loro e loro li passano a tutte le piattaforme: vedi [connettori.md](connettori.md). Per ora questa parte si attiva da terminale. Se ti interessa, scrivici a [hello@khlumen.com](mailto:hello@khlumen.com) e la configuriamo insieme.
 
 ## 7. Cambiare le impostazioni
 
@@ -158,11 +165,13 @@ Nella cartella `Fairnight` fai doppio clic su **Cambia impostazioni**. Fairnight
 
 ![Cambia impostazioni](images/installa/11-cambia-impostazioni.png)
 
-Le impostazioni sono nel file `fairnight.config.json`, nella stessa cartella. Prima di ogni modifica, quello vecchio resta in `fairnight.config.json.bak`. Le regole che le domande non toccano, per esempio i fine settimana o gli sconti sulle notti vicine, si cambiano in quel file. Se non ti senti sicuro, scrivici.
+Le impostazioni sono nel file `fairnight.config.json`, nella stessa cartella. Prima di ogni modifica, quello vecchio resta in `fairnight.config.json.bak`. Le regole che le domande non toccano, per esempio i fine settimana o gli sconti sulle notti vicine, si cambiano in quel file. Se non ti senti sicuro, scrivici a [hello@khlumen.com](mailto:hello@khlumen.com).
 
 ## 8. Aggiornare Fairnight
 
-Scarica di nuovo lo zip (passo 1) e fai di nuovo doppio clic su **Installa Fairnight**. Fairnight si aggiorna e le tue impostazioni e i tuoi dati restano come sono.
+Scarica di nuovo lo zip (passo 1) e fai di nuovo doppio clic su **Installa Fairnight (Windows)** o **Installa Fairnight (Mac)**. Fairnight si aggiorna e le tue impostazioni e i tuoi dati restano come sono. La finestra dice da quale versione a quale è passato, oppure «reinstallato» se avevi già l'ultima.
+
+Se Fairnight era aperto mentre aggiornavi, chiudi la sua finestra e riaprilo dall'icona: così usa la versione nuova.
 
 ![Aggiornamento: le impostazioni restano](images/installa/12-aggiornato.png)
 
@@ -178,6 +187,7 @@ Se aggiorni Node.js a una versione nuova, per esempio dalla 22 alla 24, Fairnigh
 | `data` | le prenotazioni lette dai calendari |
 | `programma` | Fairnight stesso: non serve aprirla |
 | `installazione.log` | il resoconto dell'ultima installazione: mandacelo se qualcosa non va |
+| `LEGGIMI.txt` (o `LEEME.txt`) | questa guida in breve: cosa c'è nella cartella, come aggiornare, a chi scrivere |
 
 Per una copia di sicurezza basta copiare `fairnight.config.json` e la cartella `data`.
 
@@ -194,5 +204,6 @@ Node.js puoi tenerlo o toglierlo come un programma qualsiasi: Fairnight non lo u
 ## Se qualcosa non va
 
 - **«Non riesco a leggerlo» su un link iCal**: controlla di aver copiato tutto il link. Quello di Airbnb finisce con `.ics` seguito da un codice. Se la piattaforma ha rigenerato il link, copia quello nuovo con «Cambia impostazioni».
-- **Il calendario non si apre nel browser**: nella finestra nera c'è l'indirizzo, di solito `http://localhost:4321`. Copialo nella barra del browser.
-- **«Non sono riuscito a installare Fairnight»**: mandaci il file `installazione.log` della cartella Fairnight. I tuoi dati non vengono toccati.
+- **Il calendario non si apre nel browser**: nella finestra nera c'è l'indirizzo, per esempio `http://localhost:4321` (il numero alla fine può cambiare, se sul computer è già occupato). Copialo nella barra del browser.
+- **«Non sono riuscito a installare Fairnight»**: la finestra dice il motivo più probabile (manca internet, un file è in uso…). Se non si risolve, scrivi a [hello@khlumen.com](mailto:hello@khlumen.com) e allega il file `installazione.log` della cartella Fairnight: premendo Invio la finestra apre quella cartella. I tuoi dati non vengono toccati.
+- **La finestra si apre e si chiude subito**: di solito il file di installazione è ancora dentro lo zip. Estrai la cartella (passo 1) e riprova.

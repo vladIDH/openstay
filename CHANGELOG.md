@@ -2,6 +2,29 @@
 
 All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org). Every package in this repository carries the same version.
 
+## Fairguest: tourist tax and payments - in development, not released
+
+Off unless a listing has a `touristTax` block (the tax) and `"payments": { "enabled": true }` (the payments). No money passes through Fairnight or Khlumen.
+
+### fairguest
+
+- `tax/rules.ts`: rate per person per night, seasons, cap on nights, age and residents exemptions, reduced rates by age band (an amount or a percent of the night's rate), in cents. The class of a guest (pays, reduced:<ages>, exempt-age, exempt-resident, exempt-other).
+- Points of the starting values to check with the town (`verify`): the words of the regulation and the source, shown until the host writes `"confirmed": true` or their own value. Napoli, Genova, Bari and Catania: the exempt age («entro il quattordicesimo anno»).
+- `tax/places.ts`: starting values for 12 Italian towns, Barcelona and the rest of Catalonia, each with its official source and the day it was read (2026-10-15). Bologna has no single rate and is left empty. The Canary Islands have no tax.
+- `tax/summary.ts`, `tax/pdf.ts`: the month or quarter summary for the town, as CSV and as PDF (a small PDF writer, no dependency).
+- The «Carta» check-in: the payments card (links to Stripe's pages only) and the question «resident in …» where residents do not pay. Italian, Spanish, English.
+
+### fairguest-relay
+
+- `PUT/GET /api/box/<box>/pay`: the host's computer leaves the Stripe links and amounts; the page shows them. Only Stripe addresses and the expected fields are accepted.
+
+### fairnight-cli
+
+- `fairnight tassa tariffe|soggiorno|riepilogo|esenta|classifica|conferma`.
+- `fairnight pagamenti [stato]|collega|prepara|rilascia|trattieni`: the host's own Stripe key (file or `STRIPE_SECRET_KEY`), payment links usable once, the deposit as a hold (manual capture). No key, no call.
+- Page `/pagamenti` in `fairnight serve`, this computer only: release or keep a deposit, download the summary, «Ho verificato» for the points to check.
+- Database schema 11: `guest_people.tax_class`, `guest_stays.tax_counts`, `guest_payments`.
+
 ## [0.2.0] - unreleased
 
 The first version published on npm and on GitHub Releases. It brings the connectors to Smoobu and Beds24, the autopilot, zone data, small hotels, the calendar page in three languages, the installer for hosts, and two new tools: **Fairguest** (guest registration for Spain and Italy) and **Fairhello** (draft replies to guests, approved by the host).
@@ -10,7 +33,7 @@ The first version published on npm and on GitHub Releases. It brings the connect
 
 - **Smoobu connector** (#1): HMAC-signed API, import of apartments and bookings, prices and minimum stays written only after the host confirms.
 - **Beds24 connector** (#2): invite code and refresh token, credits kept under half of the window, same confirm-then-write flow.
-- **Zone data** (#3, #10): the host's own CSV, Inside Airbnb files the host downloads, ISTAC open data for the Canary Islands, and a suggested base price the host confirms by hand. Every remote source is off unless switched on.
+- **Zone data** (#3, #10): the host's own CSV, Inside Airbnb files the host downloads, ISTAC open data for the Canary Islands, AirROI with the host's own key (used with AirROI's agreement), and a suggested base price the host confirms by hand.
 - **Fairguest** (#4, #9, #13, #14, #15): guest registration on the host's computer, encrypted with a passphrase only the host knows. Spain: the Mossos d'Esquadra file and the SES.HOSPEDAJES rules; Italy: Alloggiati Web and the regional Istat data. A check-in form on the host's network or through a link, with the document read in the guest's browser.
 - **Installer for hosts** (#5, #16): a double-click file for Windows and Mac, a guided setup in Italian (`fairnight configura`) and a one-click calendar (`fairnight apri`), tried in CI on both systems.
 - **Small hotels** (#6): room types with several identical rooms, occupancy by room-night, a few-rooms-left factor.
@@ -32,7 +55,10 @@ The first version published on npm and on GitHub Releases. It brings the connect
 - fairnight-market: ISTAC holiday homes of the Canary Islands (ADR by municipality and size, open data), INE tourist apartments (occupancy by tourist point), Inside Airbnb filter by guests (`accommodates`).
 - fairnight-cli: `fairnight mercato prezzo-base [--listing] [--applica]`; `mercato importa --fonte istac --comune <code> [--ospiti N]`; `mercato importa --fonte ine --punto <name>`, off (`market.ine.enabled`) while INE's licence is unclear; `--ospiti` on import; a listing field `guests`; which homes a zone describes is kept and shown by `mercato stato`.
 - Calendar page: the suggested base price with "Use this price" after a confirmation, only on the computer that runs Fairnight.
-- AirROI stays off until AirROI confirms its terms in a formal written document.
+- AirROI is on, used with AirROI's agreement (15 October 2026), and still optional: it needs the host's own key and a zone under `market.airroi.areas`, and `market.airroi.enabled: false` switches it off.
+  - No 30-day limit any more: the first `fairnight sync` (also the autopilot's and the page's Recalculate) 30 days after the last read reads the AirROI zones again; on failure the old data stays and the sync says why.
+  - "Powered by AirROI (https://www.airroi.com)" wherever AirROI data appears; on the calendar page it is a link to https://www.airroi.com.
+  - AirROI zone data also feeds the suggested base price.
 
 #### fairnight (engine)
 
@@ -54,7 +80,7 @@ The first version published on npm and on GitHub Releases. It brings the connect
 - The host's own zone CSV: date, occupancy, average price, comparables, with headers in English, Italian or Spanish.
 - Inside Airbnb: only the files the host downloads (`calendar.csv(.gz)`, optional `listings.csv(.gz)` for comparables), read as a stream. Attribution "Inside Airbnb (insideairbnb.com), CC BY 4.0". The occupancy is marked as estimated, and listings closed on every night are left out.
 - AirROI client with the host's own key:
-  - only `GET /markets/search` and `POST /markets/metrics/all`, never price recommendations;
+  - only `GET /markets/search` and `POST /markets/metrics/all`;
   - retries on 429 and 5xx;
   - the key never appears in an error.
 - A fake AirROI server for tests, with invented data.
@@ -96,8 +122,7 @@ The first version published on npm and on GitHub Releases. It brings the connect
 - Database schema 3: `beds24_stays`, `beds24_pushes`.
 - `fairnight mercato importa <file> --zona <name>`: zone data from the host's CSV or from Inside Airbnb files. Use `--annunci`, `--tipo`, `--camere` and `--quartiere` to keep comparables, and `--dry-run` to check first.
 - `fairnight mercato importa --fonte airroi`, `fairnight mercato collega`: AirROI with the host's own key.
-  - Off (`market.airroi.enabled: false`) until AirROI confirms its terms in writing.
-  - When on: `AIRROI_API_KEY` first, then `airroi-credentials.json` (for the current user only); data deleted after 30 days.
+  - `AIRROI_API_KEY` first, then `airroi-credentials.json` (for the current user only); data read again every 30 days, deleted on request.
 - `fairnight mercato stato` and `fairnight mercato cancella [--zona] [--fonte]`.
 - Listings choose their zone with `marketArea`.
 - Database schema 4: `market_areas`, `market_days`.
@@ -190,6 +215,7 @@ Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web, 
 
 - fairguest: `formValuesFromMrz` fills the form of the listing's country from the MRZ (Spanish DNI with its support number; a document the form does not offer becomes the closest one it does).
 - Tested from the link to the Mossos file; guide for Spanish hosts in Spanish and Italian (docs/fairguest-espana.es.md, docs/fairguest-spagna.md).
+- fairguest: the town of residence in Spain is picked by its name from the INE's official list of municipalities (1 January 2026, 8,132 towns), and the form keeps its INE code: the traveller's part is complete without the host's corrections. 6 digits are kept for the Mossos file, the first 5 go to SES. `correggi` takes 5 or 6 digits and refuses a code that does not exist.
 
 #### Istat, the regional tourist movement
 
@@ -203,7 +229,8 @@ Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web, 
 - fairguest: `webSeal` seals in the browser with Web Crypto in the same fg1 format (optional X25519 fallback); `padded` gives every guest the same size; `linkFor` / `readLinkFragment` for the link, whose key and stay stay after "#".
 - fairguest: `parseMrz` (TD1, TD2, TD3, ICAO check digits, OCR repairs confirmed by the check digits) and `guestFromMrz` (Spanish DNI: DNI number and support number apart).
 - fairguest-relay (new, private): Cloudflare Worker with one Durable Object per box in the EU jurisdiction; only sealed text, hashed secrets, limits, expiry two days after check-out, no logs; the guest's page with the photo read in the browser (Tesseract and the MRZ model served by the relay); hashes of the page for `verifica-pagina`; `scripts/dev.mjs` to try it locally.
-- fairnight-cli: `fairnight ospiti link`, `scarica` (no passphrase: the guests stay sealed) and `verifica-pagina`; downloads also before `elenco` and `invia` and every 5 minutes while `serve` runs; `"fairguestRelay"` in the config (default https://fairguest.khlumen.com); schema 9.
+- fairnight-cli: `fairnight ospiti link`, `scarica` (no passphrase: the guests stay sealed) and `verifica-pagina`; downloads also before `elenco` and `invia` and every 5 minutes while `serve` runs; `"fairguestRelay"` in the config (default https://fairguest-relay.openstay.workers.dev, the free workers.dev address: no DNS to move); schema 9.
+- fairguest-relay: on workers.dev, files served at their own name (`html_handling = "none"`: a redirect made the phone lose the box); `verifica-pagina` reports a redirect instead of following it. The confirmation screen has one privacy text, with who receives the data and when it is erased.
 
 #### fairguest (new)
 
@@ -249,12 +276,21 @@ Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web, 
 
 ### Installer and release
 
-- `Installa Fairnight.cmd` (Windows) and `Installa Fairnight.command` (Mac): check Node.js and say what to do when it is missing or too old, install into `~/Fairnight/programma` from the project folder or from npm, put an icon on the desktop, and update in place without touching the host's settings.
+- `Installa Fairnight (Windows).cmd` and `Installa Fairnight (Mac).command`: check Node.js and say what to do when it is missing or too old, install into `~/Fairnight/programma` from the project folder or from npm, put an icon on the desktop, and update in place without touching the host's settings.
 - `fairnight configura`: a guided setup in Italian (name, town, calendar links, prices, seasons proposed from the town, language, autopilot for houses on Smoobu or Beds24); `fairnight apri` starts the calendar page and opens the browser, or finds the one already running.
 - A guide for hosts in Italian with screenshots: `docs/installa.md`.
 - CI tries the installer on Windows and macOS with Node.js 22 and 24, from a folder with a space in its name, with fake calendars.
 - Release workflow on `v*` tags: tests on Node.js 20 and 22, the installer on Windows and Mac, a draft GitHub Release with the npm tarballs, `Fairnight-installa.zip` and checksums; npm publishing waits for a manual approval and only then the release becomes public. The steps are in `scripts/release.mjs`.
 - `CONTRIBUTING.md`, `SECURITY.md`, issue and pull request templates.
+- The double-click files are named `Installa Fairnight (Windows).cmd` and `Installa Fairnight (Mac).command`, so the two are told apart with extensions hidden.
+- Opened from inside the zip, the installer says to extract the folder first instead of closing at once. Every failure, expected or not, ends with a message in Italian, the most likely reason (no internet, a file in use, a full disk, a package not on npm yet), the address to write to and the folder of the log; npm's own output stays in the log. An unknown option stops the script.
+- The installer says it needs internet, shows its steps (1 of 3…) and that the window looks still while it downloads, says "updated from A to B" or "reinstalled", and asks to reopen Fairnight if it was open. npm's temporary files go to the system temp folder.
+- The Windows launchers also find Node.js in `%LOCALAPPDATA%\Programs\nodejs`, where the installer finds it.
+- `fairnight configura` leaves a short guide for the host in the folder, `LEGGIMI.txt` in Italian or `LEEME.txt` for a Spanish calendar, instead of the English `README.txt` (removed if the host never changed it). The zip carries the same steps in `LEGGIMI.txt` and `LEEME.txt`.
+- `fairnight configura` proposes the computer's language first (an Italian host with a house in Spain gets Italian), then the town's, and says why; the calendar check and the first reading use the same words (bookings and blocked periods).
+- `fairnight configura` and `fairnight apri` speak Spanish when the calendar is in Spanish, or the first time on a Spanish computer; the proposed seasons are named in Spanish too.
+- The calendar page arrives in the folder's language (tab title, `lang` and the first texts), before its script runs.
+- The installer says "2-4 minutes" only on the first installation, and its Node.js messages name the button to click on nodejs.org ("Windows Installer (.msi)", "macOS Installer (.pkg)", x64 instead of ARM64), checked on 15 October 2026.
 
 
 ## [0.1.0] - 2026-10-12, not published on npm

@@ -1,5 +1,6 @@
 /**
- * `fairnight configura`: the guided setup, in Italian, for hosts who never
+ * `fairnight configura`: the guided setup, in Italian or Spanish (see
+ * configura-testi.ts), for hosts who never
  * open fairnight.config.json. It asks for the name of each house, its town,
  * its Airbnb, Booking and Vrbo iCal links (reading each one to check it),
  * the base, lowest and highest price and the seasons, then writes the config.
@@ -14,7 +15,8 @@
  *   only when the host confirms it. Then the computer's daily run is set up,
  *   or removed when no house has it on any more.
  */
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { ConfigError, formatAmount, type ListingConfig, type SeasonPeriod } from "fairnight";
 import { ISTAT_REGIONS } from "fairguest";
 import { slugify } from "./channel.js";
@@ -26,33 +28,32 @@ import { configPath, dbPath, localToday, stripBom, type Io } from "./io.js";
 import { installSchedule, isScheduled, removeSchedule } from "./pianifica.js";
 import { writeListingPilot } from "./pilota-comandi.js";
 import { DEFAULT_MAX_CHANGE, DEFAULT_PILOT_TIME, runPilot } from "./pilota.js";
-import { describeSeason, multiplierOf, parseDayMonth, percentOf, proposedSeasons, REGION_LABEL, regionOf, typedDayMonth } from "./stagioni.js";
-import { isLanguage, proposedLanguage, systemLocale, type Language } from "./lingua.js";
+import { describeSeason, multiplierOf, parseDayMonth, percentOf, proposedSeasons, regionOf, typedDayMonth } from "./stagioni.js";
+import { isLanguage, languageProposal, setupLanguage, systemLocale, type Language } from "./lingua.js";
+import { SETUP_TEXTS, type SetupTexts } from "./configura-testi.js";
 import { download } from "./sync.js";
 import { syncEverything } from "./sync-all.js";
+import { HOST_README, LOCAL_README } from "./template.js";
 import type { FeedReport } from "./sync.js";
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
 
-/** The platforms the setup asks about, with two lines on where to find the link. */
-export const PLATFORMS: { source: IcalSource; label: string; where: string; looksLike: RegExp }[] = [
+/** The platforms the setup asks about; where to find each link is in the texts (`where`). */
+export const PLATFORMS: { source: IcalSource; label: string; looksLike: RegExp }[] = [
   {
     source: "airbnb",
     label: "Airbnb",
-    where: "Dal sito di Airbnb: Calendario › scegli la casa › Disponibilità › Collega calendari › Collega a un altro sito web › copia il link.",
     looksLike: /airbnb\./,
   },
   {
     source: "booking",
     label: "Booking",
-    where: "Dall'Extranet di Booking: Tariffe e disponibilità › Sincronizza calendari › Esporta calendario › copia il link.",
     looksLike: /booking\.com/,
   },
   {
     source: "vrbo",
     label: "Vrbo",
-    where: "Dal sito di Vrbo per proprietari: Calendario › Importa ed esporta › Esporta calendario › copia il link.",
     looksLike: /vrbo\.|homeaway\.|abritel\.|fewo-direkt\./,
   },
 ];
@@ -97,7 +98,11 @@ export function parseAmount(raw: string): number | null {
 const euro = (n: number) => `${Number.isInteger(n) ? n : n.toFixed(2).replace(".", ",")} €`;
 
 class Asker {
-  constructor(private readonly io: Io, private readonly ask: NonNullable<Io["prompt"]>) {}
+  constructor(
+    private readonly io: Io,
+    private readonly ask: NonNullable<Io["prompt"]>,
+    readonly w: SetupTexts,
+  ) {}
 
   /** Too many wrong answers in a row (or no more input): stop instead of asking forever. */
   private static readonly TRIES = 5;
@@ -113,9 +118,9 @@ class Asker {
       const raw = await this.text(question, String(current).replace(".", ","));
       const n = parseAmount(raw);
       if (n !== null) return n;
-      this.io.out(`    «${raw}» non è un prezzo: scrivi solo il numero, per esempio 95.`);
+      this.io.out(this.w.notAPrice(raw));
     }
-    throw new SetupError("Configurazione interrotta: troppe risposte non valide.");
+    throw new SetupError(this.w.tooMany);
   }
 
   async percent(question: string, current: number): Promise<number> {
@@ -123,9 +128,9 @@ class Asker {
       const raw = (await this.text(question, String(current))).replace("%", "").replace("+", "").trim();
       const n = Number(raw.replace(",", "."));
       if (raw !== "" && Number.isInteger(n) && n >= -50 && n <= 300) return n;
-      this.io.out("    Scrivi un numero intero da -50 a 300, per esempio 20 (vuol dire +20%).");
+      this.io.out(this.w.percentRange);
     }
-    throw new SetupError("Configurazione interrotta: troppe risposte non valide.");
+    throw new SetupError(this.w.tooMany);
   }
 
   async dayMonth(question: string, current: string): Promise<string> {
@@ -133,20 +138,20 @@ class Asker {
       const raw = await this.text(question, typedDayMonth(current));
       const md = parseDayMonth(raw);
       if (md !== null) return md;
-      this.io.out("    Scrivi giorno e mese, per esempio 20/12.");
+      this.io.out(this.w.dayMonthHint);
     }
-    throw new SetupError("Configurazione interrotta: troppe risposte non valide.");
+    throw new SetupError(this.w.tooMany);
   }
 
   async yes(question: string, byDefault: boolean): Promise<boolean> {
     for (let i = 0; i < Asker.TRIES; i++) {
-      const raw = (await this.ask(`${question} ${byDefault ? "[S/n]" : "[s/N]"}: `, { hidden: false })).trim().toLowerCase();
+      const raw = (await this.ask(`${question} ${this.w.yesNo(byDefault)}: `, { hidden: false })).trim().toLowerCase();
       if (raw === "") return byDefault;
       if (["s", "si", "sì", "y", "yes"].includes(raw)) return true;
       if (["n", "no"].includes(raw)) return false;
-      this.io.out("    Rispondi s (sì) oppure n (no).");
+      this.io.out(this.w.yesNoHint);
     }
-    throw new SetupError("Configurazione interrotta: troppe risposte non valide.");
+    throw new SetupError(this.w.tooMany);
   }
 
   /** A whole number in a range. */
@@ -155,9 +160,9 @@ class Asker {
       const raw = await this.text(question, current !== undefined ? String(current) : undefined);
       const n = Number(raw);
       if (raw !== "" && Number.isInteger(n) && n >= 1 && n <= max) return n;
-      this.io.out(`    Scrivi un numero intero da 1 a ${max}.`);
+      this.io.out(this.w.wholeRange(1, max));
     }
-    throw new SetupError("Configurazione interrotta: troppe risposte non valide.");
+    throw new SetupError(this.w.tooMany);
   }
 
   async whole(question: string, current: number, range: { min: number; max: number }): Promise<number> {
@@ -165,9 +170,9 @@ class Asker {
       const raw = (await this.text(question, String(current))).replace("%", "").trim();
       const n = Number(raw);
       if (raw !== "" && Number.isInteger(n) && n >= range.min && n <= range.max) return n;
-      this.io.out(`    Scrivi un numero intero da ${range.min} a ${range.max}.`);
+      this.io.out(this.w.wholeRange(range.min, range.max));
     }
-    throw new SetupError("Configurazione interrotta: troppe risposte non valide.");
+    throw new SetupError(this.w.tooMany);
   }
 
   async time(question: string, current: string): Promise<string> {
@@ -175,9 +180,9 @@ class Asker {
       const raw = (await this.text(question, current)).replace(".", ":");
       const padded = /^\d:\d\d$/.test(raw) ? `0${raw}` : raw;
       if (PILOT_TIME.test(padded)) return padded;
-      this.io.out("    Scrivi l'ora con i minuti, per esempio 06:00.");
+      this.io.out(this.w.timeHint);
     }
-    throw new SetupError("Configurazione interrotta: troppe risposte non valide.");
+    throw new SetupError(this.w.tooMany);
   }
 
   /** One letter among the given ones. */
@@ -185,9 +190,9 @@ class Asker {
     for (let i = 0; i < Asker.TRIES; i++) {
       const raw = (await this.text(question, byDefault)).toLowerCase();
       if (letters.includes(raw)) return raw;
-      this.io.out(`    Rispondi con una di queste lettere: ${letters.join(", ")}.`);
+      this.io.out(this.w.lettersHint(letters));
     }
-    throw new SetupError("Configurazione interrotta: troppe risposte non valide.");
+    throw new SetupError(this.w.tooMany);
   }
 }
 
@@ -199,7 +204,7 @@ export interface LinkCheck {
 }
 
 /** Read one iCal link now, the way `sync` will, to tell the host at once whether it works. */
-export async function checkLink(url: string, source: IcalSource, io: Io): Promise<LinkCheck> {
+export async function checkLink(url: string, source: IcalSource, io: Io, w: SetupTexts = SETUP_TEXTS.it): Promise<LinkCheck> {
   try {
     const parsed = parseIcal(await download(url, { fetch: io.fetch, now: io.now(), timeoutMs: 20_000 }));
     let reservations = 0;
@@ -212,56 +217,52 @@ export async function checkLink(url: string, source: IcalSource, io: Io): Promis
   } catch (e) {
     const message = (e as Error).message;
     const why = /BEGIN:VCALENDAR/.test(message)
-      ? "a questo indirizzo non c'è un calendario iCal"
+      ? w.noCalendar
       : /HTTP (\d+)/.test(message)
-        ? `il sito ha risposto con l'errore ${/HTTP (\d+)/.exec(message)?.[1]}`
+        ? w.httpError(`${/HTTP (\d+)/.exec(message)?.[1]}`)
         : /timeout|aborted/i.test(message)
-          ? "il sito non ha risposto in 20 secondi"
-          : "non riesco a collegarmi (controlla la connessione a internet)";
+          ? w.timeout
+          : w.offline;
     return { ok: false, reservations: 0, blocked: 0, error: why };
   }
 }
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 async function askLinks(a: Asker, io: Io, calendars: Obj[]): Promise<Obj[]> {
+  const w = a.w;
   const result = [...calendars];
   for (const p of PLATFORMS) {
     const index = result.findIndex((c) => c.source === p.source);
     const current = index >= 0 && typeof result[index]?.url === "string" ? (result[index]?.url as string) : undefined;
     io.out("");
-    io.out(`  Link iCal di ${p.label}`);
-    io.out(`    ${p.where}`);
-    io.out(
-      current === undefined
-        ? `    Incollalo qui; premi Invio se la casa non è su ${p.label}.`
-        : "    Premi Invio per tenere quello di adesso, scrivi - per toglierlo, oppure incolla quello nuovo.",
-    );
+    io.out(w.linkTitle(p.label));
+    io.out(`    ${w.where[p.source] ?? ""}`);
+    io.out(current === undefined ? w.linkPaste(p.label) : w.linkKeep);
     for (let attempt = 0; ; attempt++) {
-      const raw = (await a.text("    Link", current)).trim();
+      const raw = (await a.text(w.link, current)).trim();
       if (raw === "" || (current !== undefined && raw === current)) break;
       if (raw === "-") {
         if (index >= 0) result.splice(index, 1);
-        io.out(`    Tolto il link di ${p.label}.`);
+        io.out(w.linkRemoved(p.label));
         break;
       }
       const url = normaliseCalendarUrl(raw);
       if (url === null) {
-        io.out("    Questo non è un link: deve cominciare con https:// (oppure webcal://). Riprova, o premi Invio per saltare.");
-        if (attempt >= 4) throw new SetupError("Configurazione interrotta: troppe risposte non valide.");
+        io.out(w.notALink);
+        if (attempt >= 4) throw new SetupError(w.tooMany);
         continue;
       }
       const other = PLATFORMS.find((q) => q.source !== p.source && q.looksLike.test(new URL(url).hostname));
-      if (other) io.out(`    Attenzione: sembra un link di ${other.label}, non di ${p.label}.`);
-      io.out("    Lo leggo…");
-      const check = await checkLink(url, p.source, io);
+      if (other) io.out(w.otherPlatform(other.label, p.label));
+      io.out(w.reading);
+      const check = await checkLink(url, p.source, io, w);
       if (check.ok) {
-        io.out(`    ✓ Letto: ${plural(check.reservations, "prenotazione", "prenotazioni")}, ${plural(check.blocked, "periodo bloccato", "periodi bloccati")}.`);
+        io.out(w.read(check.reservations, check.blocked));
       } else {
-        io.out(`    ✗ Non riesco a leggerlo: ${check.error}. Controlla di aver copiato tutto il link.`);
-        if (!(await a.yes("    Lo salvo lo stesso? (potrai correggerlo dopo)", false))) {
-          if (attempt >= 4) throw new SetupError("Configurazione interrotta: troppe risposte non valide.");
-          io.out("    Incolla di nuovo il link, oppure premi Invio per saltare.");
+        io.out(w.notRead(check.error ?? ""));
+        if (!(await a.yes(w.saveAnyway, false))) {
+          if (attempt >= 4) throw new SetupError(w.tooMany);
+          io.out(w.pasteAgain);
           continue;
         }
       }
@@ -275,39 +276,41 @@ async function askLinks(a: Asker, io: Io, calendars: Obj[]): Promise<Obj[]> {
 }
 
 async function askSeasons(a: Asker, io: Io, city: string | undefined, current: SeasonPeriod[] | null): Promise<SeasonPeriod[] | null> {
+  const w = a.w;
+  const lang = w === SETUP_TEXTS.es ? "es" : "it";
   let periods: SeasonPeriod[];
   io.out("");
   if (current !== null && current.length > 0) {
     periods = current;
-    io.out("  Stagioni di adesso:");
+    io.out(w.seasonsNow);
   } else {
     const region = regionOf(city);
-    periods = proposedSeasons(region);
-    io.out(`  Stagioni proposte${city ? ` per ${city}` : ""} (${REGION_LABEL[region]}):`);
+    periods = proposedSeasons(region, lang);
+    io.out(w.seasonsProposed(city, w.regionLabel[region]));
   }
-  periods.forEach((p, i) => io.out(`    ${i + 1}. ${describeSeason(p)}`));
-  io.out("  In queste date il prezzo sale (o scende) della percentuale scritta.");
-  const what = await a.choice("  s = usale così · c = cambiale · n = nessuna stagione", ["s", "c", "n"], "s");
+  periods.forEach((p, i) => io.out(`    ${i + 1}. ${describeSeason(p, lang)}`));
+  io.out(w.seasonsExplain);
+  const what = await a.choice(w.seasonsChoice, ["s", "c", "n"], "s");
   if (what === "n") return [];
   if (what === "s") return periods;
 
   const changed: SeasonPeriod[] = [];
   for (const p of periods) {
     io.out(`  ${p.name}:`);
-    const start = await a.dayMonth("    dal (giorno/mese)", p.start);
-    const end = await a.dayMonth("    al (giorno/mese)", p.end);
-    const pct = await a.percent("    aumento in % (0 = togli questa stagione)", p.multiplier !== undefined ? percentOf(p.multiplier) : 0);
+    const start = await a.dayMonth(w.from, p.start);
+    const end = await a.dayMonth(w.to, p.end);
+    const pct = await a.percent(w.raise, p.multiplier !== undefined ? percentOf(p.multiplier) : 0);
     if (pct !== 0) changed.push({ name: p.name, start, end, multiplier: multiplierOf(pct) });
   }
-  while (await a.yes("  Aggiungo un'altra stagione?", false)) {
-    const name = (await a.text("    nome (per esempio Pasqua)")) || `Stagione ${changed.length + 1}`;
-    const start = await a.dayMonth("    dal (giorno/mese)", "04-01");
-    const end = await a.dayMonth("    al (giorno/mese)", "04-30");
-    const pct = await a.percent("    aumento in % (con il meno se il prezzo scende, per esempio -10)", 10);
+  while (await a.yes(w.anotherSeason, false)) {
+    const name = (await a.text(w.seasonName)) || w.seasonDefault(changed.length + 1);
+    const start = await a.dayMonth(w.from, "04-01");
+    const end = await a.dayMonth(w.to, "04-30");
+    const pct = await a.percent(w.raiseSigned, 10);
     if (pct !== 0) changed.push({ name, start, end, multiplier: multiplierOf(pct) });
   }
-  io.out(changed.length === 0 ? "  Nessuna stagione." : "  Stagioni salvate:");
-  changed.forEach((p, i) => io.out(`    ${i + 1}. ${describeSeason(p)}`));
+  io.out(changed.length === 0 ? w.noSeasons : w.seasonsSaved);
+  changed.forEach((p, i) => io.out(`    ${i + 1}. ${describeSeason(p, lang)}`));
   return changed;
 }
 
@@ -317,24 +320,25 @@ async function askListing(a: Asker, io: Io, raw: Obj | null, taken: Set<string>,
   const factors: Obj = isObj(pricing.factors) ? (pricing.factors as Obj) : {};
   const limits: Obj = isObj(factors.limits) ? (factors.limits as Obj) : {};
   const seasons: Obj | null = isObj(factors.seasons) ? (factors.seasons as Obj) : null;
+  const w = a.w;
 
-  const title = await a.text("  Nome della casa", typeof pricing.name === "string" ? pricing.name : `Casa ${number}`);
-  const cityRaw = await a.text("  Città o paese", typeof raw?.city === "string" ? raw.city : undefined);
+  const title = await a.text(w.houseName, typeof pricing.name === "string" ? pricing.name : w.houseDefault(number));
+  const cityRaw = await a.text(w.city, typeof raw?.city === "string" ? raw.city : undefined);
   const city = cityRaw === "" ? undefined : cityRaw.slice(0, 100);
   const calendars = await askLinks(a, io, Array.isArray(raw?.calendars) ? (raw?.calendars as Obj[]) : []);
 
   io.out("");
-  io.out("  Prezzi a notte, in euro. Fairnight parte dal prezzo base e non va mai sotto il minimo né sopra il massimo.");
+  io.out(w.pricesIntro);
   let base: number;
   let floor: number;
   let ceiling: number;
   for (let attempt = 0; ; attempt++) {
-    base = await a.amount("  Prezzo base", typeof pricing.basePrice === "number" ? pricing.basePrice : 100);
-    floor = await a.amount("  Prezzo minimo", typeof limits.floorPrice === "number" ? limits.floorPrice : Math.round(base * 0.6));
-    ceiling = await a.amount("  Prezzo massimo", typeof limits.ceilingPrice === "number" ? limits.ceilingPrice : Math.round(base * 2.5));
+    base = await a.amount(w.base, typeof pricing.basePrice === "number" ? pricing.basePrice : 100);
+    floor = await a.amount(w.floor, typeof limits.floorPrice === "number" ? limits.floorPrice : Math.round(base * 0.6));
+    ceiling = await a.amount(w.ceiling, typeof limits.ceilingPrice === "number" ? limits.ceilingPrice : Math.round(base * 2.5));
     if (floor <= base && base <= ceiling) break;
-    io.out(`    Il minimo (${euro(floor)}) deve essere sotto il base (${euro(base)}) e il massimo (${euro(ceiling)}) sopra: riproviamo.`);
-    if (attempt >= 4) throw new SetupError("Configurazione interrotta: troppe risposte non valide.");
+    io.out(w.pricesOrder(euro(floor), euro(base), euro(ceiling)));
+    if (attempt >= 4) throw new SetupError(w.tooMany);
   }
 
   const currentSeasons = seasons !== null && seasons.enabled === true && Array.isArray(seasons.periods) ? (seasons.periods as SeasonPeriod[]) : null;
@@ -369,28 +373,29 @@ async function askRoomsAndBeds(a: Asker, io: Io, entry: Obj): Promise<void> {
   const region = istat && typeof istat.region === "string" ? (ISTAT_REGIONS as Record<string, { name: string; mode: string }>)[istat.region] : undefined;
   if (!fg || fg.country !== "IT" || region?.mode !== "ross1000") return;
   io.out("");
-  io.out(`  Istat (${region.name}, ROSS1000): ogni giorno si comunicano le camere e i letti della casa.`);
-  fg.rooms = await a.count("  Camere", typeof fg.rooms === "number" ? fg.rooms : undefined, 999);
-  fg.beds = await a.count("  Letti (quante persone può ospitare)", typeof fg.beds === "number" ? fg.beds : undefined, 9999);
+  io.out(a.w.istat(region.name));
+  fg.rooms = await a.count(a.w.rooms, typeof fg.rooms === "number" ? fg.rooms : undefined, 999);
+  fg.beds = await a.count(a.w.beds, typeof fg.beds === "number" ? fg.beds : undefined, 9999);
 }
 
-function summary(listing: Obj): string[] {
+function summary(listing: Obj, w: SetupTexts): string[] {
   const p = listing.pricing as ListingConfig & Obj;
   const limits = p.factors.limits;
   const links = (listing.calendars as Obj[]).filter((c) => typeof c.url === "string").map((c) => PLATFORMS.find((q) => q.source === c.source)?.label ?? String(c.source));
   return [
     `  ${p.name ?? String(listing.name)}${typeof listing.city === "string" ? ` · ${listing.city}` : ""}`,
-    `    calendari: ${links.length > 0 ? links.join(", ") : "nessuno"}`,
-    `    prezzo base ${euro(p.basePrice)}${limits ? `, minimo ${euro(limits.floorPrice)}, massimo ${euro(limits.ceilingPrice)}` : ""}`,
+    w.calendars(links.length > 0 ? links.join(", ") : w.none),
+    w.priceLine(euro(p.basePrice), limits ? { floor: euro(limits.floorPrice), ceiling: euro(limits.ceilingPrice) } : null),
   ];
 }
 
-/** One line per calendar read, in Italian, for the setup and for `apri`. */
-export function feedLineIt(r: FeedReport, titles: Map<string, string>): string {
+/** One line per calendar read, in the setup's language, for the setup and for `apri`. */
+export function feedLineIt(r: FeedReport, titles: Map<string, string>, w: SetupTexts = SETUP_TEXTS.it): string {
   const house = titles.get(r.listing) ?? r.listing;
   const where = PLATFORMS.find((p) => r.feed === p.source || r.feed.startsWith(`${p.source}-`))?.label ?? r.feed;
-  if (!r.ok) return `  ✗ ${house} · ${where}: non letto (${r.error ?? "errore"}). I dati di prima restano com'erano.`;
-  return `  ✓ ${house} · ${where}: ${plural(r.seen, "evento", "eventi")}${r.added > 0 ? `, ${r.added} nuovi` : ""}${r.removed > 0 ? `, ${r.removed} tolti` : ""}`;
+  if (!r.ok) return w.feedFailed(house, where, r.error ?? w.error);
+  // The same words as the check of each link ("3 prenotazioni, 1 periodo bloccato"): the feed does not tell them apart.
+  return `  ✓ ${house} · ${where}: ${w.feedSeen(r.seen)}${r.added > 0 ? w.feedAdded(r.added) : ""}${r.removed > 0 ? w.feedRemoved(r.removed) : ""}`;
 }
 
 const LANGUAGE_CHOICES: { key: string; language: Language; label: string }[] = [
@@ -401,20 +406,22 @@ const LANGUAGE_CHOICES: { key: string; language: Language; label: string }[] = [
 
 /**
  * The language of the calendar page, asked once when the config has none.
- * Proposed from the towns, then from this computer; with nothing clear there
- * is no proposal, and Enter leaves it empty (the page is then in English).
+ * Proposed from this computer, then from the towns, saying why; with nothing
+ * clear there is no proposal, and Enter leaves it empty (the page is then in English).
  */
 async function askLanguage(a: Asker, io: Io, cities: (string | undefined)[]): Promise<Language | null> {
-  const proposed = proposedLanguage(cities, io.locale ?? systemLocale(io.env ?? {}));
+  const w = a.w;
+  const proposal = languageProposal(cities, io.locale ?? systemLocale(io.env ?? {}));
   io.out("");
-  io.out("Lingua del calendario (la pagina con i prezzi):");
+  io.out(w.languageTitle);
   io.out(`  ${LANGUAGE_CHOICES.map((c) => `${c.key} ${c.label}`).join(" · ")}`);
   const keys = LANGUAGE_CHOICES.map((c) => c.key);
-  if (proposed !== null) {
-    const key = await a.choice("Scegli 1, 2 o 3", keys, LANGUAGE_CHOICES.find((c) => c.language === proposed)?.key as string);
+  if (proposal !== null) {
+    io.out(w.languagePropose(w.languageNames[proposal.language], proposal.from === "computer"));
+    const key = await a.choice(w.languageChoose, keys, LANGUAGE_CHOICES.find((c) => c.language === proposal.language)?.key as string);
     return LANGUAGE_CHOICES.find((c) => c.key === key)?.language ?? null;
   }
-  const key = await a.choice("Scegli 1, 2 o 3 (Invio per saltare: il calendario resta in inglese)", [...keys, ""], "");
+  const key = await a.choice(w.languageSkip, [...keys, ""], "");
   return LANGUAGE_CHOICES.find((c) => c.key === key)?.language ?? null;
 }
 
@@ -434,21 +441,22 @@ const titleOf = (l: Obj) => (isObj(l.pricing) && typeof l.pricing.name === "stri
 async function askPilot(a: Asker, io: Io, listings: Obj[], next: Obj): Promise<{ turnedOn: string[]; anyOn: boolean }> {
   const linked = listings.filter((l) => channelLabel(l) !== null);
   if (linked.length === 0) return { turnedOn: [], anyOn: false };
+  const w = a.w;
   io.out("");
-  io.out("Pilota automatico");
-  io.out("  Ogni giorno Fairnight rilegge i calendari e manda i prezzi nuovi a Smoobu o Beds24, poi li rilegge per controllo.");
-  io.out("  Un prezzo cambia al massimo della percentuale che scegli al giorno, mai sotto il minimo né sopra il massimo.");
+  io.out(w.pilotTitle);
+  io.out(w.pilotExplain1);
+  io.out(w.pilotExplain2);
   const turnedOn: string[] = [];
   for (const l of linked) {
     const before: Obj = isObj(l.pilot) ? (l.pilot as Obj) : {};
     const wasOn = before.enabled === true;
-    const on = await a.yes(`  «${titleOf(l)}» → ${channelLabel(l)}: mando i prezzi da solo ogni giorno?`, wasOn);
+    const on = await a.yes(w.pilotAsk(titleOf(l), channelLabel(l) ?? ""), wasOn);
     if (!on) {
       if (isObj(l.pilot)) l.pilot = { ...before, enabled: false };
       continue;
     }
     const current = typeof before.maxDailyChangePercent === "number" ? before.maxDailyChangePercent : DEFAULT_MAX_CHANGE;
-    const pct = await a.whole("    Variazione massima al giorno, in %", current, PILOT_MAX_CHANGE);
+    const pct = await a.whole(w.pilotMax, current, PILOT_MAX_CHANGE);
     const pilot: Obj = { ...before, enabled: true };
     if (pct !== DEFAULT_MAX_CHANGE || before.maxDailyChangePercent !== undefined) pilot.maxDailyChangePercent = pct;
     if (typeof pilot.days === "number" && (pilot.days < PILOT_DAYS.min || pilot.days > PILOT_DAYS.max)) delete pilot.days;
@@ -457,7 +465,7 @@ async function askPilot(a: Asker, io: Io, listings: Obj[], next: Obj): Promise<{
   }
   const anyOn = listings.some((l) => isObj(l.pilot) && l.pilot.enabled === true);
   if (anyOn) {
-    const time = await a.time("  A che ora ogni giorno?", isObj(next.pilot) && typeof next.pilot.time === "string" ? next.pilot.time : DEFAULT_PILOT_TIME);
+    const time = await a.time(w.pilotTime, isObj(next.pilot) && typeof next.pilot.time === "string" ? next.pilot.time : DEFAULT_PILOT_TIME);
     next.pilot = { time };
   }
   return { turnedOn, anyOn };
@@ -465,12 +473,13 @@ async function askPilot(a: Asker, io: Io, listings: Obj[], next: Obj): Promise<{
 
 /** After saving: show each house just turned on what it would write, and keep it on only if the host confirms. */
 async function confirmPilot(a: Asker, io: Io, dir: string, config: HostConfig, names: string[]): Promise<void> {
+  const w = a.w;
   for (const name of names) {
     const listing = config.listings.find((l) => l.name === name);
     if (!listing) continue;
     const title = listing.pricing.name ?? name;
     io.out("");
-    io.out(`  Anteprima per «${title}»: guardo i prezzi che ci sono adesso…`);
+    io.out(w.previewLooking(title));
     let ok = false;
     try {
       const r = await runPilot(dir, io, { trigger: "manual", dryRun: true, includeOff: true, only: [name] }, config);
@@ -479,42 +488,42 @@ async function confirmPilot(a: Asker, io: Io, dir: string, config: HostConfig, n
         const label = res.feed === "beds24" ? "Beds24" : "Smoobu";
         io.out(
           res.nights.length === 0
-            ? `    ${label} ha già questi prezzi: oggi non cambierebbe niente.`
-            : `    Al primo giro cambierebbero ${plural(res.nights.length, "notte", "notti")} su ${label}, per esempio:`,
+            ? w.previewNone(label)
+            : w.previewSome(res.nights.length, label),
         );
         for (const n of res.nights.slice(0, 5)) {
-          io.out(`      ${n.date}: ${n.oldPrice === null ? "—" : formatAmount(n.oldPrice)} → ${formatAmount(n.newPrice)}${n.limited === "cap" ? ` (va verso ${formatAmount(n.target)} un passo al giorno)` : ""}`);
+          io.out(`      ${n.date}: ${n.oldPrice === null ? "—" : formatAmount(n.oldPrice)} → ${formatAmount(n.newPrice)}${n.limited === "cap" ? w.previewStep(formatAmount(n.target)) : ""}`);
         }
-        ok = await a.yes(`    Accendo il pilota per «${title}»?`, true);
+        ok = await a.yes(w.pilotConfirm(title), true);
       } else {
-        io.out(`    ✗ Non riesco a fare l'anteprima: ${res?.error ?? "nessuna risposta"}. Il pilota resta spento.`);
+        io.out(w.previewFailed(res?.error ?? w.noAnswer));
       }
     } catch (e) {
-      io.out(`    ✗ Non riesco a fare l'anteprima: ${(e as Error).message}. Il pilota resta spento.`);
+      io.out(w.previewFailed((e as Error).message));
     }
     if (!ok) {
       writeListingPilot(dir, name, { enabled: false });
-      io.out(`    Pilota spento per «${title}».`);
-    } else io.out(`    ✓ Pilota acceso per «${title}».`);
+      io.out(w.pilotOff(title));
+    } else io.out(w.pilotOn(title));
   }
 }
 
 /** Set up the daily run when some house has the autopilot on; remove it when none has. */
-function scheduleOrRemove(io: Io, dir: string, config: HostConfig): void {
+function scheduleOrRemove(io: Io, dir: string, config: HostConfig, w: SetupTexts): void {
   const anyOn = config.listings.some((l) => l.pilot?.enabled === true);
   try {
     if (anyOn) {
       const time = config.pilot?.time ?? DEFAULT_PILOT_TIME;
       installSchedule(dir, io, time, localToday(io.now()));
-      io.out(`  Il pilota gira ogni giorno alle ${time}. Se a quell'ora il computer è spento, gira appena lo riaccendi.`);
+      io.out(w.scheduled(time));
     } else if (isScheduled(dir, io) === true) {
       removeSchedule(dir, io);
-      io.out("  Nessuna casa ha più il pilota acceso: ho tolto il giro di ogni giorno da questo computer.");
+      io.out(w.unscheduled);
     }
   } catch (e) {
     if (!(e instanceof SetupError)) throw e;
-    io.out(`  ✗ Il giro di ogni giorno non è stato impostato: ${e.message}`);
-    io.out("    Finché la pagina del calendario è aperta, il pilota fa comunque il giro del giorno.");
+    io.out(w.notScheduled(e.message));
+    io.out(w.pageRuns);
   }
 }
 
@@ -540,35 +549,36 @@ export function readRawConfig(dir: string): Obj | null {
 }
 
 export async function configura(dir: string, io: Io): Promise<number> {
-  if (!io.prompt) throw new SetupError("La configurazione guidata ha bisogno di una finestra dove scrivere le risposte.");
-  const a = new Asker(io, io.prompt);
   const raw = readRawConfig(dir);
+  const w = SETUP_TEXTS[setupLanguage(raw?.language, io.locale ?? systemLocale(io.env ?? {}))];
+  if (!io.prompt) throw new SetupError(w.needsWindow);
+  const a = new Asker(io, io.prompt, w);
   const listings: Obj[] = raw ? [...(raw.listings as Obj[])] : [];
   const taken = new Set(listings.map((l) => String(l.name)));
 
-  io.out("Configurazione di Fairnight");
-  io.out("Tra parentesi quadre c'è la risposta già pronta: premi Invio per tenerla, oppure scrivi la tua.");
+  io.out(w.title);
+  io.out(w.howTo);
 
   if (listings.length === 0) {
     for (let n = 1; ; n++) {
       io.out("");
-      io.out(`Casa ${n}`);
+      io.out(w.house(n));
       const entry = await askListing(a, io, null, taken, n);
       listings.push(entry);
       io.out("");
-      if (!(await a.yes("Vuoi aggiungere un'altra casa?", false))) break;
+      if (!(await a.yes(w.anotherHouse, false))) break;
     }
   } else {
     for (;;) {
       io.out("");
-      io.out("Le tue case:");
+      io.out(w.yourHouses);
       listings.forEach((l, i) => io.out(`  ${i + 1}. ${isObj(l.pricing) && typeof l.pricing.name === "string" ? l.pricing.name : String(l.name)}`));
       const letters = [...listings.map((_, i) => String(i + 1)), "a", "f"];
-      const what = await a.choice("Scrivi il numero della casa da cambiare, a per aggiungerne una, f per finire", letters, "f");
+      const what = await a.choice(w.whichHouse, letters, "f");
       if (what === "f") break;
       io.out("");
       if (what === "a") {
-        io.out(`Casa ${listings.length + 1}`);
+        io.out(w.house(listings.length + 1));
         listings.push(await askListing(a, io, null, taken, listings.length + 1));
       } else {
         const i = Number(what) - 1;
@@ -577,7 +587,7 @@ export async function configura(dir: string, io: Io): Promise<number> {
     }
   }
 
-  const next: Obj = { ...(raw ?? { market: { airroi: { enabled: false } } }), listings };
+  const next: Obj = { ...(raw ?? { market: { airroi: { enabled: true } } }), listings };
   const pilot = await askPilot(a, io, listings, next);
   if (!isLanguage(next.language)) {
     const language = await askLanguage(
@@ -594,21 +604,25 @@ export async function configura(dir: string, io: Io): Promise<number> {
   mkdirSync(dir, { recursive: true });
   if (existsSync(file)) copyFileSync(file, `${file}.bak`);
   writeFileSync(file, JSON.stringify(next, null, 2) + "\n", "utf8");
-  initFolder(dir); // the README and the database; the config just written is kept
+  // The host's guide in Italian, or in Spanish for a Spanish calendar, and the database; the config just written is kept.
+  initFolder(dir, HOST_README[next.language === "es" ? "es" : "it"]);
+  // The English README of earlier versions, left untouched by the host: the guide above takes its place.
+  const oldReadme = path.join(dir, "README.txt");
+  if (existsSync(oldReadme) && readFileSync(oldReadme, "utf8") === LOCAL_README) unlinkSync(oldReadme);
 
   io.out("");
-  io.out("Salvato. Ecco le tue case:");
-  for (const l of listings) for (const line of summary(l)) io.out(line);
-  io.out(`Le impostazioni sono nel file ${file}${raw ? " (quelle di prima in fairnight.config.json.bak)" : ""}.`);
+  io.out(w.saved);
+  for (const l of listings) for (const line of summary(l, w)) io.out(line);
+  io.out(w.savedIn(file, raw !== null));
 
   const db = openDb(dbPath(dir));
   try {
-    const { reports } = await syncEverything(db, dir, checked.value.listings, io);
+    const { reports } = await syncEverything(db, dir, checked.value.listings, io, checked.value.market);
     if (reports.length > 0) {
       io.out("");
-      io.out("Calendari letti:");
+      io.out(w.calendarsRead);
       const titles = new Map(checked.value.listings.map((l) => [l.name, l.pricing.name ?? l.name]));
-      for (const r of reports) io.out(feedLineIt(r, titles));
+      for (const r of reports) io.out(feedLineIt(r, titles, w));
     }
   } finally {
     db.close();
@@ -617,7 +631,7 @@ export async function configura(dir: string, io: Io): Promise<number> {
   if (pilot.turnedOn.length > 0 || pilot.anyOn || isObj(raw?.pilot)) {
     await confirmPilot(a, io, dir, checked.value, pilot.turnedOn);
     io.out("");
-    scheduleOrRemove(io, dir, readConfigAfter(dir));
+    scheduleOrRemove(io, dir, readConfigAfter(dir), w);
   }
   return 0;
 }

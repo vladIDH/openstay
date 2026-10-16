@@ -9,13 +9,12 @@
  *   around it, and Christmas.
  */
 import type { SeasonPeriod } from "fairnight";
+import { SETUP_TEXTS } from "./configura-testi.js";
+import type { SetupLang } from "./lingua.js";
 
 export type SeasonRegion = "canarie" | "estate";
 
-export const REGION_LABEL: Record<SeasonRegion, string> = {
-  canarie: "Canarie: alta stagione in inverno",
-  estate: "Italia e Spagna: alta stagione in estate, più Natale",
-};
+export const REGION_LABEL: Record<SeasonRegion, string> = SETUP_TEXTS.it.regionLabel;
 
 /** Islands, towns and resorts of the Canary Islands, written without accents. */
 const CANARY_PLACES = [
@@ -49,28 +48,28 @@ export function regionOf(city: string | undefined): SeasonRegion {
   return isCanaryPlace(city) ? "canarie" : "estate";
 }
 
-export function proposedSeasons(region: SeasonRegion): SeasonPeriod[] {
+/** The proposal, with season names in the language of the setup (they are written in the config as they are). */
+export function proposedSeasons(region: SeasonRegion, lang: SetupLang = "it"): SeasonPeriod[] {
+  const n = SETUP_TEXTS[lang].seasonNames;
   if (region === "canarie") {
     return [
-      { name: "Natale e Capodanno", start: "12-20", end: "01-06", multiplier: 1.35 },
-      { name: "Inverno", start: "01-07", end: "03-31", multiplier: 1.2 },
-      { name: "Inizio inverno", start: "11-01", end: "12-19", multiplier: 1.1 },
+      { name: n.christmas, start: "12-20", end: "01-06", multiplier: 1.35 },
+      { name: n.winter, start: "01-07", end: "03-31", multiplier: 1.2 },
+      { name: n.earlyWinter, start: "11-01", end: "12-19", multiplier: 1.1 },
     ];
   }
   return [
-    { name: "Natale e Capodanno", start: "12-20", end: "01-06", multiplier: 1.25 },
-    { name: "Giugno", start: "06-01", end: "06-30", multiplier: 1.1 },
-    { name: "Luglio e agosto", start: "07-01", end: "08-31", multiplier: 1.25 },
-    { name: "Settembre", start: "09-01", end: "09-30", multiplier: 1.1 },
+    { name: n.christmas, start: "12-20", end: "01-06", multiplier: 1.25 },
+    { name: n.june, start: "06-01", end: "06-30", multiplier: 1.1 },
+    { name: n.summer, start: "07-01", end: "08-31", multiplier: 1.25 },
+    { name: n.september, start: "09-01", end: "09-30", multiplier: 1.1 },
   ];
 }
 
-const MONTHS = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"];
-
 /** "12-20" → "20 dic". */
-export function dayMonth(md: string): string {
+export function dayMonth(md: string, lang: SetupLang = "it"): string {
   const [m, d] = md.split("-").map(Number) as [number, number];
-  return `${d} ${MONTHS[m - 1]}`;
+  return `${d} ${SETUP_TEXTS[lang].months[m - 1]}`;
 }
 
 /** "12-20" → "20/12", the way the host types it. */
@@ -94,8 +93,8 @@ export const percentOf = (multiplier: number) => Math.round((multiplier - 1) * 1
 export const multiplierOf = (percent: number) => Math.round((1 + percent / 100) * 100) / 100;
 
 /** "Luglio e agosto · dal 1 lug al 31 ago · +25%" (fixed-price seasons show the price). */
-export function describeSeason(p: SeasonPeriod): string {
-  const change =
-    p.multiplier !== undefined ? `${percentOf(p.multiplier) >= 0 ? "+" : ""}${percentOf(p.multiplier)}%` : `prezzo fisso ${p.fixedPrice}`;
-  return `${p.name} · dal ${dayMonth(p.start)} al ${dayMonth(p.end)} · ${change}`;
+export function describeSeason(p: SeasonPeriod, lang: SetupLang = "it"): string {
+  const w = SETUP_TEXTS[lang];
+  const change = p.multiplier !== undefined ? `${percentOf(p.multiplier) >= 0 ? "+" : ""}${percentOf(p.multiplier)}%` : w.fixedPrice(p.fixedPrice as number);
+  return w.seasonLine(p.name, dayMonth(p.start, lang), dayMonth(p.end, lang), change);
 }

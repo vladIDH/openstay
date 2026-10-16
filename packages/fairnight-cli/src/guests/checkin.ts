@@ -12,16 +12,43 @@
  * - The questions follow the country of the listing: in Spain address, contact
  *   and the TYPE of payment; in Italy the places of birth and of issue, and the
  *   document only for the holder. Any other field sent is ignored.
+ * - With a tourist tax that residents do not pay, one more question: "do you
+ *   live in <town>?". Only the guest's tax class is kept in clear.
+ * - With payments on and the host's Stripe key, a card with the tax and the
+ *   deposit, each a link to Stripe's own page. Without the key, no card and no
+ *   call to Stripe.
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { isIPv4, isIPv6 } from "node:net";
-import { errorsByField, esc, FORM_KEYS, guestInput, isPaymentType, localDateTime, LOCK, page, parseGuest, registryFor, renderForm, residenceProblems, stayDay, stepsBar, TICK, type Words } from "fairguest";
-import { loadHostConfig } from "../config.js";
+import {
+  classifyGuest,
+  errorsByField,
+  esc,
+  FORM_KEYS,
+  guestInput,
+  isPaymentType,
+  localDateTime,
+  LOCK,
+  page,
+  parseGuest,
+  payCard,
+  registryFor,
+  renderForm,
+  residenceProblems,
+  stayDay,
+  stepsBar,
+  TICK,
+  type GuestSettings,
+  type Words,
+} from "fairguest";
+import { loadHostConfig, type HostListing } from "../config.js";
+import { ensurePayments, paymentsOn, payView, refreshPayments } from "../payments/run.js";
+import { loadStripeKey, StripeClient } from "../payments/stripe.js";
 import { openDb } from "../db.js";
 import { dbPath, type Io } from "../io.js";
 import { pickLang, WORDS, type Lang } from "./i18n.js";
-import { addPerson, guestsEnabled, peopleCount, type StayRow } from "./store.js";
+import { addPerson, guestsEnabled, peopleCount, type PersonData, type StayRow } from "./store.js";
 
 export interface CheckinContext {
   dir: string;
@@ -111,6 +138,30 @@ function noteFailure(ctx: CheckinContext, ip: string): void {
   else f.count++;
 }
 
+/**
+ * The payments card of a stay, or "" (payments off, no Stripe key, nobody
+ * registered yet). Stripe is called only with the host's key.
+ */
+async function paymentsCard(ctx: CheckinContext, db: ReturnType<typeof openDb>, listing: HostListing, settings: GuestSettings, row: StayRow, lang: Lang, today: string): Promise<string> {
+  if (!paymentsOn(settings)) return "";
+  let key;
+  try {
+    key = loadStripeKey(ctx.dir, ctx.io.env ?? {});
+  } catch {
+    key = null;
+  }
+  if (!key) return "";
+  const client = new StripeClient(key, ctx.io);
+  try {
+    await ensurePayments(db, client, listing, settings, row, lang, today, ctx.io.now());
+    await refreshPayments(db, client, row.id, ctx.io.now());
+  } catch (e) {
+    // Stripe out of reach: the card shows what is known; the host sees why.
+    ctx.io.err(`Payments for stay ${row.id}: ${(e as Error).message}`);
+  }
+  return payCard(payView(db, settings, row, today, key.live), lang, (d) => stayDay(d, lang));
+}
+
 /** Handles /checkin/<code>; returns false for any other path. */
 export async function handleCheckin(req: IncomingMessage, res: ServerResponse, url: URL, ctx: CheckinContext, nonce: string): Promise<boolean> {
   const m = /^\/checkin\/([A-Za-z0-9_-]{1,64})\/?$/.exec(url.pathname);
@@ -141,7 +192,10 @@ export async function handleCheckin(req: IncomingMessage, res: ServerResponse, u
       send(res, 404, page(lang, w.notFound, `<p class="message">${esc(w.notFoundText)}</p>`, nonce), nonce);
       return true;
     }
-    const country = listing.fairguest.country;
+    const settings = listing.fairguest;
+    const country = settings.country;
+    const taxRule = settings.touristTax;
+    const taxTown = taxRule?.residentsExempt ? taxRule.name : undefined;
     // Italy: the residence only when the listing sends Istat data.
     const residence = country === "IT" && !!listing.fairguest.istat;
     const law = (wl: Words) => (country === "IT" ? wl.italy : wl);
@@ -150,25 +204,28 @@ export async function handleCheckin(req: IncomingMessage, res: ServerResponse, u
     const registered = peopleCount(db, row.id);
     const stayBox = (l: Lang, wl: Words) =>
       `<div class="stay"><b>${esc(listing.pricing.name ?? listing.name)}</b><span>${esc(wl.stay)}: ${esc(stayDay(row.check_in, l))} → ${esc(stayDay(row.check_out, l))} · ${esc(wl.registered(registered))}</span></div>`;
-    const privacyLine = (wl: Words) => `<p class="privacy-line">${LOCK}<span>${esc(law(wl).privacyShort)}</span></p>`;
-    const header = (l: Lang, wl: Words, at: 1 | 2 | 3) => stayBox(l, wl) + stepsBar(wl, at) + privacyLine(wl);
+    // On the confirmation the box is the only privacy text: it also says who receives the data and when it is erased.
+    const privacyLine = (wl: Words, at: 1 | 2 | 3) =>
+      `<p class="privacy-line">${LOCK}<span>${esc(law(wl).privacyShort)}${at === 3 ? `<span class="where">${esc(law(wl).privacyWhere)}</span>` : ""}</span></p>`;
+    const header = (l: Lang, wl: Words, at: 1 | 2 | 3) => stayBox(l, wl) + stepsBar(wl, at) + privacyLine(wl, at);
     const intro = `<p class="intro">${esc(law(w).intro)}</p>`;
     const privacy = (wl: Words) => `<p class="privacy">${esc(law(wl).privacy)}</p>`;
     const tok = token(ctx.secret, code);
 
     if (req.method === "GET") {
       const saved = Number(url.searchParams.get("saved"));
-      const form = renderForm(w, lang, country, action, tok, registered, { values: {}, errors: new Map() }, { residence });
+      const form = renderForm(w, lang, country, action, tok, registered, { values: {}, errors: new Map() }, { residence, taxTown });
+      const pay = registered > 0 ? await paymentsCard(ctx, db, listing, settings, row, lang, today) : "";
       let body: string;
-      if (registered >= MAX_GUESTS) body = header(lang, w, 3);
+      if (registered >= MAX_GUESTS) body = header(lang, w, 3) + pay;
       else if (Number.isInteger(saved) && saved > 0) {
-        // Step 3: a clear confirmation; the form for the next guest opens only if asked for.
+        // Step 3: a clear confirmation, the payments if any; the form for the next guest opens only if asked for.
         body =
           header(lang, w, 3) +
           `<div class="done-card" role="status"><div class="tick">${TICK}</div><h2>${esc(w.saved(saved))}</h2><p>${esc(w.finished)}</p></div>` +
-          `<details class="another"><summary>${esc(w.addAnother)}</summary>${form}</details>` +
-          privacy(w);
-      } else body = header(lang, w, 1) + intro + form + privacy(w);
+          pay +
+          `<details class="another"><summary>${esc(w.addAnother)}</summary>${form}</details>`;
+      } else body = header(lang, w, 1) + pay + intro + form + privacy(w);
       send(res, 200, page(lang, w.title, body, nonce, langLink), nonce);
       return true;
     }
@@ -205,12 +262,17 @@ export async function handleCheckin(req: IncomingMessage, res: ServerResponse, u
       const body =
         header(postLang, pw, 1) +
         `<div class="banner bad" role="alert">${esc(pw.fix)}</div>` +
-        renderForm(pw, postLang, country, action, tok, registered, { values, errors: errorsByField(problems, pw) }, { residence }) +
+        renderForm(pw, postLang, country, action, tok, registered, { values, errors: errorsByField(problems, pw) }, { residence, taxTown }) +
         privacy(pw);
       send(res, 422, page(postLang, pw.title, body, nonce, (l) => `${action}?lang=${l}`), nonce);
       return true;
     }
-    addPerson(db, row.id, registered === 0 && isPaymentType(payment) ? { guest: parsed.guest, payment } : { guest: parsed.guest }, "form", now);
+    const person: PersonData = registered === 0 && isPaymentType(payment) ? { guest: parsed.guest, payment } : { guest: parsed.guest };
+    const resident = !!taxTown && form.get("taxResident") === "1";
+    if (resident) person.taxResident = true;
+    // Only the class goes in clear: "pays", "exempt-age"…, never the age or the town.
+    const taxClass = taxRule ? classifyGuest(taxRule, { birthDate: parsed.guest.birthDate, resident }, row.check_in) : null;
+    addPerson(db, row.id, person, "form", now, taxClass);
     res.writeHead(303, { location: `${action}?lang=${postLang}&saved=${registered + 1}`, "cache-control": "no-store" }).end();
     return true;
   } finally {

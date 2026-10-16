@@ -49,7 +49,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install gitleaks 8.30.1
         run: curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz | tar -xz -C "$RUNNER_TEMP" gitleaks
-      - name: Committed Smoobu, Beds24, AirROI and Anthropic credentials must be caught
+      - name: Committed Smoobu, Beds24, AirROI, Anthropic and Stripe credentials must be caught
         run: |
           fake() { head -c 64 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 24; }
           mkdir "$RUNNER_TEMP/leak" && cd "$RUNNER_TEMP/leak"
@@ -62,10 +62,12 @@ jobs:
           printf 'AIRROI_API_KEY=%s\n' "$(fake)" > airroi.env
           printf '{\n  "anthropicApiKey": "%s"\n}\n' "$(fake)" > fairhello-credentials.json
           printf 'export ANTHROPIC_API_KEY=%s\n' "$(fake)" > anthropic.env
+          printf '{\n  "secretKey": "rk_test_%s"\n}\n' "$(fake)" > stripe-credentials.json
+          printf 'STRIPE_SECRET_KEY=rk_test_%s\n' "$(fake)" > stripe.env
           git add -A && git commit -q -m "a mistake"
           "$RUNNER_TEMP/gitleaks" git --no-banner --redact --exit-code 0 --config "$GITHUB_WORKSPACE/.gitleaks.toml" \
             --report-format json --report-path "$RUNNER_TEMP/report.json" .
-          for rule in smoobu-credentials-file smoobu-api-credential-env beds24-credentials-file beds24-refresh-token-env airroi-credentials-file airroi-api-key-env fairhello-credentials-file anthropic-api-key-env; do
+          for rule in smoobu-credentials-file smoobu-api-credential-env beds24-credentials-file beds24-refresh-token-env airroi-credentials-file airroi-api-key-env fairhello-credentials-file anthropic-api-key-env stripe-credentials-file stripe-secret-key-env; do
             grep -q "\"RuleID\": \"$rule\"" "$RUNNER_TEMP/report.json" || { echo "gitleaks did NOT catch: $rule"; exit 1; }
           done
-          echo "gitleaks caught the Smoobu, Beds24, AirROI and Anthropic credentials, as it should"
+          echo "gitleaks caught the Smoobu, Beds24, AirROI, Anthropic and Stripe credentials, as it should"

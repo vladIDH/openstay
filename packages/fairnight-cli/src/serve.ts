@@ -12,6 +12,7 @@
  *   find a calendar that is already running instead of starting a second one
  * - GET/POST /checkin/<code>  the guest check-in form (Fairguest), local network only
  * - GET/POST /risposte  the replies to guests to approve (Fairhello), this computer only
+ * - GET/POST /pagamenti  the tourist tax and the deposits (host's own Stripe), this computer only
  * - GET/POST /api/pilot…  the autopilot: its state, and its switches for this computer only (pilota-pagina.ts)
  * The calendar page writes only through "Recalculate", which runs the same
  * sync as `fairnight sync`, "Use this price" (POST /api/base-price) and the
@@ -27,6 +28,8 @@ import { dbPath, localToday, type Io } from "./io.js";
 import { handleCheckin, type CheckinContext } from "./guests/checkin.js";
 import { pullRelay } from "./guests/relay.js";
 import { handleReplies, type RepliesContext } from "./hello/page.js";
+import { handlePayments, type PaymentsPageContext } from "./payments/page.js";
+import { paymentsRound } from "./payments/sync.js";
 import { applyRetention, guestDeadlines, guestsEnabled, prefillFromCalendar } from "./guests/store.js";
 import { renderPage } from "./page.js";
 import type { Language } from "./lingua.js";
@@ -160,6 +163,7 @@ export function createHandler(opts: ServeOptions): (req: IncomingMessage, res: S
   let refreshing: Promise<unknown> | null = null;
   const checkin: CheckinContext = { dir: opts.dir, io: opts.io, secret: randomBytes(32), failures: new Map() };
   const pilot = opts.pilot ?? { dir: opts.dir, io: opts.io, previews: new Map(), busy: false };
+  const payments: PaymentsPageContext = { dir: opts.dir, io: opts.io, secret: randomBytes(32) };
   const replies: RepliesContext = { dir: opts.dir, io: opts.io, secret: randomBytes(32), ...(opts.today !== undefined ? { today: opts.today } : {}) };
 
   return (req, res) => {
@@ -169,6 +173,7 @@ export function createHandler(opts: ServeOptions): (req: IncomingMessage, res: S
       if (await handleCheckin(req, res, url, checkin, randomBytes(16).toString("base64"))) return;
       if (await handlePilot(req, res, url, pilot)) return;
       if (await handleReplies(req, res, url, replies, randomBytes(16).toString("base64"))) return;
+      if (await handlePayments(req, res, url, payments, randomBytes(16).toString("base64"))) return;
       if (req.method === "GET" && url.pathname === "/") {
         const nonce = randomBytes(16).toString("base64");
         // The folder's language for the first paint; a config being edited and broken right now falls back to English.
@@ -289,6 +294,9 @@ function watchRelay(server: Server, opts: ServeOptions): void {
     try {
       const r = await pullRelay(db, opts.io, loadHostConfig(opts.dir));
       if (r.guests > 0 && !opts.quiet) opts.io.out(`Fairguest: ${r.guests} guest${r.guests === 1 ? "" : "s"} arrived through the check-in link (kept encrypted).`);
+      // The payment links of the check-in links: only with the host's Stripe key, otherwise nothing is sent.
+      const p = await paymentsRound(db, opts.io, opts.dir, loadHostConfig(opts.dir));
+      for (const e of p.errors) opts.io.err(`Payments: ${e}`);
     } catch {
       // A broken config or network: the next round tries again.
     } finally {

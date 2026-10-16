@@ -29,6 +29,9 @@ import { formatFeedReport, syncEverything } from "./sync-all.js";
 import { GUEST_USAGE, runGuests } from "./guests/commands.js";
 import { runPilotCommand } from "./pilota-comandi.js";
 import { HELLO_USAGE, runHello } from "./hello/commands.js";
+import { PAYMENTS_USAGE, runPayments, runTax, TAX_USAGE } from "./payments/commands.js";
+import { DepositError } from "./payments/run.js";
+import { StripeError } from "./payments/stripe.js";
 
 export const USAGE = `Fairnight: dynamic prices for short-term rentals, on your own computer.
 
@@ -72,6 +75,12 @@ Autopilot (every day: read the calendars, price, write to Smoobu or Beds24 where
 Guest registration (Fairguest, Spain: SES.HOSPEDAJES and Mossos d'Esquadra):
 ${GUEST_USAGE}
 
+Tourist tax (off unless a listing has a "touristTax" block):
+${TAX_USAGE}
+
+Payments in the check-in (your own Stripe account; off unless a listing has "payments": { "enabled": true }):
+${PAYMENTS_USAGE}
+
 Replies to guests (Fairhello: drafts from Smoobu and Beds24 messages, every reply approved by you):
 ${HELLO_USAGE}
 
@@ -103,6 +112,9 @@ const OPTIONS = {
   verifica: { type: "boolean" },
   // ospiti istat (Italy)
   mese: { type: "string" },
+  trimestre: { type: "string" },
+  motivo: { type: "string" },
+  importo: { type: "string" },
   istat: { type: "boolean" },
   "usa-storico-smoobu": { type: "boolean" },
   "usa-storico-beds24": { type: "boolean" },
@@ -182,6 +194,12 @@ export async function main(argv: string[], io: Io): Promise<number> {
       case "ospiti":
       case "guests":
         return await runGuests(dir, values, rest, io);
+      case "tassa":
+      case "tax":
+        return await runTax(dir, values, rest, io);
+      case "pagamenti":
+      case "payments":
+        return await runPayments(dir, values, rest, io);
       case "risposte":
       case "hello":
       case "replies":
@@ -195,7 +213,7 @@ export async function main(argv: string[], io: Io): Promise<number> {
       io.err(USAGE);
       return 2;
     }
-    if (e instanceof ConfigError || e instanceof SetupError || e instanceof SmoobuError || e instanceof Beds24Error || e instanceof AirRoiError || e instanceof InsideAirbnbError || e instanceof AlloggiatiError) {
+    if (e instanceof ConfigError || e instanceof SetupError || e instanceof SmoobuError || e instanceof Beds24Error || e instanceof AirRoiError || e instanceof InsideAirbnbError || e instanceof AlloggiatiError || e instanceof StripeError || e instanceof DepositError) {
       io.err(e.message);
       return 1;
     }

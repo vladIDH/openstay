@@ -2,6 +2,29 @@
 
 All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org). Every package in this repository carries the same version.
 
+## Fairguest: tourist tax and payments - in development, not released
+
+Off unless a listing has a `touristTax` block (the tax) and `"payments": { "enabled": true }` (the payments). No money passes through Fairnight or Khlumen.
+
+### fairguest
+
+- `tax/rules.ts`: rate per person per night, seasons, cap on nights, age and residents exemptions, reduced rates by age band (an amount or a percent of the night's rate), in cents. The class of a guest (pays, reduced:<ages>, exempt-age, exempt-resident, exempt-other).
+- Points of the starting values to check with the town (`verify`): the words of the regulation and the source, shown until the host writes `"confirmed": true` or their own value. Napoli, Genova, Bari and Catania: the exempt age («entro il quattordicesimo anno»).
+- `tax/places.ts`: starting values for 12 Italian towns, Barcelona and the rest of Catalonia, each with its official source and the day it was read (2026-10-15). Bologna has no single rate and is left empty. The Canary Islands have no tax.
+- `tax/summary.ts`, `tax/pdf.ts`: the month or quarter summary for the town, as CSV and as PDF (a small PDF writer, no dependency).
+- The «Carta» check-in: the payments card (links to Stripe's pages only) and the question «resident in …» where residents do not pay. Italian, Spanish, English.
+
+### fairguest-relay
+
+- `PUT/GET /api/box/<box>/pay`: the host's computer leaves the Stripe links and amounts; the page shows them. Only Stripe addresses and the expected fields are accepted.
+
+### fairnight-cli
+
+- `fairnight tassa tariffe|soggiorno|riepilogo|esenta|classifica|conferma`.
+- `fairnight pagamenti [stato]|collega|prepara|rilascia|trattieni`: the host's own Stripe key (file or `STRIPE_SECRET_KEY`), payment links usable once, the deposit as a hold (manual capture). No key, no call.
+- Page `/pagamenti` in `fairnight serve`, this computer only: release or keep a deposit, download the summary, «Ho verificato» for the points to check.
+- Database schema 11: `guest_people.tax_class`, `guest_stays.tax_counts`, `guest_payments`.
+
 ## [0.2.0] - unreleased
 
 The first version published on npm and on GitHub Releases. It brings the connectors to Smoobu and Beds24, the autopilot, zone data, small hotels, the calendar page in three languages, the installer for hosts, and two new tools: **Fairguest** (guest registration for Spain and Italy) and **Fairhello** (draft replies to guests, approved by the host).

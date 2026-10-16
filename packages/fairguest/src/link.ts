@@ -25,6 +25,8 @@ export interface LinkPayload {
   o: string;
   /** 1 when the residence is asked (Italy, a listing that sends Istat data). */
   r?: 1;
+  /** The town of a tourist tax that residents do not pay: the form asks each guest. */
+  t?: string;
 }
 
 export const BOX_ID = /^[A-Za-z0-9_-]{22}$/;
@@ -50,7 +52,8 @@ export function readLinkFragment(hash: string): LinkPayload | null {
       p.n.length <= 80 &&
       isDate(p.i) &&
       isDate(p.o) &&
-      (p.r === undefined || p.r === 1);
+      (p.r === undefined || p.r === 1) &&
+      (p.t === undefined || (typeof p.t === "string" && p.t.length > 0 && p.t.length <= 80));
     return ok ? (p as LinkPayload) : null;
   } catch {
     return null;

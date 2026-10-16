@@ -18,8 +18,21 @@
  *     "apartmentId": 4,          // only for "Gestione Appartamenti" users: the IdAppartamento
  *     "autoSend": false          // true lets a scheduled task send without a terminal (see the docs)
  *   }
+ *
+ * The tourist tax and the payments (both off unless written):
+ *
+ *   "touristTax": { "place": "roma" },          // the starting values of src/tax/places.ts
+ *   "touristTax": { "place": "roma", "rate": 6, "maxNights": 10 },   // or the host's own figures
+ *   "payments": {
+ *     "enabled": true,           // the guest pays in the check-in, with the host's own Stripe
+ *     "collectTax": true,        // ask for the tourist tax (needs touristTax)
+ *     "deposit": 200,            // a hold on the card, released or kept by the host; 0 or missing = none
+ *     "depositDaysBefore": 2     // the hold is offered from this many days before check-in (a hold lasts 7 days)
+ *   }
  */
 import { isTime } from "./dates.js";
+import { taxRuleFor } from "./tax/places.js";
+import type { TaxRule } from "./tax/rules.js";
 import { ISTAT_REGION_KEYS, ISTAT_REGIONS, type IstatRegionKey } from "./istat/regions.js";
 import { COUNTRIES, type Country } from "./types.js";
 
@@ -59,9 +72,25 @@ export interface GuestSettings {
   beds?: number;
   /** Italy only: the regional Istat data. */
   istat?: IstatSettings;
+  /** The tourist tax of the town, merged: starting values and the host's figures. */
+  touristTax?: TaxRule;
+  /** The guest pays in the check-in, with the host's own Stripe account. Off unless enabled. */
+  payments?: PaymentSettings;
 }
 
-export const SETTINGS_FIELDS = ["country", "establishment", "establishmentName", "professional", "checkInTime", "checkOutTime", "rooms", "beds", "internet", "alloggiati", "istat"] as const;
+export interface PaymentSettings {
+  enabled: boolean;
+  collectTax: boolean;
+  /** The amount held on the card, in the tax's currency (EUR when there is no tax); 0 = no deposit. */
+  deposit: number;
+  depositDaysBefore: number;
+  currency: string;
+}
+
+export const DEFAULT_DEPOSIT_DAYS_BEFORE = 2;
+const PAYMENT_FIELDS = ["enabled", "collectTax", "deposit", "depositDaysBefore", "currency"];
+
+export const SETTINGS_FIELDS = ["country", "establishment", "establishmentName", "professional", "checkInTime", "checkOutTime", "rooms", "beds", "internet", "alloggiati", "istat", "touristTax", "payments"] as const;
 const ALLOGGIATI_FIELDS = ["account", "apartmentId", "autoSend"];
 
 type Obj = Record<string, unknown>;
@@ -124,6 +153,39 @@ export function validateGuestSettings(input: unknown, path: string): { value: Gu
       if (region && typeof s.code === "string") istat = { region: s.region as IstatRegionKey, code: s.code.trim(), account: (s.account as string | undefined) ?? DEFAULT_ALLOGGIATI_ACCOUNT };
     }
   }
+  let touristTax: TaxRule | undefined;
+  if (input.touristTax !== undefined) {
+    const t = taxRuleFor(input.touristTax, `${path}.touristTax`);
+    issues.push(...t.issues);
+    if (t.value) touristTax = t.value;
+  }
+  let payments: PaymentSettings | undefined;
+  if (input.payments !== undefined) {
+    const p = input.payments;
+    if (!isObj(p)) add("payments", "must be an object like { \"enabled\": true, \"collectTax\": true, \"deposit\": 200 }");
+    else {
+      for (const key of Object.keys(p)) if (!PAYMENT_FIELDS.includes(key)) add(`payments.${key}`, `unknown field (allowed: ${PAYMENT_FIELDS.join(", ")})`);
+      if (p.enabled !== undefined && typeof p.enabled !== "boolean") add("payments.enabled", "must be true or false");
+      if (p.collectTax !== undefined && typeof p.collectTax !== "boolean") add("payments.collectTax", "must be true or false");
+      const deposit = p.deposit ?? 0;
+      if (typeof deposit !== "number" || !Number.isFinite(deposit) || deposit < 0 || deposit > 10_000 || Math.round(deposit * 100) !== deposit * 100) add("payments.deposit", "must be an amount from 0 to 10000 with at most two decimals");
+      if (p.depositDaysBefore !== undefined && (!Number.isInteger(p.depositDaysBefore) || (p.depositDaysBefore as number) < 0 || (p.depositDaysBefore as number) > 6)) {
+        add("payments.depositDaysBefore", "must be a whole number of days from 0 to 6: a hold on a card lasts 7 days");
+      }
+      if (p.currency !== undefined && (typeof p.currency !== "string" || !/^[A-Z]{3}$/.test(p.currency))) add("payments.currency", 'must be a currency code like "EUR"');
+      const collectTax = p.collectTax !== false && input.touristTax !== undefined;
+      if (p.collectTax === true && input.touristTax === undefined) add("payments.collectTax", "needs touristTax: the rate of the town");
+      if (p.enabled === true && !collectTax && !(typeof deposit === "number" && deposit > 0)) add("payments", "has nothing to ask: set collectTax (with touristTax) or a deposit");
+      if (touristTax && p.currency !== undefined && p.currency !== touristTax.currency) add("payments.currency", `must be the currency of the tax (${touristTax.currency})`);
+      payments = {
+        enabled: p.enabled === true,
+        collectTax,
+        deposit: typeof deposit === "number" ? deposit : 0,
+        depositDaysBefore: (p.depositDaysBefore as number | undefined) ?? DEFAULT_DEPOSIT_DAYS_BEFORE,
+        currency: touristTax?.currency ?? (p.currency as string | undefined) ?? "EUR",
+      };
+    }
+  }
   if (issues.length > 0) return { value: null, issues };
 
   const value: GuestSettings = { country: input.country as Country, establishment: (input.establishment as string).toUpperCase(), professional: input.professional === true };
@@ -135,5 +197,7 @@ export function validateGuestSettings(input: unknown, path: string): { value: Gu
   if (alloggiati) value.alloggiati = alloggiati;
   if (input.beds !== undefined) value.beds = input.beds as number;
   if (istat) value.istat = istat;
+  if (touristTax) value.touristTax = touristTax;
+  if (payments) value.payments = payments;
   return { value, issues };
 }

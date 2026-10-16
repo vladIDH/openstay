@@ -771,7 +771,7 @@ async function credentials(db: Db, args: string[], values: GuestOptions, io: Io)
   return 0;
 }
 
-async function unlockedKey(db: Db, io: Io) {
+export async function unlockedKey(db: Db, io: Io) {
   const pass = await askPassphrase(io);
   try {
     return unlockKeys(db, pass);
@@ -1057,7 +1057,12 @@ async function link(db: Db, config: HostConfig, args: string[], io: Io): Promise
   if (row.check_in > addDays(today, 110)) throw new SetupError(`Stay ${row.id} starts on ${row.check_in}: a link can be made from 110 days before.`);
   const listing = config.listings.find((l) => l.name === row.listing);
   const settings = settingsOf(config, row);
-  const url = await stayLink(db, io, config, row, { title: listing?.pricing.name ?? row.listing, country: settings.country, residence: settings.country === "IT" && !!settings.istat });
+  const url = await stayLink(db, io, config, row, {
+    title: listing?.pricing.name ?? row.listing,
+    country: settings.country,
+    residence: settings.country === "IT" && !!settings.istat,
+    ...(settings.touristTax?.residentsExempt ? { taxTown: settings.touristTax.name } : {}),
+  });
   io.out(url);
   io.out("");
   io.out("Send it to the guest the way you usually write to them. It works from any phone, until two days after check-out.");

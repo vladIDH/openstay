@@ -10,7 +10,7 @@
  * opened only with the passphrase, like every other guest.
  */
 import { createHash, randomBytes } from "node:crypto";
-import { addDays, BOX_ID, linkFor, localDateTime, relayPlace, type LinkPayload } from "fairguest";
+import { addDays, BOX_ID, linkFor, localDateTime, relayPlace, type LinkPayload, type PayView } from "fairguest";
 import type { HostConfig } from "../config.js";
 import type { Db } from "../db.js";
 import type { Io, RelayFetchLike } from "../io.js";
@@ -69,7 +69,7 @@ const expiryOf = (row: StayRow) => `${addDays(row.check_out, BOX_DAYS_AFTER_CHEC
  * The link of a stay: the box is created on the relay the first time, then the
  * same link is given again. `title` and `country` are what the guest sees.
  */
-export async function stayLink(db: Db, io: Io, config: HostConfig, row: StayRow, payload: { title: string; country: LinkPayload["c"]; residence?: boolean }): Promise<string> {
+export async function stayLink(db: Db, io: Io, config: HostConfig, row: StayRow, payload: { title: string; country: LinkPayload["c"]; residence?: boolean; taxTown?: string }): Promise<string> {
   const record = readKeys(db);
   if (!record) throw new RelayError('Guest registration is not turned on: "fairnight ospiti attiva".');
   const relay = relayOf(config);
@@ -91,7 +91,20 @@ export async function stayLink(db: Db, io: Io, config: HostConfig, row: StayRow,
     i: row.check_in,
     o: row.check_out,
     ...(payload.residence ? { r: 1 as const } : {}),
+    ...(payload.taxTown ? { t: payload.taxTown.slice(0, 80) } : {}),
   });
+}
+
+/**
+ * Leave in the stay's box the links to pay on Stripe, for the guest's page.
+ * Only Stripe's addresses and the amounts travel: nothing about a person.
+ */
+export async function publishPay(db: Db, io: Io, config: HostConfig, row: StayRow, pay: PayView): Promise<boolean> {
+  const r = relayRow(db, row.id);
+  if (!r?.relay_box || !r.relay_read || !BOX_ID.test(r.relay_box)) return false;
+  const res = await call(io, relayOf(config), "PUT", `/api/box/${r.relay_box}/pay`, r.relay_read, JSON.stringify(pay));
+  if (res.status !== 200) throw new RelayError(`the relay did not take the payment links (HTTP ${res.status})`);
+  return true;
 }
 
 export interface PullReport {

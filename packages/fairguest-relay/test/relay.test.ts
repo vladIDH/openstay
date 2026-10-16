@@ -156,3 +156,33 @@ describe("the worker", () => {
     expect((await worker.fetch(new Request("https://relay.example/c/x"), e)).status).toBe(404);
   });
 });
+
+describe("the payment links of a box", () => {
+  const PAY = { town: "Barcelona", items: [{ kind: "tax", amountCents: 2850, currency: "EUR", state: "open", url: "https://buy.stripe.com/test_abc123", people: 1, nights: 3 }] };
+  const putPay = (logic: MailboxLogic, body: unknown, secret = READ) =>
+    logic.handle(new Request("https://box/pay", { method: "PUT", headers: { authorization: `Bearer ${secret}` }, body: JSON.stringify(body) }), "/pay");
+  const getPay = (logic: MailboxLogic, secret = WRITE) => logic.handle(new Request("https://box/pay", { headers: { "x-fairguest-write": secret } }), "/pay");
+
+  it("the host's computer leaves them with the read secret, the page reads them with the write secret", async () => {
+    const { logic } = await box();
+    expect(await (await getPay(logic)).json()).toEqual({ pay: null });
+    expect((await putPay(logic, PAY)).status).toBe(200);
+    expect(await (await getPay(logic)).json()).toEqual({ pay: PAY });
+    expect((await putPay(logic, PAY, "x".repeat(40))).status).toBe(403);
+    expect((await getPay(logic, "y".repeat(30))).status).toBe(403);
+  });
+
+  it("only Stripe's own pages and the expected fields: no money and no person goes through the relay", async () => {
+    const { logic } = await box();
+    const item = PAY.items[0] as Record<string, unknown>;
+    for (const bad of [
+      { items: [{ ...item, url: "https://evil.example/pay" }] },
+      { items: [{ ...item, name: "Ospite Prova" }] },
+      { items: [{ ...item, amountCents: -1 }] },
+      { items: [item, item, item] },
+      "not an object",
+    ]) {
+      expect((await putPay(logic, bad)).status).toBe(400);
+    }
+  });
+});

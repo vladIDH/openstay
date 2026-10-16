@@ -43,3 +43,6 @@ installa/pacchetto/
 
 # npm tarballs and the installer zip made by "node scripts/release.mjs pack"
 release-files/
+
+# The host's own Stripe key written by "fairnight pagamenti collega": never commit it
+stripe-credentials.json

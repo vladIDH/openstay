@@ -14,6 +14,7 @@ import type { RelayFetchLike } from "../src/io.js";
 import { main } from "../src/main.js";
 import { PAGE_HASHES } from "../src/guests/page-hashes.js";
 import { fakeFetch, tempDir, testIo, type TestIo } from "./helpers.js";
+import { fakeStripe } from "./stripe-fake.js";
 
 const NOW = "2099-06-01T09:00:00";
 const PASS = "frase segreta di prova";
@@ -28,7 +29,7 @@ afterEach(() => {
 
 /** A relay in memory: boxes with hashed secrets, like fairguest-relay. */
 function fakeRelay() {
-  const boxes = new Map<string, { read: string; write: string; expires: string; messages: { id: string; body: string }[] }>();
+  const boxes = new Map<string, { read: string; write: string; expires: string; messages: { id: string; body: string }[]; pay?: unknown }>();
   const files = new Map<string, Buffer>();
   const redirects = new Map<string, string>();
   const calls: string[] = [];
@@ -38,7 +39,7 @@ function fakeRelay() {
   const fetchFn: RelayFetchLike = async (url, init) => {
     const u = new URL(url);
     calls.push(`${init.method} ${u.pathname}`);
-    const m = /^\/api\/box\/([^/]+)(\/messages(?:\/([^/]+))?)?$/.exec(u.pathname);
+    const m = /^\/api\/box\/([^/]+)(\/messages(?:\/([^/]+))?|\/pay)?$/.exec(u.pathname);
     if (!m) {
       if (redirects.has(u.pathname)) return { status: 307, text: async () => "", arrayBuffer: async () => new ArrayBuffer(0), headers: new Headers({ location: redirects.get(u.pathname) as string }) };
       const f = files.get(u.pathname);
@@ -53,6 +54,10 @@ function fakeRelay() {
     }
     if (!box) return answer(404, {});
     if (sha(read) !== box.read) return answer(403, {});
+    if (m[2] === "/pay" && init.method === "PUT") {
+      box.pay = JSON.parse(init.body ?? "null");
+      return answer(200, {});
+    }
     if (init.method === "GET") return answer(200, { messages: box.messages });
     if (init.method === "DELETE" && m[3]) {
       box.messages = box.messages.filter((x) => x.id !== m[3]);
@@ -78,7 +83,7 @@ function fakeRelay() {
 
 const ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Example//EN\r\nBEGIN:VEVENT\r\nDTEND;VALUE=DATE:20990613\r\nDTSTART;VALUE=DATE:20990610\r\nUID:prova-1@airbnb.example\r\nSUMMARY:Reserved\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n`;
 
-async function ready(country: "ES-CT" | "IT" = "ES-CT") {
+async function ready(country: "ES-CT" | "IT" = "ES-CT", extra: Record<string, unknown> = {}) {
   const dir = tempDir();
   await main(["init"], testIo(dir));
   writeFileSync(
@@ -90,7 +95,7 @@ async function ready(country: "ES-CT" | "IT" = "ES-CT") {
           name: "casa-prova",
           calendars: [{ source: "airbnb", url: ICAL }],
           pricing: { name: "Casa di Prova", currency: "EUR", basePrice: 100, defaultMinStay: 1, factors: { limits: { enabled: true, floorPrice: 60, ceilingPrice: 260 } } },
-          fairguest: { country, establishment: "ZZ00000000", establishmentName: "Casa di Prova", checkInTime: "16:00", checkOutTime: "10:00" },
+          fairguest: { country, establishment: "ZZ00000000", establishmentName: "Casa di Prova", checkInTime: "16:00", checkOutTime: "10:00", ...extra },
         },
       ],
     }),
@@ -235,5 +240,33 @@ describe("fairnight ospiti verifica-pagina", () => {
     const t = io();
     expect(await main(["ospiti", "verifica-pagina"], t)).toBe(1);
     expect(t.lines).toContain("DIFFERENT  /checkin.html  (redirect, HTTP 307 to /checkin: the link would lose its box)");
+  });
+});
+
+describe("the tourist tax through the link", () => {
+  it("asks residents, classifies the sealed guests with the passphrase, and leaves the payment link in the box", async () => {
+    const { relay, io, db, stay } = await ready("IT", { touristTax: { place: "roma" }, payments: { enabled: true } });
+    const stripe = fakeStripe();
+    const withStripe = (env: Record<string, string> = {}) => io({ env: { FAIRGUEST_FRASE: PASS, STRIPE_SECRET_KEY: "sk_test_xxx-0000-not-real".replace(/-/g, ""), ...env }, stripeFetch: stripe.fetchFn, stripeBaseUrl: "https://stripe.example.invalid" });
+    const t = withStripe();
+    await main(["ospiti", "link", stay.id], t);
+    const link = t.lines[0] as string;
+    // Rome: residents do not pay, so the page asks each guest.
+    expect(readLinkFragment(link.slice(link.indexOf("#")))?.t).toBe("Roma");
+    await relay.guestPosts(link, { guest: GUEST, taxResident: true });
+    await relay.guestPosts(link, { guest: { ...GUEST, givenName: "Seconda" } });
+    await relay.guestPosts(link, { guest: { ...GUEST, givenName: "Piccola", birthDate: "2095-01-01" } });
+    expect(await main(["ospiti", "scarica"], io({ env: {} }))).toBe(0);
+    // Still sealed: no class yet, so no payment.
+    expect(db.prepare("SELECT tax_class FROM guest_people").all()).toEqual([{ tax_class: null }, { tax_class: null }, { tax_class: null }]);
+    const prep = withStripe();
+    expect(await main(["pagamenti", "prepara"], prep)).toBe(0);
+    expect(prep.lines.join(" ")).toMatch(/Classified 3 guests/);
+    expect((db.prepare("SELECT tax_class FROM guest_people ORDER BY added_at, rowid").all() as { tax_class: string }[]).map((r) => r.tax_class).sort()).toEqual(["exempt-age", "exempt-resident", "pays"]);
+    // One adult pays: 3 nights × 6.00 €.
+    const pay = [...relay.boxes.values()][0]?.pay as { town: string; items: { kind: string; amountCents: number; state: string; url: string }[] };
+    expect(pay.town).toBe("Roma");
+    expect(pay.items).toEqual([expect.objectContaining({ kind: "tax", amountCents: 1800, state: "open", url: expect.stringMatching(/^https:\/\/buy\.stripe\.com\//) })]);
+    expect(JSON.stringify(pay)).not.toContain("Ospite");
   });
 });

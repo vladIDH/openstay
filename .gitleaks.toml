@@ -63,3 +63,18 @@ path = '''(^|/)fairhello-credentials\.json$'''
 regex = '''"anthropicApiKey"\s*:\s*"([^"]{8,})"'''
 secretGroup = 1
 keywords = ["anthropicapikey"]
+
+[[rules]]
+id = "stripe-credentials-file"
+description = "The host's own Stripe key file written by 'fairnight pagamenti collega'"
+path = '''(^|/)stripe-credentials\.json$'''
+regex = '''"secretKey"\s*:\s*"([^"]{8,})"'''
+secretGroup = 1
+keywords = ["secretkey"]
+
+[[rules]]
+id = "stripe-secret-key-env"
+description = "The host's Stripe secret key written in an env file or a shell script"
+regex = '''(?m)^\s*(?:export\s+|set\s+|\$env:)?STRIPE_SECRET_KEY\s*=\s*["']?([^\s"'#]{16,})'''
+secretGroup = 1
+keywords = ["stripe_secret_key"]

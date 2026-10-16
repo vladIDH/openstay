@@ -16,7 +16,7 @@ import { SetupError } from "./config.js";
 
 export type Db = Database.Database;
 
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (
@@ -173,6 +173,8 @@ CREATE TABLE IF NOT EXISTS guest_stays (
   relay_write  TEXT,
   -- Italy (version 10): sealed Istat record of the guests (no name, no document), kept until the region has the month
   istat_data   TEXT,
+  -- version 11: how many guests in each tourist tax class, kept when the guests are erased, for the town's declaration
+  tax_counts   TEXT,
   UNIQUE (listing, source, source_uid)
 );
 
@@ -184,7 +186,34 @@ CREATE TABLE IF NOT EXISTS guest_people (
   added_by TEXT NOT NULL CHECK (added_by IN ('host', 'form')),
   data     TEXT NOT NULL,
   -- version 9: where a guest from the check-in link was sealed (relay/<box>); null = guest_people/<id>/data
-  place    TEXT
+  place    TEXT,
+  -- version 11: what the guest is for the tourist tax (pays, exempt-age, exempt-resident, exempt-other); no age, no address
+  tax_class TEXT
+);
+
+-- Version 11: the payments of a stay in the host's own Stripe account: the
+-- tourist tax (charged) and the deposit (a hold, kept or released by the host).
+-- No card data and no names: Stripe's ids, the amount and where it stands.
+CREATE TABLE IF NOT EXISTS guest_payments (
+  id             TEXT PRIMARY KEY,
+  stay_id        TEXT NOT NULL REFERENCES guest_stays (id),
+  kind           TEXT NOT NULL CHECK (kind IN ('tax', 'deposit')),
+  -- in cents
+  amount         INTEGER NOT NULL,
+  currency       TEXT NOT NULL,
+  -- 0 = Stripe's test mode
+  live           INTEGER NOT NULL,
+  link_id        TEXT,
+  link_url       TEXT,
+  payment_intent TEXT,
+  -- open: the link waits; paid: tax charged; held: deposit blocked on the card;
+  -- captured: deposit kept (captured cents); released: deposit let go; expired: the hold ran out;
+  -- replaced: the amount changed and the link was turned off
+  status         TEXT NOT NULL CHECK (status IN ('open', 'paid', 'held', 'captured', 'released', 'expired', 'replaced')),
+  captured       INTEGER,
+  hold_until     TEXT,
+  created_at     TEXT NOT NULL,
+  updated_at     TEXT NOT NULL
 );
 
 -- Every communication prepared, sent or confirmed, with its outcome.
@@ -372,6 +401,13 @@ const MIGRATIONS: { to: number; run(db: Database.Database): void }[] = [
     to: 10, // Istat in Italy: the sealed statistical record of a stay (and the days table, new)
     run: (db) => {
       if (!hasColumn(db, "guest_stays", "istat_data")) db.exec("ALTER TABLE guest_stays ADD COLUMN istat_data TEXT");
+    },
+  },
+  {
+    to: 11, // the tourist tax and the check-in payments: the tax class of a guest (and the payments table, new)
+    run: (db) => {
+      if (hasTable(db, "guest_people") && !hasColumn(db, "guest_people", "tax_class")) db.exec("ALTER TABLE guest_people ADD COLUMN tax_class TEXT");
+      if (hasTable(db, "guest_stays") && !hasColumn(db, "guest_stays", "tax_counts")) db.exec("ALTER TABLE guest_stays ADD COLUMN tax_counts TEXT");
     },
   },
 ];

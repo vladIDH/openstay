@@ -154,6 +154,7 @@ Ogni ramo che cambia `packages/fairnight-cli/src/db.ts` alza `SCHEMA_VERSION` di
 | 8 | Fairguest Italia: riconoscimento degli ospiti, ricevute | in main (PR #9) |
 | 9 | link di check-in: la casella del relay | in main (PR #13) |
 | 10 | Istat: record statistico sigillato | in main (PR #14) |
+| 11 | tassa di soggiorno e pagamenti: classe dell'ospite per la tassa, conteggi, pagamenti | in main (PR #18) |
 
 Il pilota automatico (`pilota`) aggiunge solo tabelle nuove (`pilot_runs`, `pilot_changes`, `pilot_state`) con `CREATE TABLE IF NOT EXISTS`, create all'apertura del database: per scelta non prende un numero di schema.
 

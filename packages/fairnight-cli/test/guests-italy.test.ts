@@ -127,7 +127,8 @@ async function ready(alloggiati: Record<string, unknown> = {}) {
   const { dir, fetch } = await setUp(alloggiati);
   const first = io(dir, {}, "2099-06-01T09:00:00", fetch);
   expect(await main(["ospiti", "attiva"], first)).toBe(0);
-  expect(first.lines.join("\n")).toMatch(/Downloaded the Alloggiati Web code tables/);
+  expect(first.lines).toContain("Ho scaricato dal portale le tabelle dei codici di Alloggiati Web (comuni, Stati, documenti).");
+  expect(first.lines).toContain('Italia: salva le credenziali di Alloggiati Web con "fairnight ospiti credenziali".');
   expect(await main(["sync"], io(dir, {}, "2099-06-01T09:00:00", fetch))).toBe(0);
   const stay = db(dir).prepare("SELECT id, code FROM guest_stays").get() as { id: string; code: string };
   return { dir, stay };

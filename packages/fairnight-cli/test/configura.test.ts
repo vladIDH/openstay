@@ -113,7 +113,7 @@ describe("fairnight configura, first time", () => {
     const dir = tempDir();
     const { io } = host(dir, ["Casa", "", "", "", "", "100", "120", "300", "100", "€ 70", "250,50", "n", "", ""]);
     expect(await main(["configura"], io)).toBe(0);
-    expect(io.lines.some((x) => x.startsWith("    Il minimo (120 €) deve essere sotto il base (100 €)"))).toBe(true);
+    expect(io.lines.some((x) => x.startsWith("    Il minimo (120 EUR) deve essere sotto il base (100 EUR)"))).toBe(true);
     const l = firstListing(dir);
     expect(l.pricing.factors.limits).toEqual({ enabled: true, floorPrice: 70, ceilingPrice: 250.5 });
     expect(l.pricing.factors.seasons?.enabled).toBe(false);
@@ -434,11 +434,14 @@ describe("language of the calendar page", () => {
     expect(await main(["configura"], io)).toBe(0);
     expect(left()).toBe(0);
     expect(io.lines).toContain("Configuración de Fairnight");
-    expect(io.questions).toContain("  Nombre del alojamiento [Casa 1]: ");
+    expect(io.questions).toContain("  Nombre del alojamiento [Alojamiento 1]: ");
     expect(io.questions).toContain("¿Quieres añadir otro alojamiento? [s/N]: ");
     expect(io.lines).toContain("    3. Julio y agosto · del 1 jul al 31 ago · +25%");
     expect(io.lines).toContain("  Te propongo el español, el idioma de este ordenador: pulsa Intro para dejarlo.");
     expect(io.lines).toContain("Guardado. Estos son tus alojamientos:");
+    // "EUR" and never "€": the classic Windows console shows the sign as "?".
+    expect(io.lines.some((x) => x.startsWith("    precio base 90 EUR"))).toBe(true);
+    expect([...io.lines, ...io.questions].join(" ")).not.toContain("€");
     expect(rawConfig(dir).language).toBe("es");
     expect(existsSync(path.join(dir, "LEEME.txt"))).toBe(true);
     // Run again ("Cambia impostazioni"): Spanish because the calendar is, whatever the computer.

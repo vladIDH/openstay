@@ -135,7 +135,8 @@ describe("fairnight ospiti attiva and frase", () => {
     expect(await main(["ospiti", "attiva"], t)).toBe(0);
     expect(asked.every((a) => a.hidden)).toBe(true);
     expect(asked).toHaveLength(2);
-    expect(t.lines.join("\n")).toMatch(/cannot be opened again: not by you, not by us, not by anyone/);
+    expect(asked.map((a) => a.q)).toEqual(["Nuova frase segreta (almeno 12 caratteri, qualche parola si ricorda meglio): ", "Scrivila di nuovo: "]);
+    expect(t.lines.join("\n")).toMatch(/non si possono più aprire: né tu, né noi, né nessun altro/);
     const keys = JSON.parse((db(dir).prepare("SELECT value FROM meta WHERE key = 'fairguest_keys'").get() as { value: string }).value);
     expect(keys.publicKey).toBeTruthy();
     expect(JSON.stringify(keys)).not.toContain(PASS);
@@ -146,14 +147,43 @@ describe("fairnight ospiti attiva and frase", () => {
     const { dir } = await setUp();
     const short = io(dir, undefined, { env: {}, prompt: async () => "corta" });
     expect(await main(["ospiti", "attiva"], short)).toBe(1);
-    expect(short.errors.join("\n")).toMatch(/at least 12 characters/);
+    expect(short.errors.join("\n")).toMatch(/almeno 12 caratteri/);
     const answers = [PASS, "un'altra frase diversa"];
     const differ = io(dir, undefined, { env: {}, prompt: async () => answers.shift() as string });
     expect(await main(["ospiti", "attiva"], differ)).toBe(1);
-    expect(differ.errors.join("\n")).toMatch(/differ/);
+    expect(differ.errors.join("\n")).toMatch(/Le due frasi sono diverse/);
     const before = io(dir);
     expect(await main(["ospiti"], before)).toBe(1);
     expect(before.errors.join("\n")).toMatch(/fairnight ospiti attiva/);
+  });
+
+  it("speaks Spanish on a Spanish computer or with a Spanish calendar, English with an English calendar", async () => {
+    const { dir } = await setUp();
+    const asked: string[] = [];
+    const answers = [PASS, PASS];
+    const t = io(dir, undefined, { env: {}, locale: "es-ES", prompt: async (q) => (asked.push(q), answers.shift() as string) });
+    expect(await main(["ospiti", "attiva"], t)).toBe(0);
+    expect(asked).toEqual(["Nueva frase secreta (al menos 12 caracteres, unas cuantas palabras se recuerdan mejor): ", "Escríbela otra vez: "]);
+    expect(t.lines).toEqual([
+      "El registro de viajeros está activado. Los datos de los huéspedes se guardarán cifrados en data/fairnight.db.",
+      "Apunta la frase secreta en un papel y guárdala en un sitio seguro, lejos de este ordenador.",
+      "Si la pierdes, los datos de los huéspedes ya no se pueden abrir: ni tú, ni nosotros, ni nadie.",
+      '0 estancias por registrar, de los calendarios ya leídos. Después: "fairnight ospiti".',
+    ]);
+    const again = io(dir, undefined, { locale: "es-ES" });
+    expect(await main(["ospiti", "attiva"], again)).toBe(1);
+    expect(again.errors.join("\n")).toMatch(/El registro de viajeros ya está activado/);
+
+    // The calendar language wins over the computer's, as in "configura".
+    const config = JSON.parse(readFileSync(path.join(dir, "fairnight.config.json"), "utf8"));
+    writeFileSync(path.join(dir, "fairnight.config.json"), JSON.stringify({ ...config, language: "es" }));
+    const italian = io(dir, undefined, { locale: "it-IT" });
+    expect(await main(["ospiti", "attiva"], italian)).toBe(1);
+    expect(italian.errors.join("\n")).toMatch(/El registro de viajeros ya está activado/);
+    writeFileSync(path.join(dir, "fairnight.config.json"), JSON.stringify({ ...config, language: "en" }));
+    const english = io(dir, undefined, { locale: "it-IT" });
+    expect(await main(["ospiti", "attiva"], english)).toBe(1);
+    expect(english.errors.join("\n")).toMatch(/Guest registration is already on/);
   });
 
   it("changes the passphrase: the old one stops working, the data stays readable", async () => {
@@ -164,7 +194,7 @@ describe("fairnight ospiti attiva and frase", () => {
     const answers = [next, next];
     const t = io(dir, undefined, { prompt: async () => answers.shift() as string });
     expect(await main(["ospiti", "frase"], t)).toBe(0);
-    expect(t.lines[t.lines.length - 3]).toMatch(/Passphrase changed/);
+    expect(t.lines[t.lines.length - 3]).toMatch(/Frase segreta cambiata/);
     const old = io(dir);
     expect(await main(["ospiti", "mostra", one(stays).id], old)).toBe(1);
     expect(old.errors.join("\n")).toMatch(/Wrong passphrase/);

@@ -127,3 +127,13 @@ jobs:
           cat again.txt
           grep -Eq "aggiornato|reinstallato" again.txt
           cmp before.json "$FOLDER/fairnight.config.json"
+
+      - name: A third run in Spanish (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & ".\Installa Fairnight (Windows).cmd" -Cartella "$env:FOLDER" -SenzaDomande -NonAprire -SenzaCollegamenti -Lingua es > spanish.txt
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Get-Content spanish.txt
+          if (-not (Select-String -Quiet -Path spanish.txt -Pattern 'Paso 3 de 3')) { exit 1 }
+          if (-not (Select-String -Quiet -Path spanish.txt -Pattern 'reinstalado')) { exit 1 }

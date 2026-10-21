@@ -32,8 +32,12 @@ L'host vede e fa le stesse cose nei due casi. `~/Fairnight` contiene `programma/
 | `-NonAprire` | `--non-aprire` | non apre il calendario alla fine |
 | `-SenzaCollegamenti` | `--senza-collegamenti` | niente icona né app |
 | `FAIRNIGHT_NODE=<node>` | `FAIRNIGHT_NODE=<node>` | usa quel Node; un percorso che non esiste = Node mancante |
+| `-Lingua it\|es` | | la lingua dei messaggi e di `configura`; senza, spagnolo se Windows è in spagnolo, altrimenti italiano |
+| `FAIRNIGHT_CULTURA=<es-ES>` | | fa finta che Windows sia in quella lingua (per le prove) |
 
 Su Windows `Installa Fairnight (Windows).cmd` esce con 0 se è andato tutto bene, 2 se lo script ha già spiegato il problema all'host, 1 se lo zip non è estratto o se PowerShell si è fermato da solo (in quel caso il `.cmd` scrive cosa fare e a chi scrivere). Un parametro sconosciuto ferma lo script.
+
+Su Windows la lingua viene da `Get-UICulture` (i menu di Windows), e da `Get-Culture` (date e numeri) quando i menu non sono né in spagnolo né in italiano. L'installer la passa a `configura` con `LANG`. Il registro `installazione.log` resta in italiano. Lo script per Mac per ora parla solo italiano. `packages/fairnight-cli/test/installa.test.ts` prova le lingue lanciando lo script con un Node che non c'è (solo su Windows) e controlla che ogni messaggio ci sia nelle due lingue.
 
 Le domande di `fairnight configura` accettano risposte da una pipe, una per riga (la CI fa così).
 

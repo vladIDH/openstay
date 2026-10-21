@@ -191,7 +191,7 @@ const es: SetupTexts = {
   noSeasons: "  Ninguna temporada.",
   seasonsSaved: "  Temporadas guardadas:",
   houseName: "  Nombre del alojamiento",
-  houseDefault: (n) => `Casa ${n}`,
+  houseDefault: (n) => `Alojamiento ${n}`,
   city: "  Ciudad o pueblo",
   pricesIntro: "  Precios por noche, en euros. Fairnight parte del precio base y nunca baja del mínimo ni sube del máximo.",
   base: "  Precio base",

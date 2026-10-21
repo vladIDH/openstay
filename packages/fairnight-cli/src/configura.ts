@@ -95,7 +95,8 @@ export function parseAmount(raw: string): number | null {
   return n > 0 ? n : null;
 }
 
-const euro = (n: number) => `${Number.isInteger(n) ? n : n.toFixed(2).replace(".", ",")} €`;
+// "EUR" and not "€": the classic Windows console font shows the sign as "?", whatever the code page.
+const euro = (n: number) => `${Number.isInteger(n) ? n : n.toFixed(2).replace(".", ",")} EUR`;
 
 class Asker {
   constructor(

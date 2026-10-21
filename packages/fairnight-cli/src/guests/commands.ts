@@ -46,6 +46,7 @@ import { loadHostConfig, SetupError, type HostConfig } from "../config.js";
 import { getMeta, openDb, setMeta, type Db } from "../db.js";
 import { UsageError } from "../errors.js";
 import { DATA_DIR, dbPath, type Io } from "../io.js";
+import { activateTexts, type ActivateTexts } from "./attiva-testi.js";
 import { PAGE_HASHES } from "./page-hashes.js";
 import { acceptedDays, applyIstatRetention, blockedDays, keepIstat, loadIstatCredentials, readIstat, recordIstatDay, rossClient, saveIstatCredentials } from "./istat.js";
 import { MRZ_MODEL_SHA256, checkPage, pullRelay, relayOf, stayLink, type PullReport } from "./relay.js";
@@ -147,20 +148,14 @@ async function askPassphrase(io: Io, question = "Fairguest passphrase: "): Promi
   return answer;
 }
 
-async function askNewPassphrase(io: Io): Promise<string> {
-  if (!io.prompt) throw new SetupError("Choosing a passphrase needs a terminal: it is asked twice, without echo.");
-  const first = await io.prompt("New passphrase (at least 12 characters, a few words are easier to remember): ", { hidden: true });
-  const problem = passphraseProblem(first);
-  if (problem) throw new SetupError(problem);
-  const second = await io.prompt("Type it again: ", { hidden: true });
-  if (second !== first) throw new SetupError("The two passphrases differ: nothing was changed.");
+async function askNewPassphrase(io: Io, t: ActivateTexts): Promise<string> {
+  if (!io.prompt) throw new SetupError(t.needsTerminal);
+  const first = await io.prompt(t.newPassphrase, { hidden: true });
+  if (passphraseProblem(first)) throw new SetupError(t.tooShort);
+  const second = await io.prompt(t.again, { hidden: true });
+  if (second !== first) throw new SetupError(t.differ);
   return first;
 }
-
-const LOST_WARNING = [
-  "Write the passphrase down and keep it somewhere safe, away from this computer.",
-  "If it is lost, the guests' data cannot be opened again: not by you, not by us, not by anyone.",
-];
 
 function settingsOf(config: HostConfig, row: StayRow): GuestSettings {
   const s = config.listings.find((l) => l.name === row.listing)?.fairguest;
@@ -214,7 +209,7 @@ export async function runGuests(dir: string, values: GuestOptions, rest: string[
         return deadlines(db, config, args, values, io);
       case "frase":
       case "passphrase":
-        return await passphrase(db, args, io);
+        return await passphrase(db, config, args, io);
       case "elenco":
       case "list":
         await pullQuietly(db, io, config);
@@ -283,44 +278,45 @@ function noExtra(args: string[]): void {
 
 async function activate(dir: string, db: Db, config: HostConfig, args: string[], io: Io): Promise<number> {
   noExtra(args);
-  if (readKeys(db)) throw new SetupError('Guest registration is already on in this folder. To change the passphrase: "fairnight ospiti frase".');
+  const t = activateTexts(config, io);
+  if (readKeys(db)) throw new SetupError(t.alreadyOn);
   const fromEnv = io.env?.FAIRGUEST_FRASE;
-  const pass = fromEnv ?? (await askNewPassphrase(io));
-  const problem = passphraseProblem(pass);
-  if (problem) throw new SetupError(problem);
+  const pass = fromEnv ?? (await askNewPassphrase(io, t));
+  if (passphraseProblem(pass)) throw new SetupError(t.tooShort);
   writeKeys(db, createKeys(pass, io.scryptCost ?? DEFAULT_SCRYPT));
-  io.out("Guest registration is on. The guests' data will be stored encrypted in data/fairnight.db.");
-  for (const line of LOST_WARNING) io.out(line);
+  io.out(t.on);
+  for (const line of t.lost) io.out(line);
   const r = prefillFromCalendar(db, config.listings, io.now());
   if (guestListings(config.listings).some((l) => l.fairguest.country === "IT")) {
     try {
       await downloadTables(dir, db, io);
-      io.out("Downloaded the Alloggiati Web code tables (municipalities, states, documents) from the portal.");
+      io.out(t.tablesDone);
     } catch (e) {
-      io.out(`The Alloggiati Web code tables could not be downloaded now (${(e as Error).message}): run "fairnight ospiti tabelle" later.`);
+      io.out(t.tablesFailed((e as Error).message));
     }
-    io.out('Italy: save the Alloggiati Web credentials with "fairnight ospiti credenziali".');
+    io.out(t.italyCredentials);
   }
-  if (guestListings(config.listings).length === 0) io.out('Next: add a "fairguest" block to the listings whose guests you register, then "fairnight sync".');
-  else io.out(`${r.created} stay${r.created === 1 ? "" : "s"} to register, from the calendars already read. Next: "fairnight ospiti".`);
+  if (guestListings(config.listings).length === 0) io.out(t.noBlock);
+  else io.out(t.toRegister(r.created));
   return 0;
 }
 
-async function passphrase(db: Db, args: string[], io: Io): Promise<number> {
+async function passphrase(db: Db, config: HostConfig, args: string[], io: Io): Promise<number> {
   noExtra(args);
   const record = readKeys(db);
   if (!record) throw new SetupError('Guest registration is not turned on: run "fairnight ospiti attiva".');
-  const old = await askPassphrase(io, "Current passphrase: ");
+  const t = activateTexts(config, io);
+  const old = await askPassphrase(io, t.current);
   try {
     unlockKeys(db, old);
   } catch (e) {
     if (e instanceof PassphraseError) throw new SetupError(e.message);
     throw e;
   }
-  const next = await askNewPassphrase(io);
+  const next = await askNewPassphrase(io, t);
   writeKeys(db, changePassphrase(record, old, next, io.scryptCost ?? DEFAULT_SCRYPT));
-  io.out("Passphrase changed. Only the key was re-encrypted: the guests' data is the same. The old passphrase no longer works.");
-  for (const line of LOST_WARNING) io.out(line);
+  io.out(t.changed);
+  for (const line of t.lost) io.out(line);
   return 0;
 }
 

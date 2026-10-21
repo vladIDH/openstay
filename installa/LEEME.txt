@@ -1,7 +1,8 @@
 Fairnight: los precios de tus noches, calculados en tu ordenador.
 
 Para instalarlo o actualizarlo hace falta conexión a internet y Node.js 22 o más reciente:
-si falta, la instalación lo dice y explica cómo ponerlo. Las preguntas de la instalación son en italiano.
+si falta, la instalación lo dice y explica cómo ponerlo. En Windows la instalación habla español si Windows está en español;
+en Mac, por ahora, habla italiano.
 
 WINDOWS
 1. Si has abierto el zip con doble clic, primero extrae la carpeta: clic derecho en el zip, «Extraer todo...», «Extraer».

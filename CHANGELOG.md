@@ -25,7 +25,7 @@ Off unless a listing has a `touristTax` block (the tax) and `"payments": { "enab
 - Page `/pagamenti` in `fairnight serve`, this computer only: release or keep a deposit, download the summary, «Ho verificato» for the points to check.
 - Database schema 11: `guest_people.tax_class`, `guest_stays.tax_counts`, `guest_payments`.
 
-## [0.2.0] - unreleased
+## [0.2.0] - 2026-10-24
 
 The first version published on npm and on GitHub Releases. It brings the connectors to Smoobu and Beds24, the autopilot, zone data, small hotels, the calendar page in three languages, the installer for hosts, and two new tools: **Fairguest** (guest registration for Spain and Italy) and **Fairhello** (draft replies to guests, approved by the host).
 

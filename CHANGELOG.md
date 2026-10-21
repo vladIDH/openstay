@@ -243,6 +243,7 @@ Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web, 
   - guests sealed on arrival without the passphrase.
 - The passphrase comes from a hidden prompt or `FAIRGUEST_FRASE`. Corrections are asked, never passed as arguments, so they never end up in the shell history.
 - Erasure deletes the guests, the sealed details, the form code and the generated files, with SQLite `secure_delete`.
+- `fairnight ospiti attiva` and `ospiti frase` speak Italian or Spanish, chosen as in `fairnight configura` (English when the calendar is in English).
 
 #### fairnight-smoobu, fairnight-beds24
 
@@ -284,7 +285,7 @@ Included in 0.2.0 and off by default. The tax is switched on per listing with a 
 - Release workflow on `v*` tags: tests on Node.js 20 and 22, the installer on Windows and Mac, a draft GitHub Release with the npm tarballs, `Fairnight-installa.zip` and checksums; npm publishing waits for a manual approval and only then the release becomes public. The steps are in `scripts/release.mjs`.
 - `CONTRIBUTING.md`, `SECURITY.md`, issue and pull request templates.
 - The double-click files are named `Installa Fairnight (Windows).cmd` and `Installa Fairnight (Mac).command`, so the two are told apart with extensions hidden.
-- Opened from inside the zip, the installer says to extract the folder first instead of closing at once. Every failure, expected or not, ends with a message in Italian, the most likely reason (no internet, a file in use, a full disk, a package not on npm yet), the address to write to and the folder of the log; npm's own output stays in the log. An unknown option stops the script.
+- Opened from inside the zip, the installer says to extract the folder first instead of closing at once. Every failure, expected or not, ends with a message in the installer's language, the most likely reason (no internet, a file in use, a full disk, a package not on npm yet), the address to write to and the folder of the log; npm's own output stays in the log. An unknown option stops the script.
 - The installer says it needs internet, shows its steps (1 of 3…) and that the window looks still while it downloads, says "updated from A to B" or "reinstalled", and asks to reopen Fairnight if it was open. npm's temporary files go to the system temp folder.
 - The Windows launchers also find Node.js in `%LOCALAPPDATA%\Programs\nodejs`, where the installer finds it.
 - `fairnight configura` leaves a short guide for the host in the folder, `LEGGIMI.txt` in Italian or `LEEME.txt` for a Spanish calendar, instead of the English `README.txt` (removed if the host never changed it). The zip carries the same steps in `LEGGIMI.txt` and `LEEME.txt`.
@@ -292,6 +293,9 @@ Included in 0.2.0 and off by default. The tax is switched on per listing with a 
 - `fairnight configura` and `fairnight apri` speak Spanish when the calendar is in Spanish, or the first time on a Spanish computer; the proposed seasons are named in Spanish too.
 - The calendar page arrives in the folder's language (tab title, `lang` and the first texts), before its script runs.
 - The installer says "2-4 minutes" only on the first installation, and its Node.js messages name the button to click on nodejs.org ("Windows Installer (.msi)", "macOS Installer (.pkg)", x64 instead of ARM64), checked on 15 October 2026.
+- The Windows installer speaks Spanish when Windows is in Spanish, Italian otherwise; `-Lingua it|es` chooses it, and `fairnight configura` follows it. The Mac installer is still in Italian only.
+- `fairnight configura` writes prices as "100 EUR": the classic Windows console shows the euro sign as "?".
+- `fairnight configura` in Spanish proposes "Alojamiento 1" as the first name.
 
 
 ## [0.1.0] - 2026-10-12, not published on npm

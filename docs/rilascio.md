@@ -41,3 +41,33 @@ node installa/pacchetto.mjs                  # lo zip per gli host
 ```
 
 `check` fallisce finché il CHANGELOG dice «unreleased»: è voluto, il tag va messo sul commit di rilascio.
+
+## 0.2.0, sabato 24 ottobre 2026: i passi in ordine
+
+Il merge di «Release 0.2.0» è già su main; nessun tag esiste ancora. Su un repo privato col piano gratuito i minuti di Actions sono finiti e i revisori obbligatori non ci sono: per questo si rende pubblico **prima** del tag.
+
+0. Prima di tutto, dalla cartella del repo: `git fetch` e `git log origin/main --format='%ae' | sort -u` → una sola riga, l'indirizzo noreply di vladIDH. Se GitHub ha confermato la pulizia degli oggetti chiesta col ticket, ricontrollarla qui.
+1. **Repo pubblico.** *Settings → General → Danger Zone → Change repository visibility → Change to public*, conferma col nome `vladIDH/openstay`. Da terminale: `gh repo edit vladIDH/openstay --visibility public --accept-visibility-change-consequences`.
+2. **Environment `npm`** (Vlad). *Settings → Environments → New environment* → nome `npm` → *Configure environment*:
+   - *Required reviewers*: spunta, aggiungi `vladIDH`, *Save protection rules*;
+   - *Deployment branches and tags*: *Selected branches and tags* → *Add deployment branch or tag rule* → tipo **Tag**, schema `v*`;
+   - *Environment secrets → Add environment secret*: nome `NPM_TOKEN`, valore il granular token di npm (Read and write, permesso di creare pacchetti nuovi).
+   - Nella stessa pagina *Settings → Code security*: *Private vulnerability reporting* acceso.
+3. **Tag**, da main aggiornato:
+   ```
+   git checkout main && git pull --ff-only
+   node scripts/release.mjs check v0.2.0
+   git tag -a v0.2.0 -m "OpenStay 0.2.0"
+   git push origin v0.2.0
+   ```
+4. **Approvazione** (Vlad). *Actions → Release → la corsa di v0.2.0*: quando test, installer, build e draft sono verdi il job **npm** resta giallo «Waiting». Prima guarda la bozza in *Releases* (9 tarball meno il relay privato = 8, `Fairnight-installa.zip`, `SHA256SUMS.txt`, note), poi *Review deployments* → spunta `npm` → *Approve and deploy*.
+5. **Controlli finali.**
+   ```
+   for p in fairnight fairguest fairhello fairnight-smoobu fairnight-beds24 fairnight-market fairnight-cli fairnight-mcp; do npm view $p version; done   # 0.2.0 per tutti e 8
+   npm view fairnight-cli dist.attestations.provenance --json                                                         # provenance presente
+   ```
+   Installazione pulita in una cartella vuota fuori dal repo:
+   ```
+   mkdir prova-020 && cd prova-020 && npm init -y && npm install fairnight-cli@0.2.0 && npx fairnight --version
+   ```
+   Infine la Release pubblica segnata *Latest* e il link `https://github.com/vladIDH/openstay/releases/latest/download/Fairnight-installa.zip` che scarica lo zip.

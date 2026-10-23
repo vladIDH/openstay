@@ -2,30 +2,7 @@
 
 All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org). Every package in this repository carries the same version.
 
-## Fairguest: tourist tax and payments - in development, not released
-
-Off unless a listing has a `touristTax` block (the tax) and `"payments": { "enabled": true }` (the payments). No money passes through Fairnight or Khlumen.
-
-### fairguest
-
-- `tax/rules.ts`: rate per person per night, seasons, cap on nights, age and residents exemptions, reduced rates by age band (an amount or a percent of the night's rate), in cents. The class of a guest (pays, reduced:<ages>, exempt-age, exempt-resident, exempt-other).
-- Points of the starting values to check with the town (`verify`): the words of the regulation and the source, shown until the host writes `"confirmed": true` or their own value. Napoli, Genova, Bari and Catania: the exempt age («entro il quattordicesimo anno»).
-- `tax/places.ts`: starting values for 12 Italian towns, Barcelona and the rest of Catalonia, each with its official source and the day it was read (2026-10-15). Bologna has no single rate and is left empty. The Canary Islands have no tax.
-- `tax/summary.ts`, `tax/pdf.ts`: the month or quarter summary for the town, as CSV and as PDF (a small PDF writer, no dependency).
-- The «Carta» check-in: the payments card (links to Stripe's pages only) and the question «resident in …» where residents do not pay. Italian, Spanish, English.
-
-### fairguest-relay
-
-- `PUT/GET /api/box/<box>/pay`: the host's computer leaves the Stripe links and amounts; the page shows them. Only Stripe addresses and the expected fields are accepted.
-
-### fairnight-cli
-
-- `fairnight tassa tariffe|soggiorno|riepilogo|esenta|classifica|conferma`.
-- `fairnight pagamenti [stato]|collega|prepara|rilascia|trattieni`: the host's own Stripe key (file or `STRIPE_SECRET_KEY`), payment links usable once, the deposit as a hold (manual capture). No key, no call.
-- Page `/pagamenti` in `fairnight serve`, this computer only: release or keep a deposit, download the summary, «Ho verificato» for the points to check.
-- Database schema 11: `guest_people.tax_class`, `guest_stays.tax_counts`, `guest_payments`.
-
-## [0.2.0] - unreleased
+## [0.2.0] - 2026-10-24
 
 The first version published on npm and on GitHub Releases. It brings the connectors to Smoobu and Beds24, the autopilot, zone data, small hotels, the calendar page in three languages, the installer for hosts, and two new tools: **Fairguest** (guest registration for Spain and Italy) and **Fairhello** (draft replies to guests, approved by the host).
 
@@ -40,10 +17,11 @@ The first version published on npm and on GitHub Releases. It brings the connect
 - **Calendar page in Italian, Spanish and English** (#7) and **a new look** for the calendar page and the check-in form (#8).
 - **Autopilot** (#11): off by default, per listing; every day it reads, prices the next 90 nights, writes to Smoobu or Beds24 within limits and reads back.
 - **Fairhello** (#12): draft replies to guests from the host's house file, with the host's own model key or a local model; nothing is sent without the host's approval.
+- **Tourist tax and payments** (#18): included and off by default. Fairguest computes the tourist tax for 12 Italian towns and Catalonia, with the summary for the town; payments and deposits go through the host's own Stripe account, switched on by the host. No money passes through Fairnight or Khlumen.
 
 ### Upgrading from 0.1.0
 
-- The database in `data/fairnight.db` is upgraded on first use, from schema 1 to schema 10. Keep a copy of the folder before the first run if you want to go back.
+- The database in `data/fairnight.db` is upgraded on first use, from schema 1 to schema 11. Keep a copy of the folder before the first run if you want to go back.
 - A `fairnight.config.json` written by 0.1.0 still works: every new field is optional.
 - Node.js 20 or newer for the npm packages; Node.js 22 or newer for the installer, which needs the precompiled SQLite module.
 
@@ -265,6 +243,7 @@ Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web, 
   - guests sealed on arrival without the passphrase.
 - The passphrase comes from a hidden prompt or `FAIRGUEST_FRASE`. Corrections are asked, never passed as arguments, so they never end up in the shell history.
 - Erasure deletes the guests, the sealed details, the form code and the generated files, with SQLite `secure_delete`.
+- `fairnight ospiti attiva` and `ospiti frase` speak Italian or Spanish, chosen as in `fairnight configura` (English when the calendar is in English).
 
 #### fairnight-smoobu, fairnight-beds24
 
@@ -273,6 +252,29 @@ Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web, 
 #### fairnight-mcp
 
 - New read-only tool `get_guest_deadlines`: the communications due per stay, dates and states only.
+
+### Fairguest: tourist tax and payments (#18)
+
+Included in 0.2.0 and off by default. The tax is switched on per listing with a `touristTax` block; the payments with `"payments": { "enabled": true }` and the host's own Stripe account (their own key). No money passes through Fairnight or Khlumen.
+
+#### fairguest
+
+- `tax/rules.ts`: rate per person per night, seasons, cap on nights, age and residents exemptions, reduced rates by age band (an amount or a percent of the night's rate), in cents. The class of a guest (pays, reduced:<ages>, exempt-age, exempt-resident, exempt-other).
+- Points of the starting values to check with the town (`verify`): the words of the regulation and the source, shown until the host writes `"confirmed": true` or their own value. Napoli, Genova, Bari and Catania: the exempt age («entro il quattordicesimo anno»).
+- `tax/places.ts`: starting values for 12 Italian towns, Barcelona and the rest of Catalonia, each with its official source and the day it was read (2026-10-15). Bologna has no single rate and is left empty. The Canary Islands have no tax.
+- `tax/summary.ts`, `tax/pdf.ts`: the month or quarter summary for the town, as CSV and as PDF (a small PDF writer, no dependency).
+- The «Carta» check-in: the payments card (links to Stripe's pages only) and the question «resident in …» where residents do not pay. Italian, Spanish, English.
+
+#### fairguest-relay
+
+- `PUT/GET /api/box/<box>/pay`: the host's computer leaves the Stripe links and amounts; the page shows them. Only Stripe addresses and the expected fields are accepted.
+
+#### fairnight-cli
+
+- `fairnight tassa tariffe|soggiorno|riepilogo|esenta|classifica|conferma`.
+- `fairnight pagamenti [stato]|collega|prepara|rilascia|trattieni`: the host's own Stripe key (file or `STRIPE_SECRET_KEY`), payment links usable once, the deposit as a hold (manual capture). No key, no call.
+- Page `/pagamenti` in `fairnight serve`, this computer only: release or keep a deposit, download the summary, «Ho verificato» for the points to check.
+- Database schema 11: `guest_people.tax_class`, `guest_stays.tax_counts`, `guest_payments`.
 
 ### Installer and release
 
@@ -283,7 +285,7 @@ Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web, 
 - Release workflow on `v*` tags: tests on Node.js 20 and 22, the installer on Windows and Mac, a draft GitHub Release with the npm tarballs, `Fairnight-installa.zip` and checksums; npm publishing waits for a manual approval and only then the release becomes public. The steps are in `scripts/release.mjs`.
 - `CONTRIBUTING.md`, `SECURITY.md`, issue and pull request templates.
 - The double-click files are named `Installa Fairnight (Windows).cmd` and `Installa Fairnight (Mac).command`, so the two are told apart with extensions hidden.
-- Opened from inside the zip, the installer says to extract the folder first instead of closing at once. Every failure, expected or not, ends with a message in Italian, the most likely reason (no internet, a file in use, a full disk, a package not on npm yet), the address to write to and the folder of the log; npm's own output stays in the log. An unknown option stops the script.
+- Opened from inside the zip, the installer says to extract the folder first instead of closing at once. Every failure, expected or not, ends with a message in the installer's language, the most likely reason (no internet, a file in use, a full disk, a package not on npm yet), the address to write to and the folder of the log; npm's own output stays in the log. An unknown option stops the script.
 - The installer says it needs internet, shows its steps (1 of 3…) and that the window looks still while it downloads, says "updated from A to B" or "reinstalled", and asks to reopen Fairnight if it was open. npm's temporary files go to the system temp folder.
 - The Windows launchers also find Node.js in `%LOCALAPPDATA%\Programs\nodejs`, where the installer finds it.
 - `fairnight configura` leaves a short guide for the host in the folder, `LEGGIMI.txt` in Italian or `LEEME.txt` for a Spanish calendar, instead of the English `README.txt` (removed if the host never changed it). The zip carries the same steps in `LEGGIMI.txt` and `LEEME.txt`.
@@ -291,6 +293,9 @@ Guest registration for Spain (Real Decreto 933/2021) and Italy (Alloggiati Web, 
 - `fairnight configura` and `fairnight apri` speak Spanish when the calendar is in Spanish, or the first time on a Spanish computer; the proposed seasons are named in Spanish too.
 - The calendar page arrives in the folder's language (tab title, `lang` and the first texts), before its script runs.
 - The installer says "2-4 minutes" only on the first installation, and its Node.js messages name the button to click on nodejs.org ("Windows Installer (.msi)", "macOS Installer (.pkg)", x64 instead of ARM64), checked on 15 October 2026.
+- The Windows installer speaks Spanish when Windows is in Spanish, Italian otherwise; `-Lingua it|es` chooses it, and `fairnight configura` follows it. The Mac installer is still in Italian only.
+- `fairnight configura` writes prices as "100 EUR": the classic Windows console shows the euro sign as "?".
+- `fairnight configura` in Spanish proposes "Alojamiento 1" as the first name.
 
 
 ## [0.1.0] - 2026-10-12, not published on npm

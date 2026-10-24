@@ -84,7 +84,13 @@ ${PAYMENTS_USAGE}
 Replies to guests (Fairhello: drafts from Smoobu and Beds24 messages, every reply approved by you):
 ${HELLO_USAGE}
 
-Every command works in the current folder; use --dir <folder> to point at another one.`;
+Every command works in the current folder; use --dir <folder> to point at another one.
+fairnight --version (or -v) prints the version.`;
+
+/** The version in this package's package.json: one level above both src/ and dist/. */
+export function cliVersion(): string {
+  return (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version;
+}
 
 const OPTIONS = {
   dir: { type: "string" },
@@ -130,6 +136,7 @@ const OPTIONS = {
   ora: { type: "string" },
   "senza-bozze": { type: "boolean" },
   help: { type: "boolean", short: "h" },
+  version: { type: "boolean", short: "v" },
 } as const;
 
 function positiveInt(raw: string | undefined, fallback: number, name: string): number {
@@ -150,6 +157,10 @@ export async function main(argv: string[], io: Io): Promise<number> {
   }
   const { values, positionals } = parsed;
   const [command, ...rest] = positionals;
+  if (values.version) {
+    io.out(cliVersion());
+    return 0;
+  }
   if (values.help || command === undefined || command === "help") {
     io.out(USAGE);
     return command === undefined && !values.help ? 2 : 0;

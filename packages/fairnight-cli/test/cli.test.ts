@@ -224,6 +224,18 @@ describe("command line", () => {
     expect(await main(["init", "a", "b"], testIo(root))).toBe(2);
   });
 
+  it("prints the version of the package with --version and -v", async () => {
+    const root = tempDir();
+    const { version } = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+    expect(version).toMatch(/^\d+\.\d+\.\d+/);
+    for (const flag of ["--version", "-v"]) {
+      const io = testIo(root);
+      expect(await main([flag], io)).toBe(0);
+      expect(io.lines).toEqual([version]);
+      expect(io.errors).toEqual([]);
+    }
+  });
+
   it("tells the host to run init first", async () => {
     const root = tempDir();
     const io = testIo(root);

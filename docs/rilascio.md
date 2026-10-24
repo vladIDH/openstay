@@ -70,4 +70,5 @@ Il merge di «Release 0.2.0» è già su main; nessun tag esiste ancora. Su un r
    ```
    mkdir prova-020 && cd prova-020 && npm init -y && npm install fairnight-cli@0.2.0 && npx fairnight --version
    ```
+   `npx fairnight --version` (o `-v`) stampa solo la versione, qui `0.2.0`, ed esce con 0. L'opzione c'è dalla versione dopo la 0.2.0: con `fairnight-cli@0.2.0` risponde «Unknown option», e al suo posto si usa `npx fairnight help`, che esce con 0.
    Infine la Release pubblica segnata *Latest* e il link `https://github.com/vladIDH/openstay/releases/latest/download/Fairnight-installa.zip` che scarica lo zip.

@@ -28,7 +28,7 @@ Everything runs on the host's own computer. The things worth protecting are:
 - **The local database** (`data/fairnight.db`). Pricing never stores guest names, contacts or messages. Fairhello keeps guest messages there and erases them 60 days after check-out.
 - **The local pages** (`fairnight serve`). They listen on `127.0.0.1` unless `--lan` is given, send a strict Content-Security-Policy and load nothing from other sites. Actions that change data need a custom header or a signed form token, so other websites cannot trigger them; settings, the autopilot and replies are refused from other devices. The check-in form needs a random per-stay code, refuses proxies and tunnels and slows down after wrong codes.
 - **The check-in relay** (`fairguest-relay`, optional). It only ever receives data sealed in the guest's browser with the host's public key, which stays after `#` in the link and never reaches it. `fairnight ospiti verifica-pagina` checks that the page it serves is the one built from this repository.
-- **The MCP server.** Every tool is read-only, and the database is opened in SQLite read-only mode.
+- **The MCP server.** Every tool is read-only, and the database is opened in SQLite read-only mode. It talks over stdio only: the advisories GHSA-jm63-cq47-j5jp, GHSA-46jr-4wx8-v453 and GHSA-rvq5-wwqv-78pq on `@modelcontextprotocol/server` 2.2.0 concern its HTTP transport and do not affect `fairnight-mcp`.
 - **Models (Fairhello).** Guest messages are treated as text to answer, never as instructions; the model never sees a price or, outside the stay, an access code.
 
 Interesting reports include:

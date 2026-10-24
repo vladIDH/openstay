@@ -500,6 +500,7 @@ Fra i tre paesi è quello più facile da aggiungere.
 
 ### Ancora da fare
 
-- **XML di SES** (PV e RH), zip + Base64, SOAP, `consultaLote`, annullamento: dopo gli XSD (sezione 7b). Fino ad allora l'host inserisce i dati sul sito SES e li registra con `fairnight ospiti inviato`.
+- **XML di SES** (PV e RH): dopo gli XSD (sezione 7b). Configurazione, credenziali sigillate, mappatura dei campi, zip + Base64, SOAP, `consultaLote`, registro, errori e reinvio sono pronti dal 15 ottobre 2026 (ramo `fairguest-ses`, guida in [fairguest-ses.md](fairguest-ses.md)) e aspettano solo l'aggancio `SES_SCHEMA`. Fino ad allora l'host inserisce i dati sul sito SES e li registra con `fairnight ospiti inviato`.
+- **Annullamento verso SES** (`anulacionLote`): non fatto, si annulla sul sito SES.
 - **Segno sulla pagina calendario** per le notti con un invio mancante: non fatto, per ora ci sono `fairnight ospiti` e il tool MCP.
 - **Invio di un annullamento:** oggi si registra soltanto (`--tipo annullamento`).

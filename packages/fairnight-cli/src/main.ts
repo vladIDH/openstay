@@ -110,6 +110,9 @@ const OPTIONS = {
   account: { type: "string" },
   prova: { type: "boolean" },
   verifica: { type: "boolean" },
+  // ospiti … --ses (Spain, SES.HOSPEDAJES): --ambiente prova|produzione
+  ses: { type: "boolean" },
+  ambiente: { type: "string" },
   // ospiti istat (Italy)
   mese: { type: "string" },
   trimestre: { type: "string" },

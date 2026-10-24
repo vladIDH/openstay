@@ -245,7 +245,7 @@ fairnight ospiti inviato <stay> --tipo checkin
 ```
 
 - **Catalonia:** upload the file on registreviatgers.mossos.gencat.cat (*Envío de ficheros masivos*), then record it with `inviato`. The file holds the guests' data in clear, so it is deleted at that moment.
-- **Rest of Spain:** sending to SES.HOSPEDAJES is **not written yet**, because it needs the Ministry's XSD schemas, which are published only inside the SES application. `prepara` says so and stops. Until then, enter the guests on the SES website and record it with `inviato`.
+- **Rest of Spain:** the SES.HOSPEDAJES web service is ready except the XML, which needs the Ministry's XSD schemas, published only inside the SES application. Add a `"ses": { "landlord": "<codigoArrendador>", "environment": "test" }` block to the listing, save the web-service user and password with `fairnight ospiti credenziali --ses`, then `prepara --ses` shows exactly what SES will receive, `invia --ses --applica` sends after you type `SEND`, and `esito --ses` reads the outcome of each batch. The Ministry's test service (`"test"`) never counts as the communication made. Until the XML is switched on, both stop before any connection: enter the guests on the SES website and record it with `inviato`. Guide: [docs/fairguest-ses.md](../../docs/fairguest-ses.md) (Italian) and [docs/fairguest-ses.es.md](../../docs/fairguest-ses.es.md) (Spanish).
 
 **Corrections and guests' requests.**
 

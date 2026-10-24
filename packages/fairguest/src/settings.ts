@@ -19,6 +19,17 @@
  *     "autoSend": false          // true lets a scheduled task send without a terminal (see the docs)
  *   }
  *
+ * In Spain with SES.HOSPEDAJES ("country": "ES") "establishment" is the
+ * codigoEstablecimiento, and the web service needs one more block:
+ *
+ *   "ses": {
+ *     "landlord": "0000000123",  // codigoArrendador given at the registration on the SES website
+ *     "account": "principale",   // the name of the saved user and password (fairnight ospiti credenziali --ses)
+ *     "environment": "test"      // "test" (pre-ses, the Ministry's test service) or "production"
+ *   }
+ *
+ * The user and password are never written here: they are sealed in the database.
+ *
  * The tourist tax and the payments (both off unless written):
  *
  *   "touristTax": { "place": "roma" },          // the starting values of src/tax/places.ts
@@ -46,6 +57,16 @@ export interface AlloggiatiSettings {
 }
 
 export const DEFAULT_ALLOGGIATI_ACCOUNT = "principale";
+
+/** Spain: the SES.HOSPEDAJES web service. */
+export interface SesSettings {
+  /** codigoArrendador, 10 characters. */
+  landlord: string;
+  /** Name of the saved credentials; "principale" when not given. */
+  account: string;
+  /** Which service the communications go to: the Ministry's test service until the host says "production". */
+  environment: "test" | "production";
+}
 
 /** Italy: where the listing's Istat data goes (see istat/regions.ts). */
 export interface IstatSettings {
@@ -76,6 +97,8 @@ export interface GuestSettings {
   touristTax?: TaxRule;
   /** The guest pays in the check-in, with the host's own Stripe account. Off unless enabled. */
   payments?: PaymentSettings;
+  /** Spain (SES.HOSPEDAJES) only. */
+  ses?: SesSettings;
 }
 
 export interface PaymentSettings {
@@ -90,7 +113,7 @@ export interface PaymentSettings {
 export const DEFAULT_DEPOSIT_DAYS_BEFORE = 2;
 const PAYMENT_FIELDS = ["enabled", "collectTax", "deposit", "depositDaysBefore", "currency"];
 
-export const SETTINGS_FIELDS = ["country", "establishment", "establishmentName", "professional", "checkInTime", "checkOutTime", "rooms", "beds", "internet", "alloggiati", "istat", "touristTax", "payments"] as const;
+export const SETTINGS_FIELDS = ["country", "establishment", "establishmentName", "professional", "checkInTime", "checkOutTime", "rooms", "beds", "internet", "alloggiati", "istat", "touristTax", "payments", "ses"] as const;
 const ALLOGGIATI_FIELDS = ["account", "apartmentId", "autoSend"];
 
 type Obj = Record<string, unknown>;
@@ -153,6 +176,21 @@ export function validateGuestSettings(input: unknown, path: string): { value: Gu
       if (region && typeof s.code === "string") istat = { region: s.region as IstatRegionKey, code: s.code.trim(), account: (s.account as string | undefined) ?? DEFAULT_ALLOGGIATI_ACCOUNT };
     }
   }
+  let ses: SesSettings | undefined;
+  if (input.ses !== undefined) {
+    const x = input.ses;
+    if (input.country !== "ES") add("ses", 'only for listings that send to SES.HOSPEDAJES ("country": "ES")');
+    else if (!isObj(x)) add("ses", "must be an object with landlord, account, environment");
+    else {
+      for (const key of Object.keys(x)) if (!["landlord", "account", "environment"].includes(key)) add(`ses.${key}`, "unknown field (allowed: landlord, account, environment)");
+      if (typeof x.landlord !== "string" || !/^[A-Za-z0-9]{10}$/.test(x.landlord)) add("ses.landlord", `must be the codigoArrendador given by SES.HOSPEDAJES (10 letters and digits), got ${JSON.stringify(x.landlord)}`);
+      if (x.account !== undefined && (typeof x.account !== "string" || !/^[a-z0-9-]{1,30}$/.test(x.account))) add("ses.account", "must be a short name of lower-case letters, digits and dashes, like principale");
+      if (x.environment !== undefined && x.environment !== "test" && x.environment !== "production") add("ses.environment", 'must be "test" (the test service of the Ministry) or "production"');
+      if (typeof x.landlord === "string") {
+        ses = { landlord: x.landlord.toUpperCase(), account: (x.account as string | undefined) ?? DEFAULT_ALLOGGIATI_ACCOUNT, environment: x.environment === "production" ? "production" : "test" };
+      }
+    }
+  }
   let touristTax: TaxRule | undefined;
   if (input.touristTax !== undefined) {
     const t = taxRuleFor(input.touristTax, `${path}.touristTax`);
@@ -197,6 +235,7 @@ export function validateGuestSettings(input: unknown, path: string): { value: Gu
   if (alloggiati) value.alloggiati = alloggiati;
   if (input.beds !== undefined) value.beds = input.beds as number;
   if (istat) value.istat = istat;
+  if (ses) value.ses = ses;
   if (touristTax) value.touristTax = touristTax;
   if (payments) value.payments = payments;
   return { value, issues };

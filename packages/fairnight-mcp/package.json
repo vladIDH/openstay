@@ -46,7 +46,7 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@modelcontextprotocol/server": "2.2.0",
+    "@modelcontextprotocol/server": "2.3.0",
     "fairnight": "0.2.0",
     "fairnight-cli": "0.2.0"
   },

@@ -6,6 +6,7 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 
 - `fairnight --version` (or `-v`) prints the version of fairnight-cli.
 - SECURITY.md: the MCP server talks over stdio only, so the HTTP advisories on `@modelcontextprotocol/server` 2.2.0 do not affect it.
+- fairnight-mcp: `@modelcontextprotocol/server` 2.2.0 → 2.3.0, which fixes GHSA-jm63-cq47-j5jp, GHSA-46jr-4wx8-v453 and GHSA-rvq5-wwqv-78pq.
 
 ## [0.2.0] - 2026-10-24
 

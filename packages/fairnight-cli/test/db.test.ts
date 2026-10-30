@@ -32,8 +32,28 @@ function oldDatabase(version: 3 | 4 | 5 | 6): string {
 }
 
 describe("schema migrations", () => {
-  it("the latest version is 11: zone data (4), Fairguest (5), rooms of small hotels (6), Fairhello (7), Fairguest in Italy (8), check-in link (9), Istat (10), tourist tax and payments (11)", () => {
-    expect(SCHEMA_VERSION).toBe(11);
+  it("adds who confirmed a night to the log of a database at version 11, keeping its rows", () => {
+    const file = path.join(tempDir(), "data", "fairnight.db");
+    const old = openDb(file);
+    old.exec("DROP TABLE pilot_changes; DROP TABLE pilot_confirmations; DROP TABLE pilot_held");
+    old.exec(
+      `CREATE TABLE pilot_changes (run_id INTEGER NOT NULL, listing TEXT NOT NULL, feed TEXT NOT NULL, date TEXT NOT NULL, old_price REAL, new_price REAL NOT NULL,
+       target_price REAL NOT NULL, old_min_stay INTEGER, new_min_stay INTEGER NOT NULL, limited TEXT, steps TEXT NOT NULL, verified INTEGER, PRIMARY KEY (run_id, listing, date))`,
+    );
+    old.exec("INSERT INTO pilot_changes VALUES (1, 'loft', 'smoobu', '2026-11-07', 80, 92, 110, 2, 2, 'cap', '[]', 1)");
+    old.prepare("UPDATE meta SET value = '11' WHERE key = 'schema_version'").run();
+    old.close();
+
+    const db = openDb(file);
+    expect(getMeta(db, "schema_version")).toBe("12");
+    expect(hasColumn(db, "pilot_changes", "confirmed_by")).toBe(true);
+    expect(db.prepare("SELECT new_price, confirmed_at FROM pilot_changes").get()).toEqual({ new_price: 92, confirmed_at: null });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM pilot_confirmations").get()).toEqual({ n: 0 });
+    db.close();
+  });
+
+  it("the latest version is 12: zone data (4), Fairguest (5), rooms of small hotels (6), Fairhello (7), Fairguest in Italy (8), check-in link (9), Istat (10), tourist tax and payments (11), confirmations of the daily cap (12)", () => {
+    expect(SCHEMA_VERSION).toBe(12);
   });
 
   it("takes a database from schema 3 to the latest, keeping its data", () => {

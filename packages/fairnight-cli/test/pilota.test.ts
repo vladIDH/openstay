@@ -324,8 +324,8 @@ describe("a run of the autopilot (fake Smoobu)", () => {
 
     await main(["pilota", "registro", "--out", "registro.csv"], t);
     const csv = readFileSync(path.join(dir, "registro.csv"), "utf8").split("\n");
-    expect(csv[0]).toBe("run,listing,channel,date,old_price,new_price,engine_price,old_min_stay,new_min_stay,held_back,read_back,reason");
-    expect(csv[1]).toBe("2026-11-01T09:00:00.000Z,loft,smoobu,2026-11-07,100,110,110,2,2,,ok,sat +10%");
+    expect(csv[0]).toBe("run,listing,channel,date,old_price,new_price,engine_price,old_min_stay,new_min_stay,held_back,read_back,reason,confirmed_by,confirmed_at");
+    expect(csv[1]).toBe("2026-11-01T09:00:00.000Z,loft,smoobu,2026-11-07,100,110,110,2,2,,ok,sat +10%,,");
   });
 
   it("a listing with no channel manager is only priced", async () => {

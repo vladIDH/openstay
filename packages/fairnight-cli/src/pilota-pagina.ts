@@ -7,6 +7,8 @@
  * - POST /api/pilot/on        turn it on: only with the token of a preview from the last 15 minutes
  * - POST /api/pilot/off       turn it off
  * - POST /api/pilot/resume    clear a pause
+ * - POST /api/pilot/confirm   the host confirms a night or a range: they pass the daily cap up to today's price
+ * - POST /api/pilot/unconfirm take a confirmation back
  *
  * The switches answer only to this computer (127.0.0.1), even when the page is
  * open on the network with --lan, and only with the X-Fairnight header that
@@ -18,8 +20,9 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { PriceStep } from "fairnight";
 import { loadHostConfig, type HostListing } from "./config.js";
 import { openDb } from "./db.js";
-import { dbPath, type Io } from "./io.js";
-import { writeListingPilot } from "./pilota-comandi.js";
+import { dbPath, localToday, type Io } from "./io.js";
+import { confirmRange, whoOf, writeListingPilot } from "./pilota-comandi.js";
+import { ConfirmError, nightsBetween, removeConfirmations } from "./pilota-conferme.js";
 import { channelOf, lastRun, limitsOf, maxChangeOf, pilotDaysOf, pilotOn, pilotState, resumeListing, runPilot, STALE_HOURS } from "./pilota.js";
 
 const PREVIEW_MINUTES = 15;
@@ -74,7 +77,7 @@ export function pilotPayload(dir: string, io: Io, control: boolean) {
       | undefined;
     const summaries = run ? (JSON.parse(run.listings) as RunSummary[]) : [];
     const changes = db.prepare(
-      "SELECT date, old_price, new_price, target_price, old_min_stay, new_min_stay, limited, steps, verified FROM pilot_changes WHERE run_id = ? AND listing = ? ORDER BY date",
+      "SELECT date, old_price, new_price, target_price, old_min_stay, new_min_stay, limited, steps, verified, confirmed_by FROM pilot_changes WHERE run_id = ? AND listing = ? ORDER BY date",
     );
     const last = lastRun(db).at;
     const anyOn = config.listings.some(pilotOn);
@@ -109,6 +112,7 @@ export function pilotPayload(dir: string, io: Io, control: boolean) {
                   target: c.target_price,
                   limited: c.limited,
                   verified: c.verified === null ? null : c.verified === 1,
+                  confirmedBy: c.confirmed_by,
                   steps: JSON.parse(c.steps as string) as PriceStep[],
                 }))
               : [],
@@ -170,7 +174,15 @@ export async function handlePilot(req: IncomingMessage, res: ServerResponse, url
           token,
           leftAlone: result.leftAlone,
           skipped: result.skipped.length,
-          nights: result.nights.map((n) => ({ date: n.date, oldPrice: n.oldPrice, newPrice: n.newPrice, target: n.target, limited: n.limited, steps: n.steps })),
+          nights: result.nights.map((n) => ({
+            date: n.date,
+            oldPrice: n.oldPrice,
+            newPrice: n.newPrice,
+            target: n.target,
+            limited: n.limited,
+            steps: n.steps,
+            confirmedBy: n.confirmation?.by ?? null,
+          })),
         });
       } finally {
         ctx.busy = false;
@@ -198,6 +210,25 @@ export async function handlePilot(req: IncomingMessage, res: ServerResponse, url
       }
       json(res, 200, { ok: true });
       return true;
+    }
+    case "/api/pilot/confirm":
+    case "/api/pilot/unconfirm": {
+      const by = whoOf(ctx.io);
+      const at = ctx.io.now().toISOString();
+      const db = openDb(dbPath(ctx.dir));
+      try {
+        const to = body.to ?? body.from;
+        const nights =
+          url.pathname === "/api/pilot/confirm"
+            ? confirmRange(db, listing, body.from, to, localToday(ctx.io.now()), { by, via: "page" }, at)
+            : removeConfirmations(db, listing.name, nightsBetween(body.from, to), by, at);
+        return reply(200, { ok: true, nights });
+      } catch (e) {
+        if (e instanceof ConfirmError) return reply(400, { error: `confirm_err_${e.code}` });
+        throw e;
+      } finally {
+        db.close();
+      }
     }
     default:
       json(res, 404, { error: "not found" });

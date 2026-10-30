@@ -16,6 +16,8 @@ Questa guida è per chi affitta da 1 a 10 case su Airbnb, Booking o Vrbo e non h
 - non guarda i prezzi delle case vicine e non entra nei tuoi account: non gli dai nessuna password;
 - non lavora da solo in sottofondo: calcola quando apri il calendario o premi «Aggiorna i prezzi». L'unica eccezione è il pilota automatico, che si accende solo con Smoobu o Beds24 e solo se lo scegli tu.
 
+**Il tetto del pilota.** Il pilota muove un prezzo al massimo del 15% al giorno (si può cambiare per ogni alloggio): così un dato sbagliato non arriva sul canale in un colpo solo. Il costo è che in un picco il prezzo sul canale resta indietro per qualche giorno. Il calendario segna queste notti, per esempio «Trattenuta dal tetto: 142 € invece di 168 €». Se quel prezzo ti sembra giusto, apri la notte e premi il pulsante «Conferma» col prezzo, anche per più notti di seguito: al prossimo giro il prezzo passa, sempre dentro il tuo minimo e il tuo massimo. La conferma vale fino al prezzo che hai visto. Se poi il calcolo va oltre, da lì torna il tetto e il calendario lo dice: «Confermata fino a 168 €, oggi il calcolo dice 250 €». Se 250 € ti sembra giusto, riconfermi. La conferma si può togliere, scade da sola dopo la data della notte e Fairnight non la mette mai da solo. Dal terminale: `fairnight pilota conferma <nome> --da 2026-11-07`.
+
 **Dove stanno i tuoi dati:** solo sul tuo computer, nella cartella `Fairnight` del tuo utente: `C:\Users\<tuo nome>\Fairnight` su Windows, `/Users/<tuo nome>/Fairnight` su Mac. Fairnight si collega a internet solo per leggere i link iCal che gli dai (e Smoobu o Beds24, se li colleghi). Non abbiamo un server e non riceviamo niente.
 
 ## Cosa ti serve

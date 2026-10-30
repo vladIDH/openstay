@@ -86,7 +86,7 @@ Credentials are asked without echo, saved readable by the current user only, and
 
 ## What it does not do
 
-- **Nothing is sent by itself.** Every write to a channel manager, every reply to a guest and every communication to the authorities is shown first and needs the host's confirmation. The only exceptions are ones the host switches on per listing: the price autopilot (within daily limits, read back after writing) and unattended sending to Alloggiati Web (`autoSend`).
+- **Nothing is sent by itself.** Every write to a channel manager, every reply to a guest and every communication to the authorities is shown first and needs the host's confirmation. The only exceptions are ones the host switches on per listing: the price autopilot (within daily limits, read back after writing) and unattended sending to Alloggiati Web (`autoSend`). The autopilot's daily limit is never lifted by itself: the calendar shows the nights it held back, and only the host can confirm a night or a range of dates, and the confirmation goes up to the price they saw, not further.
 - **No cloud of ours.** No account, no telemetry, no analytics. The only requests go to the calendar links, channel managers, model providers, authority services and the Stripe account the host configured; no payment passes through us. The one exception is optional: the remote check-in link passes through a relay that stores only data sealed in the guest's browser, deletes it once downloaded, and anyone can run their own; it is not deployed yet.
 - **No market data by default.** Remote zone data sources are off unless the host switches them on with their own key or downloaded files.
 - **No direct connection to Airbnb or Booking.com**, which require partner agreements.

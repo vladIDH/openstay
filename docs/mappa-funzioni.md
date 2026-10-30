@@ -122,6 +122,7 @@ Le funzioni che un motore di prezzi dinamici per affitti brevi di solito offre, 
 | Export dei prezzi | Prezzi e minimi per notte in CSV, da caricare a mano | – | sì | 1 | fatto (`fairnight export`) |
 | Connettori ai gestionali | Scrivono prezzo e minimo di notti nel gestionale | chiave del gestionale | sì | 2 | fatto per Smoobu e Beds24 (vedi [connettori.md](connettori.md)) |
 | Invio programmato | Invio dei prezzi senza intervento, a orari fissi | – | sì | 2 | fatto: pilota automatico, una volta al giorno, solo dove l'host lo accende |
+| Tetto giornaliero visibile | Il calendario mostra le notti frenate dal tetto (prezzo calcolato, prezzo mandato, differenza); l'host può confermare una notte o un intervallo: il prezzo passa fino a quello visto al momento della conferma, oltre torna il tetto | Smoobu o Beds24, pilota acceso | sì | 2 | fatto: `fairnight pilota conferma`, `revoca`, `conferme`, o il pannello della notte. Mai automatica, scade dopo la data della notte |
 | Collegamento diretto ai portali | Scrive direttamente sul portale | API partner del portale | – | – | escluso: servono accordi da partner, e niente scraping, mai |
 | Uso dal telefono | Prezzi e andamento dal telefono | – | sì | 3 | in parte: la pagina calendario si apre dal telefono sulla stessa rete (`fairnight serve --lan`) |
 

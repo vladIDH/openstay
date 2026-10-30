@@ -28,6 +28,7 @@ import { basePriceCommand } from "./prezzo-base.js";
 import { formatFeedReport, syncEverything } from "./sync-all.js";
 import { GUEST_USAGE, runGuests } from "./guests/commands.js";
 import { runPilotCommand } from "./pilota-comandi.js";
+import { nightMarks } from "./pilota-conferme.js";
 import { HELLO_USAGE, runHello } from "./hello/commands.js";
 import { PAYMENTS_USAGE, runPayments, runTax, TAX_USAGE } from "./payments/commands.js";
 import { DepositError } from "./payments/run.js";
@@ -69,7 +70,10 @@ Autopilot (every day: read the calendars, price, write to Smoobu or Beds24 where
   fairnight pilota stato                           on or off, paused, last run, daily task of this computer
   fairnight pilota accendi|spegni <name>           turn it on (shows the preview and asks first) or off; off by default
   fairnight pilota riprendi <name>                 start a paused listing again
-  fairnight pilota registro                        the nights written and why [--listing <name>] [--out file.csv]
+  fairnight pilota registro                        the nights written and why, and who confirmed what [--listing <name>] [--out file.csv]
+  fairnight pilota conferma <name> --da <date>     this night passes the daily cap, at its full price [--a <date>: up to this night]
+  fairnight pilota revoca <name> --da <date>       take a confirmation back [--a <date>]
+  fairnight pilota conferme                        confirmations, old ones too [--listing <name>]
   fairnight pilota pianifica [--ora 06:00]         run it every day on this computer (Windows, Mac); "togli" removes it
 
 Guest registration (Fairguest, Spain: SES.HOSPEDAJES and Mossos d'Esquadra):
@@ -300,12 +304,17 @@ function runPrice(
       result: priceOne(db, l, today, days, { useSmoobuHistory: values["usa-storico-smoobu"] ?? false, useBeds24History: values["usa-storico-beds24"] ?? false }),
     }));
     if (values.json) {
-      io.out(JSON.stringify(results.map((r) => ({ listing: r.listing.name, ...r.result })), null, 2));
+      const withMarks = results.map((r) => {
+        const marks = nightMarks(db, r.listing, today, r.result.nights);
+        return { listing: r.listing.name, ...r.result, nights: r.result.nights.map((n) => ({ ...n, ...marks.get(n.date) })) };
+      });
+      io.out(JSON.stringify(withMarks, null, 2));
       return 0;
     }
     results.forEach((r, i) => {
       if (i > 0) io.out("");
-      for (const line of formatTable(r.result, r.listing.name, lastSync(db, r.listing.name), values.explain ?? false)) io.out(line);
+      const marks = nightMarks(db, r.listing, today, r.result.nights);
+      for (const line of formatTable(r.result, r.listing.name, lastSync(db, r.listing.name), values.explain ?? false, marks, config.language ?? "en")) io.out(line);
     });
     return 0;
   } finally {

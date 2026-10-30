@@ -19,6 +19,7 @@ import {
   loadHostConfig,
   loadStays,
   localToday,
+  nightMarks,
   openDbReadOnly,
   openDrafts,
   priceOne,
@@ -142,6 +143,7 @@ export function explainNight(folder: Folder, args: { listing: string; date: stri
         minStaySource: n.minStaySource,
         steps: n.steps,
         explanation: n.explanation,
+        ...nightMarks(db, listing, today, [n]).get(date),
       };
     },
     args.listing,

@@ -2,6 +2,16 @@
 
 All notable changes are listed here. Versions follow [Semantic Versioning](https://semver.org). Every package in this repository carries the same version.
 
+## [Unreleased]
+
+### Fairnight: the daily cap on the calendar (#28)
+
+- **Nights held back by the daily cap are visible.** After every autopilot run, a night the cap held back gets a mark on the calendar page with the calculated price, the price sent to the channel and the difference ("Held back by the cap: €142 instead of €168"). The same sentence is in the night's panel, in `fairnight price` (also `--explain` and `--json`) and in the MCP tool `explain_night`, in the folder's language (Italian, Spanish or English). The cap holds falls too, so the difference can go either way.
+- **The host can confirm a night, or a range of dates.** From the night's panel or with `fairnight pilota conferma <name> --da <date> [--a <date>]`, the next runs let the price through up to the calculated price of the moment the host confirmed, which is saved. Past that price the cap applies again from there, in either direction, and the calendar says so ("Confirmed up to €168, today the calculation says €250") with a button to confirm again. If the calculation comes back below the confirmed price, the calculation passes. Nothing ever confirms a night by itself. A confirmation shows on the calendar, can be taken back (`fairnight pilota revoca`, or the button) and ends by itself after the date of the night.
+- **The cap itself has not changed.** Same default of 15%, same `maxDailyChangePercent`; nights not confirmed behave as before. A confirmed night still stays between the lowest and the highest price.
+- **The log says who and when.** `fairnight pilota registro` and the new `fairnight pilota conferme` list who confirmed each night, when, and who took it back. The CSV of `registro` gets two columns at the end, `confirmed_by` and `confirmed_at`. Confirming works only on the computer that runs Fairnight, like the other autopilot switches.
+- **Upgrading:** the database moves to schema 12 on first use (two new columns in `pilot_changes`, two new tables). The marks appear after the first run of the autopilot with this version.
+
 ## [0.2.0] - 2026-10-24
 
 The first version published on npm and on GitHub Releases. It brings the connectors to Smoobu and Beds24, the autopilot, zone data, small hotels, the calendar page in three languages, the installer for hosts, and two new tools: **Fairguest** (guest registration for Spain and Italy) and **Fairhello** (draft replies to guests, approved by the host).

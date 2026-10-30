@@ -1,6 +1,6 @@
 {
   "name": "fairnight-mcp",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "license": "AGPL-3.0-only",
   "author": {
     "name": "Vlad Humenny",
@@ -47,8 +47,8 @@
   ],
   "dependencies": {
     "@modelcontextprotocol/server": "2.2.0",
-    "fairnight": "0.2.0",
-    "fairnight-cli": "0.2.0"
+    "fairnight": "0.2.1",
+    "fairnight-cli": "0.2.1"
   },
   "devDependencies": {
     "@modelcontextprotocol/client": "2.2.0"

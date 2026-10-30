@@ -9,6 +9,7 @@
  */
 import { McpServer, fromJsonSchema, type JsonSchemaType } from "@modelcontextprotocol/server";
 import { ConfigError, formatAmount } from "fairnight";
+import { markLines } from "fairnight-cli";
 import { explainNight, getPrices, guestDeadlinesOf, guestRepliesOf, listListings, marketArea, nextGaps, occupancy, syncStatus, ToolError, type Folder } from "./data.js";
 
 export const VERSION = "0.2.0";
@@ -81,7 +82,7 @@ export const TOOLS: Tool[] = [
     name: "explain_night",
     title: "Explain one night",
     description:
-      "Why a night of a listing has its price and minimum stay: every factor applied (season, weekday, last minute, gaps, occupancy, events, floors…) with the price before and after it. For a room type with several units it also says how many rooms are free and which rule weighed most. Use it when the host asks why a price is what it is.",
+      "Why a night of a listing has its price and minimum stay: every factor applied (season, weekday, last minute, gaps, occupancy, events, floors…) with the price before and after it. For a room type with several units it also says how many rooms are free and which rule weighed most. It also says when the autopilot's daily cap held the night back (calculated price, price sent to the channel, difference) and when the host confirmed it, up to which price. Use it when the host asks why a price is what it is.",
     inputSchema: {
       type: "object",
       properties: { listing: LISTING, date: { type: "string", description: "The night, YYYY-MM-DD, from today on." } },
@@ -90,7 +91,7 @@ export const TOOLS: Tool[] = [
     },
     handler: (folder, args) => {
       const data = explainNight(folder, args);
-      return { text: data.explanation, data };
+      return { text: [data.explanation, ...markLines(data, data.currency, "en")].join("\n"), data };
     },
   },
   {

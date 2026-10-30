@@ -505,7 +505,7 @@ async function useSuggestion(l, sg, btn) {
 function nightMarkText(n, l) {
   const parts = [];
   if (n.held) parts.push(t("held_line", { sent: money(n.held.sent, l.currency), calculated: money(n.held.calculated, l.currency) }));
-  if (n.confirmation) parts.push(t("confirmed_line", { by: n.confirmation.by, when: when(n.confirmation.at) }));
+  if (n.confirmation) parts.push(t("confirmed_line", { by: n.confirmation.by, when: when(n.confirmation.at), price: money(n.confirmation.price, l.currency) }));
   return parts.join(". ");
 }
 function capBox(n, l) {
@@ -518,12 +518,18 @@ function capBox(n, l) {
     box.append(el("p", "muted", t("held_run", { when: when(n.held.at) })));
   }
   if (n.confirmation) {
-    box.append(el("p", null, t("confirmed_line", { by: n.confirmation.by, when: when(n.confirmation.at) })));
-    if (n.held) box.append(el("p", null, t("confirmed_pending", { calculated: m(n.held.calculated) })));
+    box.append(el("p", null, t("confirmed_line", { by: n.confirmation.by, when: when(n.confirmation.at), price: m(n.confirmation.price) })));
+    if (n.held && n.confirmation.exceeded) {
+      const seen = { confirmed: m(n.confirmation.price), calculated: m(n.held.calculated) };
+      box.append(el("b", null, t("confirmed_exceeded", seen)), el("p", null, t("confirmed_exceeded_detail", seen)));
+    } else if (n.held) {
+      box.append(el("p", null, t("confirmed_pending", { calculated: m(n.held.calculated) })));
+    }
     box.append(el("p", "muted", t("confirmed_expires")));
   }
   if (!state.data.local) { box.append(el("p", "muted", t("confirm_local_only"))); return box; }
   if (n.confirmation) {
+    if (n.held && n.confirmation.exceeded) box.append(capButton("confirm_again", () => capPost("confirm", { from: n.date }), { calculated: m(n.held.calculated) }));
     box.append(capButton("confirm_remove", () => capPost("unconfirm", { from: n.date })));
     return box;
   }
@@ -533,11 +539,11 @@ function capBox(n, l) {
   until.type = "date";
   until.min = n.date;
   label.append(until);
-  box.append(label, capButton("confirm_button", () => capPost("confirm", { from: n.date, to: until.value || n.date })));
+  box.append(label, capButton("confirm_button", () => capPost("confirm", { from: n.date, to: until.value || n.date }), { calculated: m(n.held.calculated) }));
   return box;
 }
-function capButton(key, action) {
-  const b = el("button", "btn", t(key));
+function capButton(key, action, vars) {
+  const b = el("button", "btn", t(key, vars));
   b.type = "button";
   b.addEventListener("click", action);
   return b;
@@ -678,7 +684,7 @@ function nightList(nights, s, l) {
     li.append(el("span", "chg", (n.oldPrice == null ? "—" : money(n.oldPrice, l.currency)) + " → " + money(n.newPrice, l.currency)));
     let why = reasons(n.steps, l.currency);
     if (n.confirmedBy) why += " · " + t("pilot_confirmed_night", { by: n.confirmedBy });
-    else if (n.limited === "cap") why += " · " + t("pilot_held_cap", { p: num(s.maxChange), target: money(n.target, l.currency) });
+    if (n.limited === "cap") why += " · " + t("pilot_held_cap", { p: num(s.maxChange), target: money(n.target, l.currency) });
     if (n.limited === "floor") why += " · " + t("pilot_held_floor");
     if (n.limited === "ceiling") why += " · " + t("pilot_held_ceiling");
     li.append(el("span", "why", why));

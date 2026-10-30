@@ -7,7 +7,7 @@
  * - POST /api/pilot/on        turn it on: only with the token of a preview from the last 15 minutes
  * - POST /api/pilot/off       turn it off
  * - POST /api/pilot/resume    clear a pause
- * - POST /api/pilot/confirm   the host confirms a night or a range: they pass the daily cap
+ * - POST /api/pilot/confirm   the host confirms a night or a range: they pass the daily cap up to today's price
  * - POST /api/pilot/unconfirm take a confirmation back
  *
  * The switches answer only to this computer (127.0.0.1), even when the page is

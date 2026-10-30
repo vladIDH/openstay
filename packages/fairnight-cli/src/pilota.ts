@@ -9,8 +9,9 @@
  *   (old bookings could sell a night too cheap);
  * - a price moves at most maxDailyChangePercent (15) a day from the price on
  *   the channel now: further away, it gets there over the next days;
- * - a night the host confirmed skips that daily limit (pilota-conferme.ts): never
- *   by itself, and only until its date has passed;
+ * - a night the host confirmed skips that daily limit up to the price they saw
+ *   (pilota-conferme.ts), and past that price the limit applies again: never by
+ *   itself, and only until its date has passed;
  * - nothing below the listing's lowest price or above its highest, which the
  *   autopilot needs to be on; a price held back by the daily cap, or confirmed
  *   by the host, still stays inside them;
@@ -70,7 +71,8 @@ export function channelOf(l: HostListing): { feed: "smoobu" | "beds24"; label: s
 
 // ---------------------------------------------------------------- the safety rules
 
-export type Guarded = { price: number; limited: Limited | null } | { skip: string };
+export type Guarded = Passed | { skip: string };
+type Passed = { price: number; limited: Limited | null };
 
 /**
  * The price the autopilot may write for one night today: the engine's price,
@@ -118,8 +120,24 @@ export interface PilotNight {
   steps: PriceStep[];
   /** Read back after writing: true matches, false does not, null not written (preview). */
   verified: boolean | null;
-  /** Set when the host's confirmation let this night past the daily cap. */
+  /** Set when the host's confirmation moved this night further than the daily cap would. */
   confirmation?: { by: string; at: string };
+}
+
+/** Is x between a and b, both included? */
+const between = (a: number, b: number, x: number) => x >= Math.min(a, b) && x <= Math.max(a, b);
+
+/**
+ * The price of a night the cap held back, with the host's confirmation. Between
+ * the channel and the confirmed price the engine's price passes. Past the
+ * confirmed price the cap applies from there, both ways. A move the other way
+ * from the channel was never confirmed, so the cap stays.
+ */
+function confirmedPrice(target: number, current: number, confirmed: number, free: Passed, capped: Passed, limits: { floor: number; ceiling: number }, maxChange: number): Passed {
+  if (between(current, confirmed, target)) return free;
+  if (!between(current, target, confirmed)) return capped;
+  const past = guardPrice(target, confirmed, limits, maxChange);
+  return "skip" in past ? capped : past;
 }
 
 /** Apply the safety rules to a plan: the rows to write, the nights for the log and the nights the cap held back. */
@@ -144,10 +162,10 @@ export function guardPlan<Row extends DiffLike>(
     // The same rules with no price on the channel: everything but the daily cap.
     const uncapped = guardPrice(r.newPrice, null, limits, maxChange);
     const free = "skip" in uncapped ? capped : uncapped;
-    const heldBack = capped.price !== free.price;
-    const confirmation = heldBack ? confirmed.get(r.date) : undefined;
-    const g = confirmation ? free : capped;
-    if (heldBack && !confirmation) held.push({ date: r.date, calculated: r.newPrice, sent: g.price, maxChange });
+    const seen = capped.price !== free.price ? confirmed.get(r.date) : undefined;
+    const g = seen && seen.calculated !== null && r.currentPrice !== null ? confirmedPrice(r.newPrice, r.currentPrice, seen.calculated, free, capped, limits, maxChange) : capped;
+    const confirmation = g.price !== capped.price ? seen : undefined;
+    if (g.price !== free.price) held.push({ date: r.date, calculated: r.newPrice, sent: g.price, maxChange });
     if (g.price === r.currentPrice && r.newMinStay === r.currentMinStay) continue; // held back to where it already is
     rows.push({ ...r, newPrice: g.price });
     nights.push({

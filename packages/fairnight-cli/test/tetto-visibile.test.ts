@@ -3,7 +3,7 @@
  * and the host can let one through. The cap itself stays as it was for every
  * night the host did not confirm.
  */
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
@@ -101,7 +101,7 @@ function night(dir: string, date: string, today = TODAY) {
   return pricesPayload(dir, loadHostConfig(dir), today, 30).listings[0]?.nights.find((n) => n.date === date) as unknown as {
     price: number;
     held?: { calculated: number; sent: number; difference: number; maxChange: number };
-    confirmation?: { by: string; via: string; at: string };
+    confirmation?: { by: string; via: string; at: string; price: number; exceeded: boolean };
   };
 }
 
@@ -210,7 +210,7 @@ describe("a night the host confirmed", () => {
     await main(["pilota", "giro"], io(dir));
     const t = io(dir);
     expect(await main(["pilota", "conferma", "loft", "--da", SATURDAY], t)).toBe(0);
-    expect(t.lines).toEqual(["1 night confirmed for loft: at the next run the calculated price passes in full."]);
+    expect(t.lines).toEqual(["1 night confirmed for loft, up to today's calculated price. It passes at the next run."]);
     // Saved and visible before the run; the price has not moved yet.
     expect(night(dir, SATURDAY).confirmation).toMatchObject({ by: "anna", via: "command" });
     expect(night(dir, SATURDAY).held).toMatchObject({ sent: 92 });
@@ -227,7 +227,7 @@ describe("a night the host confirmed", () => {
     const dir = await setUp(80);
     const t = io(dir);
     await main(["pilota", "conferma", "loft", "--da", "2026-11-06", "--a", "2026-11-07"], t);
-    expect(t.lines).toEqual(["2 nights confirmed for loft: at the next run the calculated prices pass in full."]);
+    expect(t.lines).toEqual(["2 nights confirmed for loft, up to today's calculated prices. They pass at the next run."]);
     await main(["pilota", "giro"], io(dir));
     expect(priceOn("2026-11-05")).toBe(92);
     expect(priceOn("2026-11-06")).toBe(100);
@@ -248,7 +248,7 @@ describe("a night the host confirmed", () => {
     await main(["pilota", "conferma", "loft", "--da", SATURDAY], io(dir));
     const t = io(dir);
     await main(["pilota", "giro"], t);
-    expect(t.lines).toContain("  2026-11-07 sat       80 →     110  min 2 → 2  sat +10% (full price, confirmed by anna)");
+    expect(t.lines).toContain("  2026-11-07 sat       80 →     110  min 2 → 2  sat +10% (confirmed by anna)");
 
     expect(db(dir).prepare("SELECT new_price, target_price, limited, confirmed_by, confirmed_at FROM pilot_changes WHERE date = ?").get(SATURDAY)).toEqual({
       new_price: 110,
@@ -259,7 +259,7 @@ describe("a night the host confirmed", () => {
     });
     const log = io(dir);
     await main(["pilota", "registro"], log);
-    expect(log.lines).toContain("loft 2026-11-07: confirmed by anna on 2026-11-01 09:00");
+    expect(log.lines).toContain("loft 2026-11-07: confirmed up to 110 by anna on 2026-11-01 09:00");
     expect(log.lines.some((l) => l.includes("2026-11-07") && l.includes("(confirmed by anna, 2026-11-01 09:00)"))).toBe(true);
   });
 
@@ -279,12 +279,12 @@ describe("a night the host confirmed", () => {
     expect(db(dir).prepare("SELECT confirmed_by FROM pilot_changes WHERE date = ?").get(SATURDAY)).toEqual({ confirmed_by: null });
   });
 
-  it("a second confirmation keeps the first one, in the log too", async () => {
+  it("a second confirmation at the same price keeps the first one, in the log too", async () => {
     const dir = await setUp(80);
     await main(["pilota", "conferma", "loft", "--da", SATURDAY], io(dir));
     const t = io(dir);
     await main(["pilota", "conferma", "loft", "--da", SATURDAY], t);
-    expect(t.lines).toEqual(["No change: those nights were already confirmed."]);
+    expect(t.lines).toEqual(["No change: those nights were already confirmed at this price, or have no price."]);
     expect(db(dir).prepare("SELECT COUNT(*) AS n FROM pilot_confirmations").get()).toEqual({ n: 1 });
   });
 
@@ -296,6 +296,109 @@ describe("a night the host confirmed", () => {
     expect(await main(["pilota", "conferma", "loft", "--da", "2026-02-30"], t)).not.toBe(0);
     expect(await main(["pilota", "conferma", "loft"], t)).not.toBe(0);
     expect(db(dir).prepare("SELECT COUNT(*) AS n FROM pilot_confirmations").get()).toEqual({ n: 0 });
+  });
+});
+
+describe("a confirmation goes up to the price the host saw", () => {
+  const MONDAY = "2026-11-02";
+  // The engine says the base price on a Monday, so a new base price is a new calculation.
+  function setBase(dir: string, basePrice: number) {
+    const file = path.join(dir, "fairnight.config.json");
+    const config = JSON.parse(readFileSync(file, "utf8"));
+    config.listings[0].pricing.basePrice = basePrice;
+    writeFileSync(file, JSON.stringify(config, null, 2));
+  }
+  async function confirmedAt(channel: number, confirmed: number, language?: string) {
+    const dir = await setUp(channel, { enabled: true }, language);
+    setBase(dir, confirmed);
+    await main(["pilota", "conferma", "loft", "--da", MONDAY], io(dir));
+    return dir;
+  }
+
+  it("saves the price of the moment", async () => {
+    const dir = await confirmedAt(142, 168);
+    expect(night(dir, MONDAY).confirmation).toMatchObject({ price: 168, exceeded: false });
+  });
+
+  it("confirmed at 168 and the calculation goes to 250: 168 plus the cap passes, not 250", async () => {
+    const dir = await confirmedAt(142, 168);
+    setBase(dir, 250);
+    const t = io(dir);
+    await main(["pilota", "giro"], t);
+    expect(priceOn(MONDAY)).toBe(193); // 168 × 1.15 = 193.2
+    expect(priceOn("2026-11-03")).toBe(163); // not confirmed: 142 × 1.15
+    expect(night(dir, MONDAY).held).toMatchObject({ calculated: 250, sent: 193 });
+    expect(night(dir, MONDAY).confirmation).toMatchObject({ price: 168, exceeded: true });
+    expect(t.lines.some((l) => l.includes("held to 15% a day, the engine wants 250, confirmed by anna"))).toBe(true);
+    // The day after, the usual cap from where the channel is.
+    t.setNow("2026-11-02T09:00:00Z");
+    await main(["pilota", "giro"], t);
+    expect(priceOn(MONDAY)).toBe(221); // 193 × 1.15 = 221.95
+  });
+
+  it("says so on the calendar, in the three languages", async () => {
+    const lines = async (language: string) => {
+      const dir = await confirmedAt(142, 168, language);
+      setBase(dir, 250);
+      await main(["pilota", "giro"], io(dir));
+      const out = await priceLines(dir);
+      await smoobu?.close();
+      return out;
+    };
+    expect(await lines("it")).toContain("  Confermata fino a 168 €, oggi il calcolo dice 250 €.");
+    expect(await lines("es")).toContain("  Confirmada hasta 168 €, hoy el cálculo dice 250 €.");
+    expect(await lines("en")).toContain("  Confirmed up to €168, today the calculation says €250.");
+  });
+
+  it("confirmed again at 250: 250 passes, and the log keeps both", async () => {
+    const dir = await confirmedAt(142, 168);
+    setBase(dir, 250);
+    await main(["pilota", "giro"], io(dir));
+    const t = io(dir);
+    await main(["pilota", "conferma", "loft", "--da", MONDAY], t);
+    expect(t.lines).toEqual(["1 night confirmed for loft, up to today's calculated price. It passes at the next run."]);
+    await main(["pilota", "giro"], io(dir));
+    expect(priceOn(MONDAY)).toBe(250);
+    expect(night(dir, MONDAY).held).toBeUndefined();
+    expect(night(dir, MONDAY).confirmation).toMatchObject({ price: 250, exceeded: false });
+    expect(db(dir).prepare("SELECT calculated, removed_at IS NULL AS active FROM pilot_confirmations ORDER BY id").all()).toEqual([
+      { calculated: 168, active: 0 },
+      { calculated: 250, active: 1 },
+    ]);
+  });
+
+  it("the calculation falls below the confirmed price: the calculation passes", async () => {
+    const dir = await confirmedAt(142, 168);
+    setBase(dir, 150);
+    const row = { date: MONDAY, currentPrice: 120, currentMinStay: 2, newPrice: 150, newMinStay: 2 };
+    const confirmed = activeConfirmations(db(dir), "loft", TODAY);
+    expect(guardPlan([row], [], { floor: 60, ceiling: 260 }, 15, confirmed).rows[0]?.newPrice).toBe(150); // the cap alone: 138
+    await main(["pilota", "giro"], io(dir));
+    expect(priceOn(MONDAY)).toBe(150);
+    expect(night(dir, MONDAY).held).toBeUndefined();
+  });
+
+  it("on the way down it passes to the confirmed price, and the cap applies past it", async () => {
+    const dir = await confirmedAt(250, 150);
+    setBase(dir, 100);
+    await main(["pilota", "giro"], io(dir));
+    expect(priceOn(MONDAY)).toBe(128); // 150 × 0.85 = 127.5, not 100 and not the 213 of the cap alone
+    expect(priceOn("2026-11-03")).toBe(213);
+    expect(night(dir, MONDAY).confirmation).toMatchObject({ price: 150, exceeded: true });
+  });
+
+  it("a move the other way from the channel was never confirmed: the cap stays", async () => {
+    const dir = await confirmedAt(142, 168);
+    setBase(dir, 100);
+    await main(["pilota", "giro"], io(dir));
+    expect(priceOn(MONDAY)).toBe(121); // 142 × 0.85 = 120.7
+    expect(db(dir).prepare("SELECT confirmed_by FROM pilot_changes WHERE date = ?").get(MONDAY)).toEqual({ confirmed_by: null });
+  });
+
+  it("a night with no price has nothing to confirm", async () => {
+    const dir = await setUp(80);
+    expect(confirmNights(db(dir), "loft", [SATURDAY], { by: "anna", via: "command" }, NOW, () => null)).toBe(0);
+    expect(night(dir, SATURDAY).confirmation).toBeUndefined();
   });
 });
 
@@ -316,7 +419,7 @@ describe("a confirmation that has ended", () => {
     const t = io(dir);
     t.setNow("2026-11-08T09:00:00Z");
     await main(["pilota", "conferme"], t);
-    expect(t.lines).toEqual(["loft 2026-11-07: confirmed by anna on 2026-11-01 09:00 · ended"]);
+    expect(t.lines).toEqual(["loft 2026-11-07: confirmed up to 110 by anna on 2026-11-01 09:00 · ended"]);
   });
 
   it("a confirmation made for a later night does not leak to a run after it has passed", async () => {
@@ -341,7 +444,7 @@ describe("a confirmation that has ended", () => {
     expect(priceOn(SATURDAY)).toBe(92);
     const history = io(dir);
     await main(["pilota", "conferme"], history);
-    expect(history.lines).toEqual(["loft 2026-11-07: confirmed by anna on 2026-11-01 09:00 · removed by anna on 2026-11-01 09:00"]);
+    expect(history.lines).toEqual(["loft 2026-11-07: confirmed up to 110 by anna on 2026-11-01 09:00 · removed by anna on 2026-11-01 09:00"]);
     // It can be confirmed again.
     await main(["pilota", "conferma", "loft", "--da", SATURDAY], io(dir));
     expect(night(dir, SATURDAY).confirmation).toBeDefined();

@@ -100,7 +100,8 @@ const LIMITED: Record<Limited, (n: PilotNight, l: HostListing | undefined) => st
 
 function nightLine(n: PilotNight, listing: HostListing | undefined): string {
   const money = (v: number | null) => (v === null ? "—" : formatAmount(v));
-  const held = n.confirmation ? ` (full price, confirmed by ${n.confirmation.by})` : n.limited ? ` (${LIMITED[n.limited](n, listing)})` : "";
+  const notes = [...(n.limited ? [LIMITED[n.limited](n, listing)] : []), ...(n.confirmation ? [`confirmed by ${n.confirmation.by}`] : [])];
+  const held = notes.length > 0 ? ` (${notes.join(", ")})` : "";
   const check = n.verified === false ? "  ✗ does not match on the channel" : "";
   return `  ${n.date} ${weekday(n.date)}  ${money(n.oldPrice).padStart(7)} → ${formatAmount(n.newPrice).padStart(7)}  min ${n.oldMinStay ?? "—"} → ${n.newMinStay}  ${reasonOf(n.steps)}${held}${check}`;
 }
@@ -217,7 +218,7 @@ function confirmCommand(dir: string, listing: HostListing, values: PilotCommandV
 }
 
 function confirmationLine(c: Confirmation, today: string, lang: Language): string {
-  const base = textOf(lang, "history_line", { listing: c.listing, date: c.date, by: c.by, when: moment(c.at) });
+  const base = textOf(lang, "history_line", { listing: c.listing, date: c.date, by: c.by, when: moment(c.at), price: c.calculated ?? "" });
   if (c.removedAt !== null) return `${base} · ${textOf(lang, "history_removed", { by: c.removedBy ?? "", when: moment(c.removedAt) })}`;
   return c.date < today ? `${base} · ${textOf(lang, "history_expired")}` : base;
 }

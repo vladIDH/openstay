@@ -12,6 +12,16 @@ All notable changes are listed here. Versions follow [Semantic Versioning](https
 - **The log says who and when.** `fairnight pilota registro` and the new `fairnight pilota conferme` list who confirmed each night, when, and who took it back. The CSV of `registro` gets two columns at the end, `confirmed_by` and `confirmed_at`. Confirming works only on the computer that runs Fairnight, like the other autopilot switches.
 - **Upgrading:** the database moves to schema 12 on first use (two new columns in `pilot_changes`, two new tables). The marks appear after the first run of the autopilot with this version.
 
+### Added
+
+- Optional passphrase for the Smoobu and Beds24 credentials (#29): `fairnight chiavi stato | cifra | chiaro | ricorda | dimentica | azzera`. Same encryption as Fairguest, no new dependency, a passphrase of its own. Off by default: folders that do not turn it on keep working in clear, unchanged.
+- The autopilot opens encrypted keys from the computer's keychain: DPAPI through `powershell.exe` on Windows (tried with a real scheduled task), `security` on a Mac (**not tried on a real Mac yet**). `FAIRNIGHT_FRASE_CHIAVI` is a fallback for servers, with the limit written in SECURITY.md.
+- Without a passphrase a run stops, says why in Italian, Spanish or English and sends no price. The listing is not paused, and the run can happen the same day once the keys open. `fairnight pilota stato` and `pianifica` say in advance whether a run alone can open them.
+
+### Security
+
+- SECURITY.md says what the encryption protects and what it does not, starting with a malicious program running as the host's user.
+
 ## [0.2.0] - 2026-10-24
 
 The first version published on npm and on GitHub Releases. It brings the connectors to Smoobu and Beds24, the autopilot, zone data, small hotels, the calendar page in three languages, the installer for hosts, and two new tools: **Fairguest** (guest registration for Spain and Italy) and **Fairhello** (draft replies to guests, approved by the host).

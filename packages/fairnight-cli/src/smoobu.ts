@@ -41,7 +41,7 @@ const RANGE_END_KEY = "smoobu_range_end";
 const RANGE_CHECKED_KEY = "smoobu_range_end_checked_on";
 
 export function smoobuClient(dir: string, io: Io): SmoobuClient {
-  const { credentials } = loadCredentials(dir, io.env ?? {});
+  const { credentials } = loadCredentials(dir, io.env ?? {}, io);
   return new SmoobuClient({
     credentials,
     fetch: io.smoobuFetch ?? ((url, init) => fetch(url, init)),

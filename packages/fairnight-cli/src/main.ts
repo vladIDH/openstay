@@ -13,6 +13,9 @@ import { importPrices } from "./import.js";
 import { UsageError } from "./errors.js";
 import { initFolder } from "./init.js";
 import { apri } from "./apri.js";
+import { KeysLockedError, keysOn, openKey, openKeyWith } from "./chiavi.js";
+import { needsKeys, runKeys } from "./chiavi-comandi.js";
+import { keyTexts } from "./chiavi-testi.js";
 import { configura } from "./configura.js";
 import { dbPath, localToday, stripBom, type Io } from "./io.js";
 import { defaultExportPath, EXPORT_FORMATS, toCsv, writeExport } from "./export.js";
@@ -51,6 +54,10 @@ Usage:
   fairnight beds24 collega                         exchange a Beds24 invite code for a refresh token (asked, never shown)
   fairnight beds24 importa                         Beds24 rooms become listings; bookings into the local database
   fairnight beds24 spingi                          compare with Beds24; writes only with --applica [--da DATE] [--a DATE] [--alloggio ROOM]
+  fairnight chiavi stato                           are the Smoobu and Beds24 keys encrypted? optional passphrase, off by default
+  fairnight chiavi cifra|chiaro                    encrypt the saved keys, or put them back in clear (asks to confirm)
+  fairnight chiavi ricorda|dimentica               keep the passphrase in this computer's keychain for the autopilot, or remove it
+  fairnight chiavi azzera                          passphrase lost: delete the encrypted keys, then connect again
   fairnight mercato importa <file> --zona <name>   zone data from your CSV (date, occupancy, average_price, comparables)
                                                    or from Inside Airbnb files you downloaded (calendar.csv.gz)
                                                    [--fonte csv|insideairbnb] [--annunci listings.csv.gz --tipo T --camere N --ospiti N --quartiere Q] [--dry-run]
@@ -143,7 +150,20 @@ function positiveInt(raw: string | undefined, fallback: number, name: string): n
   return n;
 }
 
-export async function main(argv: string[], io: Io): Promise<number> {
+/** With encrypted keys and no keychain, ask for the passphrase once, before the command starts. */
+async function openKeysAtStart(dir: string, command: string, rest: string[], pianificato: boolean, io: Io): Promise<void> {
+  if (!io.prompt || !keysOn(dir) || !needsKeys(command, rest, pianificato)) return;
+  try {
+    openKey(dir, io);
+  } catch (e) {
+    if (!(e instanceof KeysLockedError)) throw e;
+    const typed = await io.prompt(keyTexts(dir, io).passphrase, { hidden: true });
+    if (typed) openKeyWith(dir, io, typed); // no answer: the command stops on its own, with the reason
+  }
+}
+
+export async function main(argv: string[], given: Io): Promise<number> {
+  const io: Io = { ...given, openKeys: {} };
   let parsed;
   try {
     parsed = parseArgs({ args: argv, options: OPTIONS, allowPositionals: true, strict: true });
@@ -161,6 +181,7 @@ export async function main(argv: string[], io: Io): Promise<number> {
   const dir = path.resolve(io.cwd, values.dir ?? ".");
 
   try {
+    await openKeysAtStart(dir, command, rest, values.pianificato ?? false, io);
     switch (command) {
       case "init":
         return runInit(rest, io);
@@ -189,6 +210,9 @@ export async function main(argv: string[], io: Io): Promise<number> {
         return await runSmoobu(dir, values, rest, io);
       case "beds24":
         return await runBeds24(dir, values, rest, io);
+      case "chiavi":
+      case "keys":
+        return await runKeys(dir, rest, io);
       case "mercato":
       case "market":
         return await runMercato(dir, values, rest, io);

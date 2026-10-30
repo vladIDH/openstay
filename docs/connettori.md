@@ -90,6 +90,26 @@ In alternativa si usano le variabili `SMOOBU_API_KEY` e `SMOOBU_API_SECRET`, che
 - È nel `.gitignore` del repo.
 - Gitleaks ha due regole dedicate (`.gitleaks.toml`), e un job della CI prova a ogni push che un file o una variabile con la chiave verrebbero presi.
 - Chiave e secret non vengono mai stampati, nemmeno troncati, nemmeno negli errori.
+- Il file si può cifrare: vedi [Chiavi cifrate](#chiavi-cifrate-opzionale).
+
+## Chiavi cifrate (opzionale)
+
+Di serie le chiavi di Smoobu e Beds24 restano in chiaro con i permessi del file. Chi vuole di più le cifra con una passphrase, separata da quella di Fairguest. Chi non lo fa non cambia nulla.
+
+| Comando | Cosa fa |
+|---|---|
+| `fairnight chiavi stato` | dice cosa è cifrato e se il portachiavi ha la passphrase; mai un valore |
+| `fairnight chiavi cifra` | cifra le chiavi salvate, dopo una conferma, e propone di tenere la passphrase nel portachiavi |
+| `fairnight chiavi chiaro` | torna in chiaro: chiede la passphrase e una conferma |
+| `fairnight chiavi ricorda` | riscrive la passphrase nel portachiavi di questo computer |
+| `fairnight chiavi dimentica` | la toglie dal portachiavi: il giro quotidiano si ferma |
+| `fairnight chiavi azzera` | passphrase persa o file rovinato: cancella le chiavi cifrate, poi si rifà `collega` |
+
+**Come funziona.** `chiavi-cifrate.json` contiene la chiave privata chiusa dalla passphrase, e ogni file di credenziali diventa `{ "sealed": "fg1…" }`, legato al proprio nome. Per scrivere basta la chiave pubblica, quindi `collega` e il rinnovo del token breve di Beds24 non chiedono la passphrase. Se il file è chiuso, il token breve non viene salvato: mai in chiaro.
+
+**Il pilota.** Prende la passphrase dal portachiavi del computer (Windows: DPAPI con `powershell.exe`; Mac: `security`, **non ancora provato su un Mac vero**) o, sui server, da `FAIRNIGHT_FRASE_CHIAVI`. Senza passphrase si ferma, spiega il motivo nella lingua dell'host e non manda prezzi; non mette in pausa l'alloggio e può ripartire lo stesso giorno. `fairnight pilota stato` dice in anticipo se il giro da solo può aprire le chiavi.
+
+Rischi e limiti, compreso quello che la cifratura **non** protegge: [SECURITY.md](../SECURITY.md).
 
 ## Beds24: il connettore (0.2.0, in lavorazione)
 
@@ -110,6 +130,7 @@ Pacchetto `packages/fairnight-beds24` e comandi `fairnight beds24 …`. Usa solo
 - Il refresh token **scade se non viene usato per 30 giorni**.
 - `BEDS24_REFRESH_TOKEN` ha la precedenza sul file `beds24-credentials.json` (permessi solo per l'utente, nel `.gitignore`, con due regole gitleaks dedicate provate dal job della CI).
 - Nessun token o codice viene mai stampato.
+- Il file si può cifrare: vedi [Chiavi cifrate](#chiavi-cifrate-opzionale).
 
 **Cosa legge:**
 - `GET /properties?includeAllRooms=true`: proprietà, stanze, numero di unità, prezzo di listino e prezzo minimo.

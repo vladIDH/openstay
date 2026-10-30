@@ -25,6 +25,7 @@ import type { DiffLike, PushTarget, TargetPlan } from "./channel.js";
 import { addDays } from "./channel.js";
 import { isBeds24, isSmoobu, loadHostConfig, SetupError, type HostConfig, type HostListing } from "./config.js";
 import { beds24Client, beds24Target } from "./beds24.js";
+import { keysClosed } from "./chiavi.js";
 import { getMeta, openDb, setMeta, type Db } from "./db.js";
 import { dbPath, localToday, type Io } from "./io.js";
 import { activeConfirmations, saveHeld, type Confirmation, type HeldNight } from "./pilota-conferme.js";
@@ -436,7 +437,8 @@ export async function runPilot(dir: string, io: Io, opts: PilotOptions, config: 
       if (opts.dryRun) return result;
       const finishedAt = io.now().toISOString();
       result.runId = record(db, result, finishedAt);
-      setMeta(db, LAST_DAY_KEY, localToday(now));
+      // Stopped by closed keys: once the host opens them, today's run can still happen.
+      if (result.notRead.length === 0 || !keysClosed(dir, io)) setMeta(db, LAST_DAY_KEY, localToday(now));
       setMeta(db, LAST_RUN_KEY, finishedAt);
       prune(db, now);
       return result;

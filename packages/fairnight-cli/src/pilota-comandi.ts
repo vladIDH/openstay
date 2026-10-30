@@ -16,6 +16,8 @@
 import { appendFileSync, copyFileSync, existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { formatAmount, type PriceStep } from "fairnight";
+import { canOpenAlone } from "./chiavi.js";
+import { keyTexts } from "./chiavi-testi.js";
 import { daysBetween, weekday } from "./channel.js";
 import { loadHostConfig, PILOT_TIME, SetupError, type HostListing } from "./config.js";
 import { openDb, type Db } from "./db.js";
@@ -315,6 +317,7 @@ export async function runPilotCommand(dir: string, values: PilotCommandValues, r
       const where = installSchedule(dir, io, time, localToday(io.now()));
       writePilotTime(dir, time);
       io.out(`Daily run set up at ${time} (${where}). If the computer is off then, it runs when it is back on.`);
+      keysLine(dir, io);
       return 0;
     }
     case "togli":
@@ -356,6 +359,12 @@ async function turnOn(dir: string, listing: HostListing, io: Io): Promise<number
   return 0;
 }
 
+/** Encrypted keys: say now, not at 06:00, whether a run alone can open them. */
+function keysLine(dir: string, io: Io): void {
+  const alone = canOpenAlone(dir, io);
+  if (alone !== null) io.out(alone ? keyTexts(dir, io).aloneOk : keyTexts(dir, io).aloneNo);
+}
+
 function status(dir: string, io: Io): number {
   const config = loadHostConfig(dir);
   const db = openDb(dbPath(dir));
@@ -379,6 +388,7 @@ function status(dir: string, io: Io): number {
     io.out(last.at ? `Last run: ${last.at}.` : "No run yet.");
     const scheduled = isScheduled(dir, io);
     if (scheduled !== null) io.out(scheduled ? `Daily run: set up at ${config.pilot?.time ?? DEFAULT_PILOT_TIME}.` : 'Daily run: not set up ("fairnight pilota pianifica").');
+    keysLine(dir, io);
   } finally {
     db.close();
   }

@@ -46,3 +46,6 @@ release-files/
 
 # The host's own Stripe key written by "fairnight pagamenti collega": never commit it
 stripe-credentials.json
+
+# The key of the encrypted credentials ("fairnight chiavi cifra"): locked, but it stays out of the repository
+chiavi-cifrate.json

@@ -82,7 +82,7 @@ packages/
 | **Smoobu** (API key and secret, HMAC-signed requests) | apartments, bookings, rates, guest messages | prices and minimum stays after a confirmation; replies the host approved |
 | **Beds24** (API v2, invite code → refresh token) | rooms and units, bookings, calendar, guest messages | prices and minimum stays after a confirmation; replies the host approved |
 
-Credentials are asked without echo, saved readable by the current user only, and never logged. Details and limits: [docs/connettori.md](docs/connettori.md) (Italian). There is no scraping and there are no unofficial APIs, ever.
+Credentials are asked without echo, saved readable by the current user only, and never logged. Smoobu and Beds24 keys can also be encrypted with a passphrase (`fairnight chiavi cifra`, optional, see [SECURITY.md](SECURITY.md)). Details and limits: [docs/connettori.md](docs/connettori.md) (Italian). There is no scraping and there are no unofficial APIs, ever.
 
 ## What it does not do
 

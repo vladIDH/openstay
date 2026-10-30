@@ -4,6 +4,8 @@
  */
 import path from "node:path";
 import type { ScryptParams } from "fairguest";
+import type { OpenKeys } from "./chiavi.js";
+import type { Keychain } from "./portachiavi.js";
 
 export type FetchLike = (url: string, init?: { signal?: AbortSignal; headers?: Record<string, string> }) => Promise<{
   ok: boolean;
@@ -18,7 +20,7 @@ export interface Io {
   err(line: string): void;
   fetch: FetchLike;
   now(): Date;
-  /** Environment variables (SMOOBU_API_KEY, SMOOBU_API_SECRET, BEDS24_REFRESH_TOKEN, AIRROI_API_KEY, ANTHROPIC_API_KEY, STRIPE_SECRET_KEY). Default: none. */
+  /** Environment variables (SMOOBU_API_KEY, SMOOBU_API_SECRET, BEDS24_REFRESH_TOKEN, FAIRNIGHT_FRASE_CHIAVI, AIRROI_API_KEY, ANTHROPIC_API_KEY, STRIPE_SECRET_KEY). Default: none. */
   env?: Record<string, string | undefined>;
   /** The language of this computer, like "it-IT" (only for tests). Default: from LANG or the system. */
   locale?: string;
@@ -69,8 +71,12 @@ export interface Io {
   scryptCost?: ScryptParams;
   /** This computer, for the daily run of the autopilot. Default: unknown, so it cannot be scheduled. */
   system?: SystemInfo;
-  /** Run a program and wait for it (schtasks, launchctl). Default: none. */
-  run?(command: string, args: string[]): { status: number | null; stdout: string; stderr: string };
+  /** Run a program and wait for it (schtasks, launchctl); input goes to its stdin. Default: none. */
+  run?(command: string, args: string[], input?: string): { status: number | null; stdout: string; stderr: string };
+  /** Only for tests: a fake keychain instead of this computer's; null for none. */
+  keychain?: Keychain | null;
+  /** The credentials key of this run, once opened. Set by main. */
+  openKeys?: OpenKeys;
 }
 
 export interface SystemInfo {

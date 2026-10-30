@@ -38,11 +38,11 @@ const RANGE_CHECKED_KEY = "beds24_range_end_checked_on";
 export const beds24Listings = (listings: HostListing[]) => listings.filter((l) => l.calendars.some(isBeds24));
 
 export function beds24Client(dir: string, io: Io): Beds24Client {
-  const creds = loadBeds24Credentials(dir, io.env ?? {});
+  const creds = loadBeds24Credentials(dir, io.env ?? {}, io);
   return new Beds24Client({
     refreshToken: creds.refreshToken,
     cachedToken: creds.cachedToken,
-    onToken: (token) => saveBeds24Token(dir, creds.refreshToken, token),
+    onToken: (token) => saveBeds24Token(dir, creds.refreshToken, token, io),
     fetch: io.beds24Fetch ?? ((url, init) => fetch(url, init)),
     ...(io.beds24BaseUrl ? { baseUrl: io.beds24BaseUrl } : {}),
     now: () => io.now(),
@@ -83,7 +83,7 @@ export async function connect(dir: string, io: Io): Promise<number> {
     throw e;
   }
   const protection = saveBeds24Credentials(dir, setup.refreshToken, setup.token);
-  const client = beds24Client(dir, { ...io, env: {} });
+  const client = beds24Client(dir, { ...io, env: { ...io.env, BEDS24_REFRESH_TOKEN: undefined } });
   const rooms = await client.listRooms();
   io.out(`Connected to Beds24: ${rooms.length} room${rooms.length === 1 ? "" : "s"} found.`);
   io.out(`Refresh token saved in ${BEDS24_CREDENTIALS_FILE}, ${protection}. Never share or commit this file.`);

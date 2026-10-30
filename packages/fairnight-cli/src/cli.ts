@@ -26,8 +26,8 @@ process.exitCode = await main(process.argv.slice(2), {
     node: process.execPath,
     script: process.argv[1] ?? "",
   },
-  run: (command, args) => {
-    const r = spawnSync(command, args, { encoding: "utf8", windowsHide: true });
+  run: (command, args, input) => {
+    const r = spawnSync(command, args, { encoding: "utf8", windowsHide: true, ...(input !== undefined ? { input } : {}) });
     return { status: r.status, stdout: r.stdout ?? "", stderr: r.stderr ?? (r.error ? r.error.message : "") };
   },
   openUrl: (url) => {

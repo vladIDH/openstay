@@ -8,17 +8,33 @@
  *   accendi L / spegni L   turn it on (after showing the preview) or off
  *   riprendi L             clear a pause
  *   registro [--listing L] [--out file.csv]   the nights written, with the reason
+ *   conferma L --da D [--a D]   these nights pass the daily cap at their full price
+ *   revoca L --da D [--a D]     take a confirmation back
+ *   conferme [--listing L]      confirmations, old ones too
  *   pianifica [--ora 06:00] / togli           the daily task of this computer
  */
 import { appendFileSync, copyFileSync, existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { formatAmount, type PriceStep } from "fairnight";
-import { weekday } from "./channel.js";
+import { daysBetween, weekday } from "./channel.js";
 import { loadHostConfig, PILOT_TIME, SetupError, type HostListing } from "./config.js";
-import { openDb } from "./db.js";
+import { openDb, type Db } from "./db.js";
 import { UsageError } from "./errors.js";
 import { configPath, DATA_DIR, dbPath, localToday, stripBom, type Io } from "./io.js";
+import type { Language } from "./lingua.js";
 import { installSchedule, isScheduled, PILOT_LOG, removeSchedule } from "./pianifica.js";
+import {
+  ConfirmError,
+  confirmationHistory,
+  confirmNights,
+  moment,
+  nightsBetween,
+  pluralOf,
+  removeConfirmations,
+  textOf,
+  type Confirmation,
+} from "./pilota-conferme.js";
+import { priceOne } from "./price.js";
 import {
   channelOf,
   DEFAULT_MAX_CHANGE,
@@ -84,7 +100,7 @@ const LIMITED: Record<Limited, (n: PilotNight, l: HostListing | undefined) => st
 
 function nightLine(n: PilotNight, listing: HostListing | undefined): string {
   const money = (v: number | null) => (v === null ? "—" : formatAmount(v));
-  const held = n.limited ? ` (${LIMITED[n.limited](n, listing)})` : "";
+  const held = n.confirmation ? ` (full price, confirmed by ${n.confirmation.by})` : n.limited ? ` (${LIMITED[n.limited](n, listing)})` : "";
   const check = n.verified === false ? "  ✗ does not match on the channel" : "";
   return `  ${n.date} ${weekday(n.date)}  ${money(n.oldPrice).padStart(7)} → ${formatAmount(n.newPrice).padStart(7)}  min ${n.oldMinStay ?? "—"} → ${n.newMinStay}  ${reasonOf(n.steps)}${held}${check}`;
 }
@@ -159,6 +175,64 @@ export interface PilotCommandValues {
   ora?: string;
   listing?: string;
   out?: string;
+  da?: string;
+  a?: string;
+}
+
+/**
+ * Confirm the nights from `from` to `to` for one listing, with the price of each
+ * as the host sees it now. Used by the command and by the page. Throws ConfirmError.
+ */
+export function confirmRange(db: Db, listing: HostListing, from: unknown, to: unknown, today: string, who: { by: string; via: "page" | "command" }, at: string): number {
+  const nights = nightsBetween(from, to);
+  const first = nights[0] as string;
+  if (first < today) throw new ConfirmError("past");
+  const prices = new Map(priceOne(db, listing, today, daysBetween(today, first) + nights.length).nights.map((n) => [n.date, n.price]));
+  return confirmNights(db, listing.name, nights, who, at, (date) => prices.get(date) ?? null);
+}
+
+/** Who is at the computer, for the log: the name of the user, without the Windows domain. */
+export const whoOf = (io: Io) => io.system?.user.split("\\").at(-1) ?? "host";
+
+function confirmCommand(dir: string, listing: HostListing, values: PilotCommandValues, io: Io, remove: boolean): number {
+  const verb = remove ? "revoca" : "conferma";
+  if (values.da === undefined) throw new UsageError(`"fairnight pilota ${verb}" needs the night: --da 2026-11-10, and --a 2026-11-12 for several.`);
+  const lang: Language = loadHostConfig(dir).language ?? "en";
+  const last = values.a ?? values.da;
+  const db = openDb(dbPath(dir));
+  try {
+    const at = io.now().toISOString();
+    const n = remove
+      ? removeConfirmations(db, listing.name, nightsBetween(values.da, last), whoOf(io), at)
+      : confirmRange(db, listing, values.da, last, localToday(io.now()), { by: whoOf(io), via: "command" }, at);
+    if (n === 0) io.out(textOf(lang, remove ? "unconfirm_none" : "confirm_none"));
+    else io.out(pluralOf(lang, remove ? "unconfirm_done" : "confirm_done", n, { listing: listing.name }));
+    return 0;
+  } catch (e) {
+    if (e instanceof ConfirmError) throw new UsageError(textOf(lang, `confirm_err_${e.code}`));
+    throw e;
+  } finally {
+    db.close();
+  }
+}
+
+function confirmationLine(c: Confirmation, today: string, lang: Language): string {
+  const base = textOf(lang, "history_line", { listing: c.listing, date: c.date, by: c.by, when: moment(c.at) });
+  if (c.removedAt !== null) return `${base} · ${textOf(lang, "history_removed", { by: c.removedBy ?? "", when: moment(c.removedAt) })}`;
+  return c.date < today ? `${base} · ${textOf(lang, "history_expired")}` : base;
+}
+
+function confirmations(dir: string, values: PilotCommandValues, io: Io): number {
+  const lang: Language = loadHostConfig(dir).language ?? "en";
+  const db = openDb(dbPath(dir));
+  try {
+    const all = confirmationHistory(db, values.listing);
+    if (all.length === 0) io.out(textOf(lang, "history_none"));
+    for (const c of all) io.out(confirmationLine(c, localToday(io.now()), lang));
+  } finally {
+    db.close();
+  }
+  return 0;
 }
 
 export async function runPilotCommand(dir: string, values: PilotCommandValues, rest: string[], io: Io): Promise<number> {
@@ -222,6 +296,16 @@ export async function runPilotCommand(dir: string, values: PilotCommandValues, r
     case "log":
       noName();
       return log(dir, values, io);
+    case "conferma":
+    case "confirm":
+      return confirmCommand(dir, oneListing(dir, name, "conferma"), values, io, false);
+    case "revoca":
+    case "unconfirm":
+      return confirmCommand(dir, oneListing(dir, name, "revoca"), values, io, true);
+    case "conferme":
+    case "confirmations":
+      noName();
+      return confirmations(dir, values, io);
     case "pianifica":
     case "schedule": {
       noName();
@@ -238,7 +322,7 @@ export async function runPilotCommand(dir: string, values: PilotCommandValues, r
       io.out(removeSchedule(dir, io) ? "Daily run removed from this computer." : "There was no daily run on this computer.");
       return 0;
     default:
-      throw new UsageError(`Unknown: fairnight pilota ${sub}. Use giro, prova, stato, accendi, spegni, riprendi, registro, pianifica or togli.`);
+      throw new UsageError(`Unknown: fairnight pilota ${sub}. Use giro, prova, stato, accendi, spegni, riprendi, registro, conferma, revoca, conferme, pianifica or togli.`);
   }
 }
 
@@ -313,6 +397,8 @@ interface ChangeRow {
   limited: string | null;
   steps: string;
   verified: number | null;
+  confirmed_by: string | null;
+  confirmed_at: string | null;
 }
 
 const csvCell = (v: unknown) => {
@@ -323,10 +409,13 @@ const csvCell = (v: unknown) => {
 function log(dir: string, values: PilotCommandValues, io: Io): number {
   const db = openDb(dbPath(dir));
   let rows: ChangeRow[];
+  let confirmed: Confirmation[];
+  const lang: Language = loadHostConfig(dir).language ?? "en";
   try {
+    confirmed = confirmationHistory(db, values.listing);
     rows = db
       .prepare(
-        `SELECT r.started_at, c.listing, c.feed, c.date, c.old_price, c.new_price, c.target_price, c.old_min_stay, c.new_min_stay, c.limited, c.steps, c.verified
+        `SELECT r.started_at, c.listing, c.feed, c.date, c.old_price, c.new_price, c.target_price, c.old_min_stay, c.new_min_stay, c.limited, c.steps, c.verified, c.confirmed_by, c.confirmed_at
          FROM pilot_changes c JOIN pilot_runs r ON r.id = c.run_id
          ${values.listing !== undefined ? "WHERE c.listing = ?" : ""}
          ORDER BY r.started_at DESC, c.listing, c.date`,
@@ -338,9 +427,9 @@ function log(dir: string, values: PilotCommandValues, io: Io): number {
   const reason = (r: ChangeRow) => reasonOf(JSON.parse(r.steps) as PriceStep[]);
   if (values.out !== undefined) {
     const file = path.resolve(dir, values.out);
-    const head = "run,listing,channel,date,old_price,new_price,engine_price,old_min_stay,new_min_stay,held_back,read_back,reason";
+    const head = "run,listing,channel,date,old_price,new_price,engine_price,old_min_stay,new_min_stay,held_back,read_back,reason,confirmed_by,confirmed_at";
     const body = rows.map((r) =>
-      [r.started_at, r.listing, r.feed, r.date, r.old_price, r.new_price, r.target_price, r.old_min_stay, r.new_min_stay, r.limited, r.verified === null ? "" : r.verified ? "ok" : "no", reason(r)]
+      [r.started_at, r.listing, r.feed, r.date, r.old_price, r.new_price, r.target_price, r.old_min_stay, r.new_min_stay, r.limited, r.verified === null ? "" : r.verified ? "ok" : "no", reason(r), r.confirmed_by, r.confirmed_at]
         .map(csvCell)
         .join(","),
     );
@@ -348,6 +437,7 @@ function log(dir: string, values: PilotCommandValues, io: Io): number {
     io.out(`${rows.length} night${rows.length === 1 ? "" : "s"} written to ${file}.`);
     return 0;
   }
+  for (const c of confirmed.slice(0, 200)) io.out(confirmationLine(c, localToday(io.now()), lang));
   if (rows.length === 0) {
     io.out("The autopilot has written nothing yet.");
     return 0;
@@ -359,7 +449,8 @@ function log(dir: string, values: PilotCommandValues, io: Io): number {
       io.out(`Run of ${run}:`);
     }
     const money = (v: number | null) => (v === null ? "—" : formatAmount(v));
-    io.out(`  ${r.listing} ${r.date}  ${money(r.old_price)} → ${money(r.new_price)}${r.limited ? ` (${r.limited}; engine ${money(r.target_price)})` : ""}  ${reason(r)}`);
+    const confirmedBy = r.confirmed_by ? ` (confirmed by ${r.confirmed_by}, ${moment(r.confirmed_at ?? "")})` : "";
+    io.out(`  ${r.listing} ${r.date}  ${money(r.old_price)} → ${money(r.new_price)}${r.limited ? ` (${r.limited}; engine ${money(r.target_price)})` : ""}${confirmedBy}  ${reason(r)}`);
   }
   if (rows.length > 200) io.out(`… and ${rows.length - 200} more: --out file.csv writes them all.`);
   return 0;

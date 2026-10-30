@@ -16,7 +16,7 @@
  * - GET/POST /api/pilot…  the autopilot: its state, and its switches for this computer only (pilota-pagina.ts)
  * The calendar page writes only through "Recalculate", which runs the same
  * sync as `fairnight sync`, "Use this price" (POST /api/base-price) and the
- * autopilot switches.
+ * autopilot switches, which include confirming a night held back by the daily cap.
  */
 import { createHash, randomBytes } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
@@ -33,6 +33,7 @@ import { paymentsRound } from "./payments/sync.js";
 import { applyRetention, guestDeadlines, guestsEnabled, prefillFromCalendar } from "./guests/store.js";
 import { renderPage } from "./page.js";
 import type { Language } from "./lingua.js";
+import { nightMarks } from "./pilota-conferme.js";
 import { handlePilot, PAGE_CHECK_MS, pageRunIfDue, type PilotPageContext } from "./pilota-pagina.js";
 import { lastSync, priceOne } from "./price.js";
 import { suggestionFor, writeBasePrice, type ListingSuggestion } from "./prezzo-base.js";
@@ -133,6 +134,7 @@ export function pricesPayload(dir: string, config: HostConfig, today: string, da
       language: config.language ?? "en",
       listings: config.listings.map((l) => {
         const result = priceOne(db, l, today, days);
+        const marks = nightMarks(db, l, today, result.nights);
         return {
           name: l.name,
           title: l.pricing.name ?? l.name,
@@ -149,6 +151,7 @@ export function pricesPayload(dir: string, config: HostConfig, today: string, da
             steps: n.steps,
             explanation: n.explanation,
             ...(n.units ? { units: n.units } : {}),
+            ...marks.get(n.date),
           })),
         };
       }),

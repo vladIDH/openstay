@@ -9,12 +9,15 @@
  *   (old bookings could sell a night too cheap);
  * - a price moves at most maxDailyChangePercent (15) a day from the price on
  *   the channel now: further away, it gets there over the next days;
+ * - a night the host confirmed skips that daily limit (pilota-conferme.ts): never
+ *   by itself, and only until its date has passed;
  * - nothing below the listing's lowest price or above its highest, which the
- *   autopilot needs to be on; a price held back by the daily cap still stays
- *   inside them;
+ *   autopilot needs to be on; a price held back by the daily cap, or confirmed
+ *   by the host, still stays inside them;
  * - after 3 failed runs in a row, or more than 5 nights that do not match when
  *   read back, the listing pauses until the host resumes it.
- * Every night written is kept in pilot_changes with the reason.
+ * Every night written is kept in pilot_changes with the reason, and the nights
+ * the cap held back in pilot_held, for the calendar.
  */
 import type { NightQuote, PriceStep } from "fairnight";
 import type { DiffLike, PushTarget, TargetPlan } from "./channel.js";
@@ -23,6 +26,7 @@ import { isBeds24, isSmoobu, loadHostConfig, SetupError, type HostConfig, type H
 import { beds24Client, beds24Target } from "./beds24.js";
 import { getMeta, openDb, setMeta, type Db } from "./db.js";
 import { dbPath, localToday, type Io } from "./io.js";
+import { activeConfirmations, saveHeld, type Confirmation, type HeldNight } from "./pilota-conferme.js";
 import { priceOne } from "./price.js";
 import { smoobuClient, smoobuTarget } from "./smoobu.js";
 import { syncEverything } from "./sync-all.js";
@@ -114,25 +118,36 @@ export interface PilotNight {
   steps: PriceStep[];
   /** Read back after writing: true matches, false does not, null not written (preview). */
   verified: boolean | null;
+  /** Set when the host's confirmation let this night past the daily cap. */
+  confirmation?: { by: string; at: string };
 }
 
-/** Apply the safety rules to a plan: the rows to write and the nights for the log. */
+/** Apply the safety rules to a plan: the rows to write, the nights for the log and the nights the cap held back. */
 export function guardPlan<Row extends DiffLike>(
   changes: readonly Row[],
   quotes: readonly NightQuote[],
   limits: { floor: number; ceiling: number },
   maxChange: number,
-): { rows: Row[]; nights: PilotNight[]; skipped: { date: string; why: string }[] } {
+  confirmed: ReadonlyMap<string, Confirmation> = new Map(),
+): { rows: Row[]; nights: PilotNight[]; held: HeldNight[]; skipped: { date: string; why: string }[] } {
   const byDate = new Map(quotes.map((q) => [q.date, q]));
   const rows: Row[] = [];
   const nights: PilotNight[] = [];
+  const held: HeldNight[] = [];
   const skipped: { date: string; why: string }[] = [];
   for (const r of changes) {
-    const g = guardPrice(r.newPrice, r.currentPrice, limits, maxChange);
-    if ("skip" in g) {
-      skipped.push({ date: r.date, why: g.skip });
+    const capped = guardPrice(r.newPrice, r.currentPrice, limits, maxChange);
+    if ("skip" in capped) {
+      skipped.push({ date: r.date, why: capped.skip });
       continue;
     }
+    // The same rules with no price on the channel: everything but the daily cap.
+    const uncapped = guardPrice(r.newPrice, null, limits, maxChange);
+    const free = "skip" in uncapped ? capped : uncapped;
+    const heldBack = capped.price !== free.price;
+    const confirmation = heldBack ? confirmed.get(r.date) : undefined;
+    const g = confirmation ? free : capped;
+    if (heldBack && !confirmation) held.push({ date: r.date, calculated: r.newPrice, sent: g.price, maxChange });
     if (g.price === r.currentPrice && r.newMinStay === r.currentMinStay) continue; // held back to where it already is
     rows.push({ ...r, newPrice: g.price });
     nights.push({
@@ -145,9 +160,10 @@ export function guardPlan<Row extends DiffLike>(
       limited: g.limited,
       steps: byDate.get(r.date)?.steps ?? [],
       verified: null,
+      ...(confirmation ? { confirmation: { by: confirmation.by, at: confirmation.at } } : {}),
     });
   }
-  return { rows, nights, skipped };
+  return { rows, nights, held, skipped };
 }
 
 // ---------------------------------------------------------------- one run
@@ -299,10 +315,11 @@ async function runListing(db: Db, dir: string, io: Io, listing: HostListing, rep
     if (!target.isChannelError(e)) throw e;
     return failure(db, listing, state, blank(listing, "error", { error: (e as Error).message }), opts, at);
   }
-  const guarded = guardPlan(plan.changes, quotes, limits, maxChangeOf(listing));
+  const guarded = guardPlan(plan.changes, quotes, limits, maxChangeOf(listing), activeConfirmations(db, listing.name, today));
   const base = { nights: guarded.nights, skipped: guarded.skipped, leftAlone: plan.leftAlone.length };
   if (opts.dryRun) return blank(listing, "preview", base);
   if (guarded.rows.length === 0) {
+    saveHeld(db, listing.name, guarded.held, at);
     if (state.failures > 0) saveState(db, listing.name, { ...state, failures: 0 });
     return blank(listing, "nothing", base);
   }
@@ -319,6 +336,7 @@ async function runListing(db: Db, dir: string, io: Io, listing: HostListing, rep
     ...(written.error !== undefined ? { error: written.error } : {}),
   });
   if (written.error !== undefined || written.wrong.length > 0 || written.refused.length > 0) return failure(db, listing, state, result, opts, at);
+  saveHeld(db, listing.name, guarded.held, at);
   saveState(db, listing.name, { failures: 0, paused_at: null, paused_reason: null });
   return result;
 }
@@ -342,6 +360,7 @@ function prune(db: Db, now: Date): void {
     db.prepare("DELETE FROM pilot_changes WHERE run_id = ?").run(id);
     db.prepare("DELETE FROM pilot_runs WHERE id = ?").run(id);
   }
+  db.prepare("DELETE FROM pilot_confirmations WHERE confirmed_at < ? AND date < ?").run(before, before.slice(0, 10));
 }
 
 function record(db: Db, r: PilotRunResult, finishedAt: string): number {
@@ -366,13 +385,14 @@ function record(db: Db, r: PilotRunResult, finishedAt: string): number {
         .run(r.startedAt, finishedAt, r.trigger, errors ? "errors" : "ok", written, JSON.stringify(summary)).lastInsertRowid,
     );
     const insert = db.prepare(
-      `INSERT INTO pilot_changes (run_id, listing, feed, date, old_price, new_price, target_price, old_min_stay, new_min_stay, limited, steps, verified)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO pilot_changes (run_id, listing, feed, date, old_price, new_price, target_price, old_min_stay, new_min_stay, limited, steps, verified, confirmed_by, confirmed_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     for (const l of r.listings) {
       if (l.status !== "written" && l.status !== "error") continue;
       for (const n of l.nights) {
-        insert.run(id, l.listing, l.feed, n.date, n.oldPrice, n.newPrice, n.target, n.oldMinStay, n.newMinStay, n.limited, JSON.stringify(n.steps), n.verified === null ? null : n.verified ? 1 : 0);
+        const verified = n.verified === null ? null : n.verified ? 1 : 0;
+        insert.run(id, l.listing, l.feed, n.date, n.oldPrice, n.newPrice, n.target, n.oldMinStay, n.newMinStay, n.limited, JSON.stringify(n.steps), verified, n.confirmation?.by ?? null, n.confirmation?.at ?? null);
       }
     }
     return id;

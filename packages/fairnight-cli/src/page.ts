@@ -90,9 +90,13 @@ select.lang { padding: 8px 10px; font-size: 13px; color: var(--muted); }
 .cell.today { border-color: var(--accent); }
 .cell.today .day { color: var(--accent); font-weight: 700; }
 .cell.selected { border-color: var(--text); }
+.cell.held { box-shadow: inset 0 0 0 2px var(--up); }
+.cell.confirmed { box-shadow: inset 0 0 0 2px var(--down); }
 .day { font-size: 13px; color: var(--muted); }
 .price { font-size: 23px; font-weight: 700; margin-top: auto; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 .min { font-size: 12px; color: var(--muted); }
+.mark { font-size: 11px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mark.held { color: var(--up); } .mark.confirmed { color: var(--down); }
 .cell.reserved .price, .cell.blocked .price { font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--muted); font-size: 13px; margin-top: 12px; }
 .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; }
@@ -100,6 +104,7 @@ select.lang { padding: 8px 10px; font-size: 13px; color: var(--muted); }
 .legend .l-blk { background: repeating-linear-gradient(135deg, var(--blocked-a) 0 3px, var(--faint) 3px 4px); }
 .legend .l-up { background: var(--up); opacity: .7; } .legend .l-down { background: var(--down); opacity: .7; }
 .legend .l-today { border: 1.5px solid var(--accent); }
+.legend .l-held { box-shadow: inset 0 0 0 2px var(--up); } .legend .l-confirmed { box-shadow: inset 0 0 0 2px var(--down); }
 .panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(420px, 100%); background: var(--raised);
   border-left: 1px solid var(--line); padding: 22px 22px 28px; overflow-y: auto; transform: translateX(100%);
   transition: transform .18s ease, box-shadow .18s ease; box-shadow: none; }
@@ -122,6 +127,14 @@ a.source { color: inherit; text-decoration: underline; }
 .panel .raw { margin-top: 18px; color: var(--faint); font-size: 12px; }
 .panel details.raw summary { cursor: pointer; }
 .panel details.raw div { margin-top: 6px; }
+.capbox { margin-top: 14px; padding: 12px 14px; background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--up); border-radius: 10px; font-size: 14px; }
+.capbox.confirmed { border-left-color: var(--down); }
+.capbox b { display: block; font-weight: 650; }
+.capbox p { margin: 6px 0 0; }
+.capbox .muted { color: var(--muted); font-size: 13px; }
+.capbox label { display: block; margin-top: 10px; color: var(--muted); font-size: 13px; }
+.capbox input { display: block; margin-top: 4px; font: inherit; color: inherit; background: var(--raised); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+.capbox .btn { margin-top: 10px; }
 .pilot { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 18px 14px; margin-bottom: 18px; }
 .pilot-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .pilot-head b { font-weight: 650; }
@@ -158,6 +171,9 @@ a.source { color: inherit; text-decoration: underline; }
   .day { font-size: 11px; }
   .price { font-size: 16px; }
   .min { font-size: 10px; }
+  .mark { font-size: 10px; line-height: 1.15; white-space: normal; }
+  /* A narrow cell has no room for the word: the numbers stay, the panel says it in full. */
+  .mark .word { display: none; }
   /* No room for the word on a phone: the colour says it, the legend explains it, screen readers read the label. */
   .cell.reserved .price, .cell.blocked .price { visibility: hidden; }
   .legend { font-size: 12px; gap: 6px 12px; }
@@ -348,6 +364,19 @@ function render() {
       else if (n.price < l.basePrice) c.classList.add("down");
       c.setAttribute("aria-label", tn("aria_night_for_sale", n.minStay, { date: dayTitle(iso), price: money(n.price, l.currency) }));
     }
+    if (n.held) {
+      c.classList.add("held");
+      const mark = el("div", "mark held");
+      mark.append(el("span", "word", t("cell_channel") + " "), num(n.held.sent) + " (" + (n.held.difference > 0 ? "+" : "−") + num(Math.abs(n.held.difference)) + ")");
+      c.append(mark);
+    }
+    if (n.confirmation) {
+      c.classList.add("confirmed");
+      const mark = el("div", "mark confirmed", "✓ ");
+      mark.append(el("span", "word", t("cell_confirmed")));
+      c.append(mark);
+    }
+    if (n.held || n.confirmation) c.setAttribute("aria-label", c.getAttribute("aria-label") + ". " + nightMarkText(n, l));
     // A room type of a small hotel: how many rooms are still free that night.
     if (n.units) c.append(el("div", "min", n.units.free + "/" + n.units.total));
     if (state.selected === iso) c.classList.add("selected");
@@ -472,6 +501,59 @@ async function useSuggestion(l, sg, btn) {
   }
 }
 
+// ---- the daily cap: the mark of a night held back, and the host's confirmation
+function nightMarkText(n, l) {
+  const parts = [];
+  if (n.held) parts.push(t("held_line", { sent: money(n.held.sent, l.currency), calculated: money(n.held.calculated, l.currency) }));
+  if (n.confirmation) parts.push(t("confirmed_line", { by: n.confirmation.by, when: when(n.confirmation.at) }));
+  return parts.join(". ");
+}
+function capBox(n, l) {
+  if (!n.held && !n.confirmation) return null;
+  const m = (v) => money(v, l.currency);
+  const box = el("div", n.confirmation ? "capbox confirmed" : "capbox");
+  if (n.held) {
+    box.append(el("b", null, t("held_line", { sent: m(n.held.sent), calculated: m(n.held.calculated) })));
+    box.append(el("p", null, t("held_detail", { calculated: m(n.held.calculated), sent: m(n.held.sent), difference: m(Math.abs(n.held.difference)), p: num(n.held.maxChange) })));
+    box.append(el("p", "muted", t("held_run", { when: when(n.held.at) })));
+  }
+  if (n.confirmation) {
+    box.append(el("p", null, t("confirmed_line", { by: n.confirmation.by, when: when(n.confirmation.at) })));
+    if (n.held) box.append(el("p", null, t("confirmed_pending", { calculated: m(n.held.calculated) })));
+    box.append(el("p", "muted", t("confirmed_expires")));
+  }
+  if (!state.data.local) { box.append(el("p", "muted", t("confirm_local_only"))); return box; }
+  if (n.confirmation) {
+    box.append(capButton("confirm_remove", () => capPost("unconfirm", { from: n.date })));
+    return box;
+  }
+  box.append(el("p", "muted", t("confirm_explain", { calculated: m(n.held.calculated) })));
+  const label = el("label", null, t("confirm_until"));
+  const until = el("input");
+  until.type = "date";
+  until.min = n.date;
+  label.append(until);
+  box.append(label, capButton("confirm_button", () => capPost("confirm", { from: n.date, to: until.value || n.date })));
+  return box;
+}
+function capButton(key, action) {
+  const b = el("button", "btn", t(key));
+  b.type = "button";
+  b.addEventListener("click", action);
+  return b;
+}
+async function capPost(action, extra) {
+  try {
+    await pilotRequest("/api/pilot/" + action, Object.assign({ listing: current().name }, extra));
+    const iso = state.selected;
+    await load();
+    await loadPilot();
+    if (iso) openNight(iso);
+  } catch (e) {
+    say("confirm_failed", { error: e.message }, true);
+  }
+}
+
 function openNight(iso) {
   const l = current();
   const n = l.nights.find((x) => x.date === iso);
@@ -490,6 +572,8 @@ function openNight(iso) {
     parts.push(el("div", "big", money(n.price, l.currency)));
     parts.push(el("div", "sub", tn("min_stay", n.minStay, { why: t("min_" + n.minStaySource) })));
     if (rooms) parts.push(rooms);
+    const capNote = capBox(n, l);
+    if (capNote) parts.push(capNote);
     // A small ladder from the base price to the final one: one bar per step, as long as its price.
     const list = el("ul", "steps");
     const top = Math.max(...n.steps.map((s) => Math.max(s.before, s.after))) * 1.08;
@@ -593,7 +677,8 @@ function nightList(nights, s, l) {
     li.append(el("span", null, nightDate(n.date)));
     li.append(el("span", "chg", (n.oldPrice == null ? "—" : money(n.oldPrice, l.currency)) + " → " + money(n.newPrice, l.currency)));
     let why = reasons(n.steps, l.currency);
-    if (n.limited === "cap") why += " · " + t("pilot_held_cap", { p: num(s.maxChange), target: money(n.target, l.currency) });
+    if (n.confirmedBy) why += " · " + t("pilot_confirmed_night", { by: n.confirmedBy });
+    else if (n.limited === "cap") why += " · " + t("pilot_held_cap", { p: num(s.maxChange), target: money(n.target, l.currency) });
     if (n.limited === "floor") why += " · " + t("pilot_held_floor");
     if (n.limited === "ceiling") why += " · " + t("pilot_held_ceiling");
     li.append(el("span", "why", why));
@@ -674,6 +759,7 @@ function pilotError(code) {
   if (code === "no-limits") return t("pilot_no_limits");
   if (code === "no-channel") return t("pilot_no_channel");
   if (code === "busy") return t("error_busy");
+  if (code.startsWith("confirm_err_")) return t(code);
   return code;
 }
 
@@ -789,6 +875,8 @@ export function renderPage(nonce: string, lang: Language = "en"): string {
     <span><i class="l-up"></i><span data-t="legend_above">${esc(T.legend_above)}</span></span>
     <span><i class="l-down"></i><span data-t="legend_below">${esc(T.legend_below)}</span></span>
     <span><i class="l-today"></i><span data-t="legend_today">${esc(T.legend_today)}</span></span>
+    <span><i class="l-held"></i><span data-t="legend_held">${esc(T.legend_held)}</span></span>
+    <span><i class="l-confirmed"></i><span data-t="legend_confirmed">${esc(T.legend_confirmed)}</span></span>
     <span data-t="legend_hint">${esc(T.legend_hint)}</span>
   </div>
 </div>

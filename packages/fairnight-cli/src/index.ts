@@ -5,6 +5,7 @@
 export { feedKeys, loadHostConfig, selectListings, SetupError, unitsOf } from "./config.js";
 export type { AirRoiArea, CalendarLink, HostConfig, HostListing, MarketSettings } from "./config.js";
 export { openDbReadOnly } from "./db.js";
+export { nightMarks } from "./pilota-conferme.js";
 export type { Db } from "./db.js";
 export { CONFIG_FILE, configPath, dbPath, localToday } from "./io.js";
 export { listMarketAreas, loadMarket } from "./market-store.js";

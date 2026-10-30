@@ -4,6 +4,8 @@
 import { formatAmount, MAX_UNITS, priceListing } from "fairnight";
 import type { ListingCalendar, NightQuote, PastPrice, PricingResult, Stay } from "fairnight";
 import { localToday } from "./io.js";
+import type { Language } from "./lingua.js";
+import { markLines, type NightMark } from "./pilota-conferme.js";
 import { feedKeys, isIcal, unitsOf, type HostListing } from "./config.js";
 import { hasColumn, type Db } from "./db.js";
 import { loadMarket } from "./market-store.js";
@@ -147,19 +149,30 @@ function shortReason(n: NightQuote): string {
 const pad = (s: string, n: number) => s.padEnd(n);
 const lpad = (s: string, n: number) => s.padStart(n);
 
-export function formatTable(result: PricingResult, name: string, synced: string | null, explain: boolean): string[] {
+export function formatTable(
+  result: PricingResult,
+  name: string,
+  synced: string | null,
+  explain: boolean,
+  marks: ReadonlyMap<string, NightMark> = new Map(),
+  lang: Language = "en",
+): string[] {
   const lines: string[] = [];
+  const said = (n: NightQuote) => {
+    const mark = marks.get(n.date);
+    return mark ? markLines(mark, result.currency, lang).map((line) => `  ${line}`) : [];
+  };
   const units = result.nights[0]?.units?.total;
   lines.push(`${name} · ${units ? `${units} units at one price · ` : ""}${result.days} nights from ${result.today} · prices in ${result.currency}`);
   if (synced === null) lines.push("  (no calendar read yet: run \"fairnight sync\" — every night is treated as free)");
   if (explain) {
-    for (const n of result.nights) lines.push(n.explanation);
+    for (const n of result.nights) lines.push(n.explanation, ...said(n));
   } else {
     lines.push(`${pad("date", 10)}  ${pad("day", 3)}  ${lpad("price", 7)}  ${lpad("min", 3)}  why`);
     for (const n of result.nights) {
       const price = n.price === null ? "—" : formatAmount(n.price);
       const min = n.minStay === null ? "—" : String(n.minStay);
-      lines.push(`${n.date}  ${pad(n.weekday, 3)}  ${lpad(price, 7)}  ${lpad(min, 3)}  ${shortReason(n)}`);
+      lines.push(`${n.date}  ${pad(n.weekday, 3)}  ${lpad(price, 7)}  ${lpad(min, 3)}  ${shortReason(n)}`, ...said(n));
     }
   }
   const forSale = result.nights.filter((n) => n.price !== null).map((n) => n.price as number);

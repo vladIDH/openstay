@@ -16,7 +16,7 @@ import { SetupError } from "./config.js";
 
 export type Db = Database.Database;
 
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (
@@ -348,6 +348,8 @@ CREATE TABLE IF NOT EXISTS pilot_changes (
   limited       TEXT,                    -- cap | floor | ceiling, when the price was held back
   steps         TEXT NOT NULL,           -- the engine's steps (JSON), the "why"
   verified      INTEGER,                 -- read back: 1 matches, 0 does not
+  confirmed_by  TEXT,                    -- who confirmed this night, when it passed the daily cap
+  confirmed_at  TEXT,
   PRIMARY KEY (run_id, listing, date)
 );
 CREATE INDEX IF NOT EXISTS pilot_changes_listing ON pilot_changes (listing, date);
@@ -358,6 +360,32 @@ CREATE TABLE IF NOT EXISTS pilot_state (
   failures      INTEGER NOT NULL DEFAULT 0,
   paused_at     TEXT,
   paused_reason TEXT
+);
+
+-- Nights the host confirmed: they skip the daily cap until their date has passed.
+-- Removed ones stay, so the log keeps who confirmed and who took it back.
+CREATE TABLE IF NOT EXISTS pilot_confirmations (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  listing       TEXT NOT NULL,
+  date          TEXT NOT NULL,
+  calculated    REAL,                    -- the price the host saw when confirming
+  confirmed_by  TEXT NOT NULL,
+  confirmed_via TEXT NOT NULL,           -- page | command
+  confirmed_at  TEXT NOT NULL,
+  removed_by    TEXT,
+  removed_at    TEXT
+);
+CREATE INDEX IF NOT EXISTS pilot_confirmations_listing ON pilot_confirmations (listing, date);
+
+-- The nights the daily cap held back in the last run that worked, per listing.
+CREATE TABLE IF NOT EXISTS pilot_held (
+  listing    TEXT NOT NULL,
+  date       TEXT NOT NULL,
+  calculated REAL NOT NULL,              -- the engine's price at that run
+  sent       REAL NOT NULL,              -- what the channel has after that run
+  max_change INTEGER NOT NULL,
+  run_at     TEXT NOT NULL,
+  PRIMARY KEY (listing, date)
 );
 `;
 
@@ -410,9 +438,15 @@ const MIGRATIONS: { to: number; run(db: Database.Database): void }[] = [
       if (hasTable(db, "guest_stays") && !hasColumn(db, "guest_stays", "tax_counts")) db.exec("ALTER TABLE guest_stays ADD COLUMN tax_counts TEXT");
     },
   },
+  {
+    to: 12, // the daily cap: who confirmed a night that passed it (and the confirmations and held nights tables, new)
+    run: (db) => {
+      for (const c of ["confirmed_by", "confirmed_at"]) if (!hasColumn(db, "pilot_changes", c)) db.exec(`ALTER TABLE pilot_changes ADD COLUMN ${c} TEXT`);
+    },
+  },
 ];
 
-function hasTable(db: Database.Database, table: string): boolean {
+export function hasTable(db: Database.Database, table: string): boolean {
   return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table);
 }
 

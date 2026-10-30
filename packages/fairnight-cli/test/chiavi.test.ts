@@ -7,8 +7,11 @@ import { loadBeds24Credentials, saveBeds24Credentials, saveBeds24Token } from ".
 import { addDays } from "../src/channel.js";
 import { keyTexts } from "../src/chiavi-testi.js";
 import { loadCredentials, saveCredentials } from "../src/credentials.js";
+import { openDb } from "../src/db.js";
 import type { Io } from "../src/io.js";
 import { main } from "../src/main.js";
+import { activeConfirmations } from "../src/pilota-conferme.js";
+import { pilotState } from "../src/pilota.js";
 import { KeychainError, macKeychain, windowsKeychain, type Keychain } from "../src/portachiavi.js";
 import { tempDir, testIo, type TestIo } from "./helpers.js";
 
@@ -21,12 +24,14 @@ const SMOOBU_FILE = "smoobu-credentials.json";
 const BEDS24_FILE = "beds24-credentials.json";
 
 let smoobu: FakeSmoobu | null = null;
+let smoobuNow = NOW;
 let beds24: FakeBeds24 | null = null;
 afterEach(async () => {
   await smoobu?.close();
   await beds24?.close();
   smoobu = null;
   beds24 = null;
+  smoobuNow = NOW;
 });
 
 function fakeKeychain(saved: string | null = null, down = false): Keychain & { saved: string | null } {
@@ -61,13 +66,13 @@ function ratesAt(price: number) {
 }
 
 /** A folder with an autopilot that would write, and the Smoobu keys saved in clear as today. */
-async function folder(language?: string) {
+async function folder(language?: string, price = 100) {
   smoobu = await startFakeSmoobu({
     ...TEST_CREDENTIALS,
-    now: () => new Date(NOW),
+    now: () => new Date(smoobuNow),
     apartments: [{ id: 398, name: "Seaside Loft", currency: "EUR", minimal: "80.00", maximal: "180.00" }],
     bookings: [],
-    rates: { 398: ratesAt(100) },
+    rates: { 398: ratesAt(price) },
     rangeEnd: "exclusive",
   });
   const dir = tempDir();
@@ -356,6 +361,64 @@ describe("the autopilot with encrypted keys", () => {
       await smoobu?.close();
       smoobu = null;
     }
+  });
+});
+
+describe("encrypted keys and the daily cap together", () => {
+  // 2026-11-07 and the 14th are Saturdays: 110 calculated, 80 on the channel, 92 under the cap.
+  const SATURDAY = "2026-11-07";
+  const NEXT_SATURDAY = "2026-11-14";
+  const TOMORROW = "2026-11-02T09:00:00Z";
+  const NEXT_DAY = { now: () => new Date(TOMORROW) };
+  const SYSTEM = { platform: "win32" as const, home: "C:/Users/anna", user: "anna", uid: null, node: "C:/node.exe", script: "C:/fairnight.js" };
+  const priceOn = (date: string) => (smoobu as FakeSmoobu).rates[398]?.[date]?.price;
+
+  function saved(dir: string) {
+    const db = openDb(path.join(dir, "data", "fairnight.db"));
+    try {
+      return {
+        held: db.prepare("SELECT sent FROM pilot_held WHERE listing = 'loft' AND date = ?").get(SATURDAY),
+        confirmed: activeConfirmations(db, "loft", "2026-11-02").get(SATURDAY)?.by,
+        written: db.prepare("SELECT COUNT(*) AS n FROM pilot_changes").get(),
+        failures: pilotState(db, "loft").failures,
+        confirmedRun: db.prepare("SELECT confirmed_by FROM pilot_changes WHERE date = ? AND new_price = 110").get(SATURDAY),
+      };
+    } finally {
+      db.close();
+    }
+  }
+
+  it("with the keychain the cap and the confirmation apply; emptied, nothing reaches the channel and nothing is lost", async () => {
+    const dir = await folder(undefined, 80);
+    const k = fakeKeychain();
+    await encrypt(dir, k);
+
+    expect(await main(["pilota", "giro", "--pianificato"], io(dir, { keychain: k }))).toBe(0);
+    expect(priceOn(SATURDAY)).toBe(92);
+    expect(saved(dir).held).toEqual({ sent: 92 });
+
+    // Confirming reads no credentials: it works with no passphrase at all.
+    expect(await main(["chiavi", "dimentica"], io(dir, { keychain: k }))).toBe(0);
+    expect(await main(["pilota", "conferma", "loft", "--da", SATURDAY], io(dir, { keychain: k, system: SYSTEM }))).toBe(0);
+    const before = saved(dir);
+    expect(before.confirmed).toBe("anna");
+
+    smoobuNow = TOMORROW;
+    const asked = (smoobu as FakeSmoobu).log.length;
+    const stopped = io(dir, { keychain: k, ...NEXT_DAY, prompt: async () => { throw new Error("a scheduled run must not ask"); } });
+    expect(await main(["pilota", "giro", "--pianificato"], stopped)).toBe(1);
+    expect((smoobu as FakeSmoobu).log.length).toBe(asked);
+    expect(priceOn(SATURDAY)).toBe(92);
+    expect(stopped.lines.join("\n")).toContain("nessun prezzo è partito");
+    expect(saved(dir)).toEqual(before); // the mark, the confirmation and the log as they were, no failure counted
+    noSecrets(stopped);
+
+    expect(await main(["chiavi", "ricorda"], io(dir, { keychain: k, prompt: answers(PASS).prompt }))).toBe(0);
+    expect(await main(["pilota", "giro", "--pianificato"], io(dir, { keychain: k, ...NEXT_DAY }))).toBe(0);
+    expect(priceOn(SATURDAY)).toBe(110);
+    expect(priceOn(NEXT_SATURDAY)).toBe(105); // 92 × 1.15 = 105.8: not confirmed, the cap as always
+    expect(saved(dir).confirmedRun).toEqual({ confirmed_by: "anna" });
+    expect(saved(dir).held).toBeUndefined();
   });
 });
 

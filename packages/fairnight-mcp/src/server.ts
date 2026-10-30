@@ -12,7 +12,7 @@ import { ConfigError, formatAmount } from "fairnight";
 import { markLines } from "fairnight-cli";
 import { explainNight, getPrices, guestDeadlinesOf, guestRepliesOf, listListings, marketArea, nextGaps, occupancy, syncStatus, ToolError, type Folder } from "./data.js";
 
-export const VERSION = "0.2.0";
+export const VERSION = "0.2.1";
 
 export const READ_ONLY_ANNOTATIONS = {
   readOnlyHint: true,
